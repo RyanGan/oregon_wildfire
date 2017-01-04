@@ -2,25 +2,22 @@
 # Title: Basic data wrangle and cleaning of Oregon 2013 claims data
 # Author: Ryan Gan
 # Date Created: December 30, 2016
+# R Version: 3.3.2
 # ------------------------------------------------------------------------------
 
-# Note: Datasets are pretty large, R might not work
+# Note: Datasets are pretty large. I had to come up with some different ways of
+# processing these data.
+
+# Helpful sources: 
+# Reading in specific sequences of a large data set
+# http://stackoverflow.com/questions/21798930/how-to-read-specific-rows-of-csv-file-with-fread-function
 
 # load libraries ---------------------------------------------------------------
 library(tidyverse)
 library(data.table)
 
-# import data ------------------------------------------------------------------
-# zip path
-zip_path <- paste0("./data/gan_episodes_of_care.zip")
-testconnection <- file(zip_path, open="r")
-readsize <- 20000
-n_lines <- 0
-(while((linesread <- length(readLines(testconnection, readsize))) > 0) 
-  n_lines <- n_lines+linesread)
-close(testconnection)
-n_lines # 20,720,000, there are probably more records than this
 
+# import data ------------------------------------------------------------------
 
 # Read in first 100000 lines to mess around with in R until I figure out another
 # way. I will then delete the text file 
@@ -39,6 +36,10 @@ stop_time <-  Sys.time() - start_time
 stop_time
 
 oregon_df[1:10, 64]
+
+# get column df names
+df_col_names <- colnames(oregon_df)
+
 
 # Notes on first import
 head(oregon_df)
@@ -78,7 +79,6 @@ stop_time <-  Sys.time() - start_time
 
 stop_time
 
-df_col_names <- colnames(oregon_df)
 
 # check to make sure dataset imported
 head(test_df$V1)
@@ -86,28 +86,16 @@ head(oregon_df$personkey)
 tail(oregon_df$personkey)
 tail(test_df$V1)
 
-# the script above will sequentially import the oregon data. I need to figure
-# out if I can screen for certain icd9 codes
-
-# here is a way to read sequences of rows
-# create sample dataset
-set.seed(1)
-m   <- matrix(rnorm(1e5),ncol=10)
-csv <- data.frame(x=1:1e4,m)
-write.csv(csv,"test.csv")
-# s: rows we want to read
-s <- c(1:50,53, 65,77,90,100:200,350:500, 5000:6000)
-# v: logical, T means read this row (equivalent to your read_vec)
-v <- (1:1e4 %in% s)
-
-seq  <- rle(v)
-
-idx  <- c(0, cumsum(seq$lengths))[which(seq$values)] + 1
-idx
-# indx: start = starting row of sequence, length = length of sequence (compare to s)
-indx <- data.frame(start=idx, length=seq$length[which(seq$values)])
-
-result <- do.call(rbind,apply(indx,1, function(x) return(fread("test.csv",nrows=x[2],skip=x[1]))))
 
 
+# code chunk to read the number of lines in the oregon data
+# zip path
+zip_path <- paste0("./data/gan_episodes_of_care.zip")
+testconnection <- file(zip_path, open="r")
+readsize <- 20000
+n_lines <- 0
+(while((linesread <- length(readLines(testconnection, readsize))) > 0) 
+  n_lines <- n_lines+linesread)
+close(testconnection)
+n_lines # 20,720,000, there are probably more records than this
 
