@@ -46,34 +46,25 @@ stop_icd9 <- c("5199", "49392", "486", "46619", "4599", "4279", "4389", "4289",
 # dataframe of outcomes and start stop of icd9 codes
 outcome_icd9_range <- data_frame(outcome_name, start_icd9, stop_icd9)
 
-# list of icd9 codes ----
+# list of icd9 codes -----------------------------------------------------------
 outcome_icd9_list <- apply(outcome_icd9_range, 1, 
   function(x) { # start of function
-    return(icd9_df %>% 
+    icd9_df %>% 
       slice(which(icd9_df$dx_code == x[2]): which(icd9_df$dx_code == x[3])) %>%
       select(1) %>%
       as_vector()
-      )  
   } )
 
+# assign list names
 names(outcome_icd9_list) <- outcome_name
 
-outcome_icd9_list
-
-# All Respiratory Diseases ICD9 460 to 519 -------------------------------------
-start <- which(icd9_df$dx_code == '460') # row 5067 (cold) start of resp outcomes
-icd9_df[5067,] # looks correct
-# last icd9 code in resp disease is 519.9 (unsp dis of resp sys)
-stop <- which(icd9_df$dx_code == '5199') # row 5321 end of resp outcomes
-icd9_df[5321,]
-
-# all respiratory vector based on row position
-resp_icd9 <- icd9_df %>% slice(start:stop) %>%
-  select(dx_code) %>% 
-  as_vector()
-
-
-
-# COPD, ICD9 490 to 492, 494, and 496 ------------------------------------------
-copd_icd9 <- c('490', '4910','4911','49120','49121','49122','4918','4919', '4920',
+# Add COPD ICD9 codes to the list
+# COPD, ICD9 490 to 492, 494, and 496 
+copd <- c('490', '4910','4911','49120','49121','49122','4918','4919', '4920',
                '4928', '4940', '4941', '496') 
+
+# append copd list to icd9 list
+outcome_icd9_list <- c(outcome_icd9_list, list(copd = copd_icd9))
+
+# I don't know if not having atomic/flat values for each element of the list
+# will matter, but I need to try it out before I'll know
