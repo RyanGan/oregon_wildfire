@@ -60,7 +60,7 @@ names(outcome_icd9_list) <- outcome_name
 
 # Add COPD ICD9 codes to the list
 # COPD, ICD9 490 to 492, 494, and 496 
-copd <- c('490', '4910','4911','49120','49121','49122','4918','4919', '4920',
+copd_icd9 <- c('490', '4910','4911','49120','49121','49122','4918','4919', '4920',
                '4928', '4940', '4941', '496') 
 
 # append copd list to icd9 list
@@ -68,3 +68,10 @@ outcome_icd9_list <- c(outcome_icd9_list, list(copd = copd_icd9))
 
 # I don't know if not having atomic/flat values for each element of the list
 # will matter, but I need to try it out before I'll know
+
+# save R file to use in other scripts
+save_path <- paste0("./data/outcome_list.RData")
+save(outcome_icd9_list, file = save_path)
+
+
+
