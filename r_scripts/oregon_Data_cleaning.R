@@ -7,6 +7,9 @@
 
 getwd() # "/home/jyliu/wildfire/r_scripts"
 
+library(dplyr)
+library(data.table)
+
 read_path <- paste0("../data/gan_episodes_of_care.txt")
 oregon_df <- fread(read_path, sep = "|", nrows = 2000000, showProgress = T)
 fwrite(oregon_df, "../data/oregon_epis_care_reduced.csv")
@@ -28,7 +31,7 @@ start_time <- Sys.time()
 oregon_full <- fread(read_path, sep = "|", showProgress = T) # not change class
 stop_time <-  Sys.time() - start_time 
 # time it took
-stop_time # 8.281118 mins
+stop_time # 7.771713 mins
 
 summary(as.factor(oregon_full$year)) # all 2013, 77069320
 summary(as.factor(oregon_full$personkey))
@@ -101,6 +104,65 @@ summary(as.factor(oregon_full$dx10))
 summary(as.factor(oregon_full$dx11))
 summary(as.factor(oregon_full$dx12))
 summary(as.factor(oregon_full$dx13))
+
+summary(as.factor(oregon_full$poa1))
+#                 N        Y
+# 72434455    58842  4576023
+
+summary(as.factor(oregon_full$poa2))
+#                 N        Y
+# 74380115   261029  2428176
+
+summary(as.factor(oregon_full$poa3))
+#                 N        Y
+# 74688528   264287  2116505
+
+summary(as.factor(oregon_full$px1)) 
+summary(as.factor(oregon_full$px2))
+summary(as.factor(oregon_full$px3))
+
+summary(as.factor(oregon_full$proccode))
+summary(as.factor(oregon_full$mod1))
+summary(as.factor(oregon_full$mod2))
+summary(as.factor(oregon_full$megcode))
+summary(as.factor(oregon_full$megdesc))
+summary(as.factor(oregon_full$megbodysys))
+summary(as.factor(oregon_full$megstage))
+summary(as.factor(oregon_full$megtype))
+#                   9 NOT-CATEGORIZED             Acute           Chronic
+#              1751           6979372          34062467          31197648
+#         Well Care
+#           4828082
+
+summary(as.factor(oregon_full$megcomplete))
+#        0        1     NA's
+# 10090656 66976913     1751
+
+summary(as.factor(oregon_full$megnum))
+summary(as.factor(oregon_full$megdays))
+summary(as.factor(oregon_full$megprorate))
+summary(as.factor(oregon_full$megoutlier))
+#        0        1
+# 54675387 22393933
+
+summary(as.factor(oregon_full$meglow))
+#    FALSE     TRUE
+# 75145616  1923704
+
+summary(as.factor(oregon_full$meghigh))
+#    FALSE     TRUE
+# 56599091 20470229
+
+summary(as.factor(oregon_full$rxclass))
+summary(as.factor(as.character(oregon_full$qtydisp)))
+summary(as.factor(oregon_full$rxdays))
+summary(as.factor(oregon_full$daw))
+summary(as.factor(oregon_full$ptstatus))
+summary(as.factor(oregon_full$los))
+summary(as.factor(oregon_full$msdrg))
+summary(as.factor(oregon_full$icd_ver))
+#    FALSE     NA's
+# 52556088 24513232
 
 
 
