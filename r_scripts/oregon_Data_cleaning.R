@@ -165,5 +165,5 @@ summary(as.factor(oregon_full$icd_ver))
 # 52556088 24513232
 
 
-
+sum(oregon_full$dx1=='*NULL*'&oregon_full$ndc=="") # 1042984
 
