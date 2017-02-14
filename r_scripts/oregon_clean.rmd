@@ -1,0 +1,68 @@
+---
+title: "Oregon_Wildfire_Claim"
+author: "Jingyang Liu"
+date: "February 14, 2017"
+output: html_document
+---
+
+## Explore Data Structure and Cleaning
+
+The Oregon data contains 77069320 obsversations in total in year of 2013, which is a big data set. We want to figure out the structure for this data set and do some basic cleaning. 
+
+```{r, echo = F}
+library(dplyr)
+library(data.table)
+
+# import data ------------------------------------------------------------------
+read_path <- paste0("../data/gan_episodes_of_care.txt")
+
+start_time <- Sys.time()
+oregon_full <- fread(read_path, sep = "|", showProgress = T) # not change class
+stop_time <-  Sys.time() - start_time 
+# time it took
+stop_time # 7.771713 mins
+
+# Explore data structure
+summary(as.factor(oregon_full$clmstatus))
+
+# Clean data
+oregon_full_df <- oregon_full %>%
+  # filter non-missing value of gender, race 
+  filter (gender!='U') %>%
+  filter (is.na(race)==F)
+
+# filter dx1, no ndc
+oregon_full_dx1 <- oregon_full_df %>%
+  filter (dx1!='*NULL*')
+
+
+# filter ndc, no dx1
+oregon_full_ndc <- oregon_full_df %>%
+  filter (ndc!="")
+
+fwrite(oregon_full_dx1, "../data/oregon_full_dx1.csv")
+fwrite(oregon_full_ndc, "../data/oregon_full_ndc.csv")
+
+write_path1 <- paste0('../data/','oregon_full_dx1.csv')
+write_csv(oregon_full_dx1, write_path1)
+
+write_path2 <- paste0('../data/','oregon_full_ndc.csv')
+write_csv(oregon_full_ndc, write_path2)
+
+
+```
+
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
