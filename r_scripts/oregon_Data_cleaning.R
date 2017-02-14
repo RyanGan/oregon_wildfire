@@ -167,3 +167,11 @@ summary(as.factor(oregon_full$icd_ver))
 
 sum(oregon_full$dx1=='*NULL*'&oregon_full$ndc=="") # 1042984
 
+# Check conditional non-missing dx1, how the ndc look like
+oregon_df <- oregon_full %>%
+  filter (dx1!='*NULL*') %>%
+  mutate (ndc_ind =ifelse(ndc == "", 0, 
+                   ifelse(ndc != "", 1, NA))
+  ) # 0 is 0
+
+
