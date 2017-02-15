@@ -1,7 +1,7 @@
 ---
-title: "Oregon_Wildfire_Claim"
+title: "Oregon_Wildfire_reduced"
 author: "Jingyang Liu"
-date: "February 14, 2017"
+date: "February 15, 2017"
 output: html_document
 ---
 
@@ -9,60 +9,88 @@ output: html_document
 
 The Oregon data contains 77069320 obsversations in total in year of 2013, which is a big data set. We want to figure out the structure for this data set and do some basic cleaning. 
 
-```{r, echo = F}
+```{r}
 library(dplyr)
 library(data.table)
 
 # import data ------------------------------------------------------------------
-read_path <- paste0("../data/gan_episodes_of_care.txt")
+# Read in first 2000000 lines for exploration.
 
+# read_path <- paste0("./data/gan_episodes_of_care.txt")
+# oregon_df <- fread(read_path, sep = "|", nrows = 200000, showProgress = T)
+# fwrite(oregon_df, "./data/oregon_epis_care_reduced.csv")
+
+# I wrote a reduced dataframe of 2000,000 rows to get an idea of data structure
+
+# import the reduced dataframe
 start_time <- Sys.time()
-oregon_full <- fread(read_path, sep = "|", showProgress = T) # not change class
+
+oregon_df <- fread("./data/oregon_epis_care_reduced.csv", sep = ",")
+
 stop_time <-  Sys.time() - start_time 
+
 # time it took
-stop_time # 7.771713 mins
+stop_time # 15.83603 secs
 
-# Explore data structure
-summary(as.factor(oregon_full$clmstatus))
+```
 
-# Clean data
-oregon_full_df <- oregon_full %>%
-  # filter non-missing value of gender, race 
-  filter (gender!='U') %>%
-  filter (is.na(race)==F)
+#  The variable "clmstatus" is ..... It is a binary
 
-# filter dx1, no ndc
-oregon_full_dx1 <- oregon_full_df %>%
-  filter (dx1!='*NULL*')
+```{r claim status}
+
+# Explore data structure, try like clmstatus
+summary(oregon_df)
+summary(as.factor(oregon_df$clmstatus))
+
+```
 
 
-# filter ndc, no dx1
-oregon_full_ndc <- oregon_full_df %>%
-  filter (ndc!="")
 
-fwrite(oregon_full_dx1, "../data/oregon_full_dx1.csv")
-fwrite(oregon_full_ndc, "../data/oregon_full_ndc.csv")
+## Clean data
 
-write_path1 <- paste0('../data/','oregon_full_dx1.csv')
-write_csv(oregon_full_dx1, write_path1)
+```{r }
+# Clean data, 76986701 left (maybe later)
+#oregon_full_df <- oregon_full %>%
+  # filter non-missing value of year of birth, gender, race, STATE
+#  filter (is.na(yob)==F) %>%
+#  filter (gender!='U') %>%
+#  filter (is.na(race)==F) %>%
+#  filter (STATE!='')
 
-write_path2 <- paste0('../data/','oregon_full_ndc.csv')
-write_csv(oregon_full_ndc, write_path2)
+# Explore no dx1 and no ndc, see if the dx2 or other reasons, 1042984 obs
+# oregon_full_miss <- oregon_full %>%
+#  filter (dx1=='*NULL*') %>%
+#  filter (ndc=="")
+
+# fwrite(oregon_full_miss, "../data/oregon_full_miss.csv")
+
+# read_path1 <- paste0("./data/oregon_full_miss.csv")
+# oregon_miss <- fread(read_path1, sep = ",")
+
+# oregon_miss_df <- oregon_miss %>%
+#   filter (dx2!='*NULL*') # 981 obs
+
+
+# filter dx1, no ndc, 52490460
+# oregon_full_dx1 <- oregon_full_df %>%
+#   filter (dx1!='*NULL*')
+
+
+# filter ndc, no dx1, 23453379
+# oregon_full_ndc <- oregon_full_df %>%
+#  filter (ndc!="")
+
+# fwrite(oregon_full_dx1, "../data/oregon_full_dx1.csv")
+# fwrite(oregon_full_ndc, "../data/oregon_full_ndc.csv")
+
+
 
 
 ```
 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
 
 
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
