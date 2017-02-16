@@ -5,45 +5,593 @@ date: "February 15, 2017"
 output: html_document
 ---
 
-## Explore Data Structure and Cleaning
+# Explore Data Structure and Cleaning
 
 The Oregon data contains 77069320 obsversations in total in year of 2013, which is a big data set. We want to figure out the structure for this data set and do some basic cleaning. 
 
 ```{r}
 library(dplyr)
 library(data.table)
+getwd()
 
 # import data ------------------------------------------------------------------
 # Read in first 2000000 lines for exploration.
 
-# read_path <- paste0("./data/gan_episodes_of_care.txt")
-# oregon_df <- fread(read_path, sep = "|", nrows = 200000, showProgress = T)
-# fwrite(oregon_df, "./data/oregon_epis_care_reduced.csv")
+read_path <- paste0("../data/gan_episodes_of_care.txt")
+oregon_df <- fread(read_path, sep = "|", nrows = 200000, showProgress = T)
+fwrite(oregon_df, "../data/oregon_epis_care_reduced.csv")
 
 # I wrote a reduced dataframe of 2000,000 rows to get an idea of data structure
 
 # import the reduced dataframe
 start_time <- Sys.time()
-
-oregon_df <- fread("./data/oregon_epis_care_reduced.csv", sep = ",")
-
+oregon_df <- fread("../data/oregon_epis_care_reduced.csv", sep = ",")
 stop_time <-  Sys.time() - start_time 
 
 # time it took
-stop_time # 15.83603 secs
+stop_time # 1.968219 secs
 
 ```
 
-#  The variable "clmstatus" is ..... It is a binary
+## The overall summary  of data set
+72 variables in total.
+```{r overall summary}
 
-```{r claim status}
-
-# Explore data structure, try like clmstatus
+# Explore data structure
 summary(oregon_df)
-summary(as.factor(oregon_df$clmstatus))
-
 ```
 
+## *personkey*, Unique person identifier
+person's ID, maximum is 14381640
+numeric; length: 8
+```{r personkey}
+summary(as.factor(oregon_df$personkey))
+min(oregon_df$personkey)
+max(oregon_df$personkey) # seems length is 8
+```
+
+## *year*, Calendar year in which claim was incurred
+All is 2013
+integer (numeric); length: 4
+```{r year}
+summary(as.factor(oregon_df$year)) # all 2013, 77069320
+```
+
+## *clmid*, Claim ID
+numeric; length: 8
+```{r claim id}
+summary(as.factor(oregon_df$clmid))
+```
+
+## *line*, Claim line (Not Sure what this means)
+numeric; range: 0-9999
+```{r claim line}
+unique(as.numeric(oregon_df$line)) # 1362 levels, 0 - 9999
+```
+
+## *clmtatus*, Claim status
+D: 8676643 (11.26%), E: 3324496 (4.31%), P: 65068181 (84.43%)
+character
+```{r claim status}
+summary(as.factor(oregon_df$clmstatus))
+#       D        E        P
+# 8676643  3324496 65068181
+
+summary(as.factor(oregon_df$clmstatus))/77069320 # percentage
+#          D          E          P
+# 0.11258232 0.04313644 0.84428124
+```
+
+## *cob*, COB status (Coordination of benefits) 
+blank: 23517978 (30.52%); N: 44438688 (57.66%); Y: 9112654 (11.82%)
+character
+``` {r cob}
+summary(as.factor(oregon_df$cob)) 
+#                 N        Y
+# 23517978 44438688  9112654
+summary(as.factor(oregon_df$cob))/77069320 # percentage
+#                   N         Y
+# 0.3051536 0.5766067 0.1182397
+```
+
+## *paytype*, Pay type
+C (58.50%), D (31.77%), G (2.08%), P (3.53%), T (4.12%)
+character
+``` {r pay type}
+summary(as.factor(oregon_df$paytype)) #C, D, G, P, T
+summary(as.factor(oregon_df$paytype))/77069320 # percentage
+#         C          D          G          P          T
+# 0.58498296 0.31771349 0.02081743 0.03532560 0.04116052
+```
+
+## *prod*, Product code
+CHP, etc. Insurance type/product code [web](https://ushik.ahrq.gov/ViewItemDetails?&system=apcd&itemKey=194604000)
+character
+```{r product code}
+summary(as.factor(oregon_df$prod))
+```
+
+## *payer*, APAC payer 
+All Payer All Claims [web](https://www.oregon.gov/oha/analytics/Pages/All-Payer-All-Claims.aspx)
+character
+```{r payer}
+summary(as.factor(oregon_df$payer))
+```
+
+## *megflag*, Medical coverage flag
+The medical coverage flag indicates whether this member is covered for medical expenses [web](https://ushik.ahrq.gov/ViewItemDetails?&system=apcd&itemKey=196401000)
+0: (7.39%); 1: (91.57%); NA: (1.04%)
+numeric; range: 0-1
+```{r medical coverage flage}
+summary(as.factor(oregon_df$medflag))
+#       0        1     NA's
+# 5697342 70573441   798537
+summary(as.factor(oregon_df$medflag))/77069320 # percentage
+#          0          1       NA's
+# 0.07392490 0.91571381 0.01036128
+```
+
+## *rxflag*, Pharmacy coverage flag
+This field indicates whether or not the member has prescription drug coverage. 
+[web](https://ushik.ahrq.gov/ViewItemDetails?&system=apcd&itemKey=196401000)
+0: (10.07%); 1: (88.89%); NA: (1.04%)
+numeric; range: 0-1
+```{r pharmacy converage flag}
+summary(as.factor(oregon_df$rxflag))
+#       0        1     NA's
+# 7761348 68509435   798537
+summary(as.factor(oregon_df$rxflag))/77069320 # percentage
+#          0          1       NA's
+# 0.10070607 0.88893265 0.01036128
+```
+
+## *ohvmhflag*, Oregon High value medical home flag
+Required for participants in OHLC high value medical home initiative. 
+[web](https://ushik.ahrq.gov/ViewItemDetails?&system=apcd&itemKey=194764000&enableAsynchronousLoading=true)
+N: (69.15%); Y: (0.24%); NULL: (30.61%)
+character
+```{r Oregon High value medical home flag}
+summary(as.factor(oregon_df$ohvmhflag))
+#        N   *NULL*        Y
+# 53291284 23589431   188605
+summary(as.factor(oregon_df$ohvmhflag))/77069320 # percentage
+#           N      *NULL*           Y
+# 0.691472093 0.306080695 0.002447212
+```
+
+## *pebb*, PEBB flag (NOT Provided)
+0: (95.95%); 1: (4.05%)
+numeric; range: 0-1
+```{r pebb flag}
+summary(as.factor(oregon_df$pebb))
+#        0        1
+# 73949154  3120166
+summary(as.factor(oregon_df$pebb))/77069320 # percentage
+#          0          1
+# 0.95951481 0.04048519
+```
+
+## *oebb*, OEBB flag (NOT Provided)
+0: (96.39%); 1: (3.61%)
+numeric; range: 0-1
+```{r oebb flag}
+summary(as.factor(oregon_full$oebb))
+#        0        1
+# 74285962  2783358
+summary(as.factor(oregon_full$oebb))/77069320 # percentage
+#          0          1
+# 0.96388501 0.03611499
+```
+
+## *patid*, Encrypted patient ID
+numeric
+```{r Encrypted patient ID}
+summary(as.factor(oregon_full$patid))
+```
+
+## *gender*, Gender
+F: (60.56%); M: (39.38%); U (for unknown): (0.06%)
+character
+```{r gender}
+summary(as.factor(oregon_full$gender))
+#        F        M        U
+# 46672307 30350771    46242
+summary(as.factor(oregon_full$gender))/77069320 # percentage
+#            F            M            U
+# 0.6055886700 0.3938113247 0.0006000053
+```
+
+## *yob*, Birth year
+old:1901 (116 years) young:2016 (1 year)
+numeric
+```{r birth year}
+summary(as.factor(oregon_full$yob)) # old:1901 young:2016
+```
+
+## *race*, Race (Not sure the category means)
+1:(31%); 2: (2%); 3: (0.8%); 4: (0.3%); 5: (0.1%); 6: (0.3%); 9: (65%); NA: (0.03%)
+numeric; range: 1-9
+```{r race}
+summary(as.factor(oregon_full$race))
+#        1        2        3        4        5        6        9     NA's
+# 24132190  1611193   620854   203550    85465   248416 50141889    25763
+summary(as.factor(oregon_full$race))/77069320 # percentage
+#            1            2            3            4            5            6
+# 0.3131231727 0.0209057638 0.0080557867 0.0026411288 0.0011089367 0.0032232800
+#            9         NA's
+# 0.6506076478 0.0003342835
+```
+
+## *ethn*, Ethnicity (Not sure the category means)
+1:(0.76%); 2: (9.60%); 3: (89.61%); NA: (0.03%)
+numeric; range: 1-3
+```{r ethnicity}
+summary(as.factor(oregon_full$ethn))
+#        1        2        3     NA's
+#  583948  7398053 69061589    25730
+summary(as.factor(oregon_full$ethn))/77069320 # percentage
+#            1            2            3         NA's
+# 0.0075769191 0.0959921925 0.8960970332 0.0003338553
+```
+
+## *lang*, Primary spoken language 
+Not sure the category means. This web [web](http://www.niso.org/topics/ccm/ccmstandards/) might help.
+1:(47.70%); 2: (1.34%); 3: (0.001%); 4: (0.26%); 8: (0.65%); 9: (49.31%); NA: (0.74%)
+numeric; range: 1-9
+```{r language}
+summary(as.factor(oregon_full$lang))
+#        1        2        3        4        8        9     NA's
+# 36761368  1031059      587   203152   501575 38002063   569516
+round(summary(as.factor(oregon_full$lang))/77069320, 5)  # percentage
+#       1       2       3       4       8       9    NA's
+# 0.47699 0.01338 0.00001 0.00264 0.00651 0.49309 0.00739
+```
+
+## *MSA*, Metropolitan and Micropolitan Statistical Areas Main???
+numeric
+```{r MSA}
+summary(as.factor(oregon_full$MSA))
+```
+
+## *STATE*, Standard two character abbreviation
+OR: (99.33%); blank: (0.1%)
+character
+```{r State}
+summary(as.factor(oregon_full$STATE)) # OR: 76555225; blank: 78646
+76555225/77069320
+```
+
+## *ZIP*, Zip code
+Freely available in the public domain. NA: (0.1%)
+numeric
+```{r ZIP code}
+summary(as.factor(oregon_full$ZIP)) # NA: 78646
+```
+
+## *fromdate*, From date
+YYYY-MM-DD
+character
+```{r from date}
+summary(as.factor(oregon_full$fromdate))
+unique(as.factor(oregon_full$fromdate))
+```
+
+## *todate*, To date
+YYYY-MM-DD
+character
+```{r to date}
+summary(as.factor(oregon_full$todate))
+```
+
+## *paydate*, Pay date
+YYYY-MM-DD
+character
+```{r pay date}
+summary(as.factor(oregon_full$paydate))
+```
+
+## *paid*, Total payment
+NA: (0.36%)
+numeric
+```{r total payment}
+summary(as.factor(oregon_full$paid)) # NA: 279811
+```
+
+## *tob*, Type of bill
+blank: (52.61%); NULL: (25.12%)
+character
+```{r type of bill}
+summary(as.factor(oregon_full$tob)) # blank: 40545960 NULL: 19358510 
+```
+
+## *pos*, Place of service code
+Not sure. [web](https://www.cms.gov/Medicare/Coding/place-of-service-codes/Place_of_Service_Code_Set.html) migh help.
+NULL: (9.22%)
+character
+```{r place of servis code}
+summary(as.factor(oregon_full$pos)) # NULL: 7106719
+```
+
+## *dx1*, Principal diagnosis (For ICD9 code)
+[web](https://www.cms.gov/Medicare/Coding/ICD9ProviderDiagnosticCodes/codes.html)
+NULL: (31.81%)
+character
+```{r dx1}
+summary(as.factor(oregon_full$dx1)) # NULL: 24513232
+```
+
+## *dx2*, Diagnosis 2
+NULL: (59.31%)
+character
+``` {r dx2}
+summary(as.factor(oregon_full$dx2)) # NULL: 45707452
+```
+
+## *dx3*, Diagnosis 3
+NULL: (72.67%)
+character
+``` {r dx3}
+summary(as.factor(oregon_full$dx3)) # NULL: 56005306
+```
+
+## *dx4*, Diagnosis 4
+NULL: (81.46%)
+character
+``` {r dx4}
+summary(as.factor(oregon_full$dx4)) # NULL: 62777450
+```
+
+## *dx5*, Diagnosis 5
+NULL: (93.42%)
+character
+``` {r dx5}
+summary(as.factor(oregon_full$dx5)) # NULL: 71995284
+```
+
+## *dx6*, Diagnosis 6
+NULL: (95.23%)
+character
+``` {r dx6}
+summary(as.factor(oregon_full$dx6)) # NULL: 73390409
+```
+
+## *dx7*, Diagnosis 7
+NULL: (96.31%)
+character
+```{r dx7}
+summary(as.factor(oregon_full$dx7)) # NULL: 74225796
+```
+
+## *dx8*, Diagnosis 8
+NULL: (97.00%)
+character
+```{r dx8}
+summary(as.factor(oregon_full$dx8)) # NULL: 74759988
+```
+
+## *dx9*, Diagnosis 9
+NULL: (98.55%)
+character
+```{r dx9}
+summary(as.factor(oregon_full$dx9)) # NULL: 75949570
+```
+
+## *dx10*, Diagnosis 10
+NULL: (98.81%)
+character
+```{r dx10}
+summary(as.factor(oregon_full$dx10)) # NULL: 76151124
+```
+
+## *dx11*, Diagnosis 11
+blank: (98.35%)
+character
+``` {r dx11}
+summary(as.factor(oregon_full$dx11)) # blank: 75801079
+```
+
+## *dx12*, Diagnosis 12
+blank: (98.61%)
+character
+```{r dx12}
+summary(as.factor(oregon_full$dx12)) # blank: 76000733
+```
+
+## *dx13*, Diagnosis 13
+blank: (98.86%)
+character
+```{r dx13}
+summary(as.factor(oregon_full$dx13)) # blank: 76193335
+```
+
+## *poa1*, POA code 1
+N: (0.07%); Y: (5.94%); blank: (93.99%)
+character
+```{r poa1} 
+summary(as.factor(oregon_full$poa1))
+#                 N        Y
+# 72434455    58842  4576023
+summary(as.factor(oregon_full$poa1))/77069320 # percentage
+#                         N            Y
+# 0.9398610887 0.0007634945 0.0593754168
+```
+
+## *poa2*, POA code 2
+N: (0.34%); Y: (3.15%); blank: (96.51%)
+character
+```{r poa2}
+summary(as.factor(oregon_full$poa2))
+#                 N        Y
+# 74380115   261029  2428176
+summary(as.factor(oregon_full$poa2))/77069320 # percentage
+#                       N           Y
+# 0.965106673 0.003386938 0.031506389
+```
+
+## *poa3*, POA code 3
+N: (0.34%); Y: (2.75%); blank: (96.91%)
+character
+```{r poa3}
+summary(as.factor(oregon_full$poa3))
+#                 N        Y
+# 74688528   264287  2116505
+summary(as.factor(oregon_full$poa3))/77069320 # percentage
+#                       N           Y
+# 0.969108434 0.003429212 0.027462355
+```
+
+## *px1*, Principal inpt procedure
+blank: (52.61%); NULL: (45.38%)
+character
+```{r px1}
+summary(as.factor(oregon_full$px1)) # blank: 40545960; NULL: 34975994
+```
+
+## *px2*, Procedure 2
+blank: (52.61%); NULL: (46.06%)
+character
+```{r px2}
+summary(as.factor(oregon_full$px2)) # blank: 40545960 NULL: 35502262
+```
+
+## *px3*, Procedure 3
+blank: (52.61%); NULL: (45.38%)
+character
+```{r px3}
+summary(as.factor(oregon_full$px3)) # blank: 40545960; NULL: 34975994
+```
+
+## *proccode*, CPT or HCPCS procedure code
+Current Procedural Terminology (CPT) Healthcare Common Procedure Coding System (HCPCS) 
+[web1](https://www.cms.gov/Medicare/Coding/MedHCPCSGenInfo/index.html?redirect=/medhcpcsgenin)
+[web2](https://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets/index.html?redirect=/hcpcsrelea)
+NULL: (34.88%)
+character
+```{r procedure ccode}
+summary(as.factor(oregon_full$proccode)) # NULL: 26880271
+```
+
+
+```{r}
+summary(as.factor(oregon_full$mod1))
+```
+
+
+```{r}
+summary(as.factor(oregon_full$mod2))
+```
+
+```{r}
+summary(as.factor(oregon_full$megcode))
+```
+
+```{r}
+summary(as.factor(oregon_full$megdesc))
+```
+
+```{r}
+summary(as.factor(oregon_full$megbodysys))
+```
+
+```{r}
+summary(as.factor(oregon_full$megstage))
+```
+
+
+```{r}
+summary(as.factor(oregon_full$megtype))
+#                   9 NOT-CATEGORIZED             Acute           Chronic
+#              1751           6979372          34062467          31197648
+#         Well Care
+#           4828082
+```
+
+
+```{r}
+summary(as.factor(oregon_full$megcomplete))
+#        0        1     NA's
+# 10090656 66976913     1751
+```
+
+
+```{r}
+summary(as.factor(oregon_full$megnum))
+```
+
+
+```{r}
+summary(as.factor(oregon_full$megdays))
+```
+
+
+```{r}
+summary(as.factor(oregon_full$megprorate))
+```
+
+```{r}
+summary(as.factor(oregon_full$megoutlier))
+#        0        1
+# 54675387 22393933
+```
+
+```{r}
+summary(as.factor(oregon_full$meglow))
+#    FALSE     TRUE
+# 75145616  1923704
+```
+
+```{r}
+summary(as.factor(oregon_full$meghigh))
+#    FALSE     TRUE
+# 56599091 20470229
+```
+
+``` {r}
+# ndc
+summary(as.numeric(oregon_full$ndc)) # blank: 53599072
+```
+
+
+```{r}
+summary(as.factor(oregon_full$rxclass))
+```
+
+
+```{r}
+summary(as.factor(as.character(oregon_full$qtydisp)))
+```
+
+
+```{r}
+summary(as.factor(oregon_full$rxdays))
+```
+
+
+```{r}
+summary(as.factor(oregon_full$daw))
+```
+
+
+```{r}
+summary(as.factor(oregon_full$ptstatus))
+```
+
+
+```{r}
+summary(as.factor(oregon_full$los))
+```
+
+
+```{r}
+summary(as.factor(oregon_full$msdrg))
+```
+
+
+```{r}
+summary(as.factor(oregon_full$icd_ver))
+#    FALSE     NA's
+# 52556088 24513232
+```
 
 
 ## Clean data
@@ -51,7 +599,7 @@ summary(as.factor(oregon_df$clmstatus))
 ```{r }
 # Clean data, 76986701 left (maybe later)
 #oregon_full_df <- oregon_full %>%
-  # filter non-missing value of year of birth, gender, race, STATE
+# filter non-missing value of year of birth, gender, race, STATE
 #  filter (is.na(yob)==F) %>%
 #  filter (gender!='U') %>%
 #  filter (is.na(race)==F) %>%
@@ -84,12 +632,7 @@ summary(as.factor(oregon_df$clmstatus))
 # fwrite(oregon_full_ndc, "../data/oregon_full_ndc.csv")
 
 
-
-
 ```
-
-
-
 
 
 
