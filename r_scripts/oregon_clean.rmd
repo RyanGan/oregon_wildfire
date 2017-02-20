@@ -2,7 +2,6 @@
 title: "Oregon_Wildfire_reduced"
 author: "Jingyang Liu"
 date: "February 15, 2017"
-output: html_document
 ---
   
 # Explore Data Structure and Cleaning
@@ -12,20 +11,22 @@ The Oregon data contains 77069320 obsversations in total in year of 2013, which 
 ```{r}
 library(dplyr)
 library(data.table)
+library(knitr)
 getwd()
 
 # import data ------------------------------------------------------------------
-# Read in first 2000000 lines for exploration.
+# Read in first 200,000 lines for exploration.
 
 read_path <- paste0("../data/gan_episodes_of_care.txt")
 oregon_df <- fread(read_path, sep = "|", nrows = 200000, showProgress = T)
 fwrite(oregon_df, "../data/oregon_epis_care_reduced.csv")
 
-# I wrote a reduced dataframe of 2000,000 rows to get an idea of data structure
+# I wrote a reduced dataframe of 200,000 rows to get an idea of data structure
 
 # import the reduced dataframe
 start_time <- Sys.time()
-oregon_df <- fread("../data/oregon_epis_care_reduced.csv", sep = ",")
+oregon_df <- fread("../data/oregon_epis_care_reduced.csv", sep = ",", 
+                   colClasses = rep("character", 72))
 stop_time <-  Sys.time() - start_time 
 
 # time it took
@@ -36,14 +37,128 @@ stop_time # 1.968219 secs
 ## The overall summary  of data set
 72 variables in total.
 ```{r overall summary}
-
-# Explore data structure
-summary(oregon_df)
+# Check data structure
+# summary(oregon_df)
 ```
+
+## convert variable type to appropriate functional form 
+(i.e. zipcode leave as character, age as numeric, date as date, dx leave as character, but *NULL* == NA)
+``` {r convert variable}
+oregon_df$yob <- as.numeric(oregon_df$yob)
+
+oregon_df[oregon_df=="*NULL*"]<- NA
+```
+
+# summary statistics
+
+## 1. personkey
+```{r}
+personkey2 <- oregon_df %>% 
+  select(personkey, gender) %>%
+  filter(gender=="U") %>%
+  mutate(id_ind =ifelse(is.na(personkey)==0 , 1, 
+                        ifelse(is.na(personkey)==1, 0, NA))
+   )
+
+# table ----
+knitr::kable(personkey2)
+
+# preserve order of group
+personkey2$group <- reorder(personkey2$id_ind, personkey2$personkey)
+
+
+
+```
+
+
+
+
+## Age
+```{r}
+oregon_df$yob <- as.numeric(oregon_df$yob)
+age2 <- oregon_df %>%
+  select(yob) %>%
+  mutate(age = 2013-yob) %>%
+  mutate(age_ind = ifelse(age < 15, 0,
+                   ifelse(age >= 15 & age < 65, 1,
+                   ifelse(age >= 65 & age <=120, 2, NA)))
+  ) %>%
+  group_by(age_ind) %>% 
+  summarise(n = n()) %>% 
+  mutate(total_n = sum(n),
+         percent = round(n/total_n,3)*100,
+         age_cat = ifelse(age_ind == 0, "Age <15",
+                   ifelse(age_ind == 1, "Age 15 to 65",
+                   ifelse(age_ind == 2, "Age >= 65",
+                   ifelse(is.na(age_ind), "Missing", NA))))) %>% 
+  select(age_cat, age_ind, n, percent)
+
+age2[4,1] <- age2[4,2] <- "Missing"
+
+knitr::kable(age2, caption = "Age")
+
+
+```
+
+
+
+
+
+
+
+
+## summary statistics key variables for study 
+(date, dx, need to know urgent and emergency department visits, sex, age, patientid, state of residence, zipcode, county, race)
+```{r}
+summary(as.factor(oregon_df$personkey))
+summary(as.factor(oregon_df$patid))
+summary(as.factor(oregon_df$gender))
+summary(as.factor(2013-oregon_df$yob)) # birth year -> age
+summary(as.factor(oregon_df$race))
+summary(as.factor(oregon_df$ethn))
+summary(as.factor(oregon_df$STATE))
+summary(as.factor(oregon_df$ZIP))
+summary(as.factor(oregon_df$MSA)) 
+summary(as.factor(oregon_df$fromdate))
+summary(as.factor(oregon_df$todate))
+summary(as.factor(oregon_df$pos)) # 23
+summary(as.factor(oregon_df$megtype)) # Acute for emergency?
+summary(as.factor(oregon_df$los))
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## 1) *personkey*, Unique person identifier
 person's ID, maximum is 14381640
-numeric; length: 8
+length: 8
 ```{r personkey}
 summary(as.factor(oregon_df$personkey))
 min(oregon_df$personkey)
@@ -713,6 +828,7 @@ summary(as.factor(oregon_df$icd_ver))/77069320 # percentage
 
 
 ```
+
 
 
 
