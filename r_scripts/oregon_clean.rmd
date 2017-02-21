@@ -43,34 +43,63 @@ stop_time # 1.968219 secs
 
 ## convert variable type to appropriate functional form 
 (i.e. zipcode leave as character, age as numeric, date as date, dx leave as character, but *NULL* == NA)
-``` {r convert variable}
+```{r}
 oregon_df$yob <- as.numeric(oregon_df$yob)
-
-oregon_df[oregon_df=="*NULL*"]<- NA
+oregon_df[oregon_df=="*NULL*"] <- NA
 ```
 
 # summary statistics
 
-## 1. personkey
+## 1. Personkey ?? not shown?
 ```{r}
 personkey2 <- oregon_df %>% 
-  select(personkey, gender) %>%
-  filter(gender=="U") %>%
-  mutate(id_ind =ifelse(is.na(personkey)==0 , 1, 
-                        ifelse(is.na(personkey)==1, 0, NA))
-   )
+  select(personkey) %>%
+  mutate(personkey_cat = ifelse(!is.na(personkey), "Non-Missing", 
+                         ifelse(is.na(personkey), "Missing", NA))) %>% 
+  group_by(personkey_cat) %>%
+  summarise(n = n()) %>%
+  mutate(total_n =sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+      select(personkey_cat, n, percent)
 
 # table ----
-knitr::kable(personkey2)
-
-# preserve order of group
-personkey2$group <- reorder(personkey2$id_ind, personkey2$personkey)
-
-
+knitr::kable(personkey2, caption = "Patient ID")
 
 ```
 
+## 2. Patid ???
+```{r}
+patid2 <- oregon_df %>% 
+  select(patid) %>%
+  mutate(patid_cat = ifelse(!is.na(patid), "Non-Missing", 
+                         ifelse(is.na(patid), "Missing", NA))) %>% 
+  group_by(patid_cat) %>%
+  summarise(n = n()) %>%
+  mutate(total_n =sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+      select(patid_cat, n, percent)
 
+# table ----
+knitr::kable(patid2, align = "c", caption = "Encrypted Patient ID")
+
+```
+
+## 3. Gender
+```{r}
+gender2 <- oregon_df %>%
+  select(gender) %>%
+  group_by(gender) %>%
+  summarise(n = n()) %>%
+  mutate(total_n = sum(n),
+         percent = round(n/total_n, 4)*100,
+         gender_cat = ifelse(gender == "F", "Female",
+                      ifelse(gender == "M", "Male", 
+                      ifelse(gender == "U", "Unknown", NA)))) %>%
+    select(gender, gender_cat, n, percent)
+
+knitr::kable(gender2, align = "c", caption = "Gender")
+
+```
 
 
 ## Age
@@ -86,19 +115,175 @@ age2 <- oregon_df %>%
   group_by(age_ind) %>% 
   summarise(n = n()) %>% 
   mutate(total_n = sum(n),
-         percent = round(n/total_n,3)*100,
+         percent = round(n/total_n, 4)*100,
          age_cat = ifelse(age_ind == 0, "Age <15",
                    ifelse(age_ind == 1, "Age 15 to 65",
                    ifelse(age_ind == 2, "Age >= 65",
                    ifelse(is.na(age_ind), "Missing", NA))))) %>% 
   select(age_cat, age_ind, n, percent)
 
-age2[4,1] <- age2[4,2] <- "Missing"
+age2[4,1] <- age2[4,2] <- "Missing" # change NA to "Missing"
 
-knitr::kable(age2, caption = "Age")
+knitr::kable(age2, align = "c", caption = "Age")
+ 
+```
+
+## Race
+```{r}
+race2 <- oregon_df %>%
+  select(race) %>%
+  group_by(race) %>%
+  summarise(n = n()) %>%
+  mutate(total_n = sum(n),
+         percent = round(n/total_n, 4)*100,
+         race_cat = ifelse(race == 1, "White",
+                    ifelse(race == 2, "Black or African American",
+                    ifelse(race == 3, "American Indian or Alaska Native",
+                    ifelse(race == 4, "Asian",
+                    ifelse(race == 5, "Native Hawaiian or Pacific Islander",
+                    ifelse(race == 6, "Some other race",
+                    ifelse(race == 7, "Two or more races",
+                    ifelse(race == 9, "Unknown",
+                    ifelse(race == "", "Missing", NA)))))))))) %>%
+    select(race, race_cat, n, percent)
+
+knitr::kable(race2, align = "c", caption = "Race")
+
+```
+
+## Enthicity
+```{r}
+ethn2 <- oregon_df %>%
+  select(ethn) %>%
+  group_by(ethn) %>%
+  summarise(n = n()) %>%
+  mutate(total_n = sum(n),
+         percent = round(n/total_n, 4)*100,
+         ethn_cat = ifelse(ethn == 1, "Hispanic",
+                    ifelse(ethn == 2, "Not Hispanic",
+                    ifelse(ethn == 3, "Unknown",
+                    ifelse(ethn == "", "Missing", NA))))) %>%
+    select(ethn, ethn_cat, n, percent)
+
+knitr::kable(ethn2, align = "c", caption = "Ethnicity")
+
+```
+
+## State
+```{r}
+state2 <- oregon_df %>%
+  select(STATE) %>%
+  group_by(STATE) %>%
+  summarise(n = n()) %>%
+  mutate(total_n = sum(n),
+         percent = round(n/total_n, 4)*100,
+         state_cat = ifelse(STATE == "OR", "Oregon",
+                     ifelse(STATE != "OR"&is.na(STATE)==F, "Not Oregon",NA))) %>%
+    select(STATE, state_cat, n, percent)
+
+knitr::kable(state2, align = "c", caption = "State")
 
 
 ```
+
+## ZIP
+```{r}
+zip2 <- oregon_df %>%
+  select(ZIP) %>%
+  group_by(ZIP) %>%
+  summarise(n = n()) %>%
+  mutate(total_n = sum(n),
+         percent = round(n/total_n, 4)*100,
+         zip_cat = ifelse(is.na(ZIP) == 0, "Non-Missing",
+                   ifelse(is.na(ZIP) != 0, "Missing", NA))) %>%
+    select(ZIP, zip_cat, n, percent)
+
+knitr::kable(zip2, align = "c", caption = "ZIP COde")
+
+```
+
+## MSA
+```{r}
+msa2 <- oregon_df %>%
+  select(MSA) %>%
+  mutate(msa_cat = ifelse(MSA != "", "Non-Missing",
+                   ifelse(MSA == "", "Missing", NA))) %>% 
+  group_by(msa_cat) %>%
+  summarise(n = n()) %>%
+  mutate(total_n = sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+  select(msa_cat, n, percent)
+
+summary(as.factor(oregon_df$MSA))
+
+knitr::kable(msa2, align = "c", caption = "MSA")
+
+```
+
+## Pos
+```{r}
+pos2 <- oregon_df %>%
+  select(pos) %>%
+  group_by(pos) %>%
+  summarise(n = n()) %>%
+  mutate(total_n = sum(n),
+         percent = round(n/total_n, 4)*100,
+         Place_of_service = ifelse(pos == "20", "Urgent Care Facility",
+                            ifelse(pos == "23", "Emergency Room – Hospital", 
+                            ifelse(is.na(pos) == 0, "Not Urgent", 
+                            ifelse(is.na(pos) ==1, "Missing", NA))))) %>%
+    select(pos, Place_of_service, n, percent)
+
+knitr::kable(pos2, align = "c", caption = "Place of Service")
+
+```
+
+## from date
+```{r}
+fromdate2 <- oregon_df %>%
+  select(fromdate) %>%
+  mutate(dates = as.Date(fromdate2$fromdate, "%Y-%m-%d"))
+
+summary(fromdate2)
+hist(fromdate2$dates, "days", freq = TRUE)
+
+```
+
+
+## to date
+```{r}
+todate2 <- oregon_df %>%
+  select(todate) %>%
+  mutate(ddd = as.Date(todate2$todate, "%Y-%m-%d"))
+
+
+todate3 <- oregon_df %>%
+  filter (todate > "2014-12-31")
+todate3
+
+which(oregon_df$todate=="2299-12-31") # 129192
+
+summary(todate2)
+
+hist(todate2$ddd, "days", freq = TRUE)
+
+```
+
+
+
+## Length of stay
+```{r}
+
+
+
+
+
+
+```
+
+
+
+
 
 
 
@@ -121,8 +306,7 @@ summary(as.factor(oregon_df$ZIP))
 summary(as.factor(oregon_df$MSA)) 
 summary(as.factor(oregon_df$fromdate))
 summary(as.factor(oregon_df$todate))
-summary(as.factor(oregon_df$pos)) # 23
-summary(as.factor(oregon_df$megtype)) # Acute for emergency?
+summary(as.factor(oregon_df$pos)) # 23&20?
 summary(as.factor(oregon_df$los))
 
 
