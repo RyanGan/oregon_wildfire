@@ -50,7 +50,7 @@ oregon_df[oregon_df=="*NULL*"] <- NA
 
 # summary statistics
 
-## 1. Personkey ?? not shown?
+## 1. Personkey 
 ```{r}
 personkey2 <- oregon_df %>% 
   select(personkey) %>%
@@ -60,14 +60,14 @@ personkey2 <- oregon_df %>%
   summarise(n = n()) %>%
   mutate(total_n =sum(n),
          percent = round(n/total_n, 4)*100) %>%
-      select(personkey_cat, n, percent)
+  select(personkey_cat, n, percent)
 
 # table ----
-knitr::kable(personkey2, caption = "Patient ID")
+knitr::kable(personkey2, align = "c", caption = "Patient ID")
 
 ```
 
-## 2. Patid ???
+## 2. Patid
 ```{r}
 patid2 <- oregon_df %>% 
   select(patid) %>%
@@ -95,12 +95,11 @@ gender2 <- oregon_df %>%
          gender_cat = ifelse(gender == "F", "Female",
                       ifelse(gender == "M", "Male", 
                       ifelse(gender == "U", "Unknown", NA)))) %>%
-    select(gender, gender_cat, n, percent)
+  select(gender, gender_cat, n, percent)
 
 knitr::kable(gender2, align = "c", caption = "Gender")
 
 ```
-
 
 ## Age
 ```{r}
@@ -169,7 +168,7 @@ knitr::kable(ethn2, align = "c", caption = "Ethnicity")
 
 ```
 
-## State
+## State ???
 ```{r}
 state2 <- oregon_df %>%
   select(STATE) %>%
@@ -177,8 +176,9 @@ state2 <- oregon_df %>%
   summarise(n = n()) %>%
   mutate(total_n = sum(n),
          percent = round(n/total_n, 4)*100,
-         state_cat = ifelse(STATE == "OR", "Oregon",
-                     ifelse(STATE != "OR"&is.na(STATE)==F, "Not Oregon",NA))) %>%
+         state_cat = ifelse(STATE == "", "Missing",
+                     ifelse(STATE == "OR", "Oregon",
+                     ifelse(STATE != "OR", "Not Oregon",NA)))) %>%
     select(STATE, state_cat, n, percent)
 
 knitr::kable(state2, align = "c", caption = "State")
@@ -186,33 +186,37 @@ knitr::kable(state2, align = "c", caption = "State")
 
 ```
 
-## ZIP
+## ZIP 
 ```{r}
-zip2 <- oregon_df %>%
+# summary(as.factor(oregon_df$ZIP))
+
+# which(oregon_df$ZIP == "")
+
+zip2 <- oregon_df %>% 
   select(ZIP) %>%
-  group_by(ZIP) %>%
+  mutate(zip_cat = ifelse(ZIP == "", "Missing", 
+                   ifelse(!is.na(ZIP), "Non-Missing", NA))) %>% 
+  group_by(zip_cat) %>%
   summarise(n = n()) %>%
-  mutate(total_n = sum(n),
-         percent = round(n/total_n, 4)*100,
-         zip_cat = ifelse(is.na(ZIP) == 0, "Non-Missing",
-                   ifelse(is.na(ZIP) != 0, "Missing", NA))) %>%
-    select(ZIP, zip_cat, n, percent)
+  mutate(total_n =sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+      select(zip_cat, n, percent)
 
 knitr::kable(zip2, align = "c", caption = "ZIP COde")
 
 ```
 
-## MSA
+## MSA ??? missing 58
 ```{r}
-msa2 <- oregon_df %>%
+msa2 <- oregon_df %>% 
   select(MSA) %>%
-  mutate(msa_cat = ifelse(MSA != "", "Non-Missing",
-                   ifelse(MSA == "", "Missing", NA))) %>% 
+  mutate(msa_cat = ifelse(!is.na(MSA), "Non-Missing", 
+                   ifelse(MSA=="     ", "Missing", NA))) %>% 
   group_by(msa_cat) %>%
   summarise(n = n()) %>%
-  mutate(total_n = sum(n),
+  mutate(total_n =sum(n),
          percent = round(n/total_n, 4)*100) %>%
-  select(msa_cat, n, percent)
+      select(msa_cat, n, percent)
 
 summary(as.factor(oregon_df$MSA))
 
@@ -220,60 +224,119 @@ knitr::kable(msa2, align = "c", caption = "MSA")
 
 ```
 
-## Pos
+## Pos NA: 2974
 ```{r}
+library(readxl)
+pos_key <- read_excel("../instructions/LT_pos.xlsx")
+summary(pos_key)
+
 pos2 <- oregon_df %>%
-  select(pos) %>%
+  select(pos) 
+
+which(pos2$pos=="0S") # 14553
+as.numeric(pos2$pos[14553])
+
+pos2$pos <- as.numeric(pos2$pos)
+
+pos2 <- pos2 %>%
   group_by(pos) %>%
   summarise(n = n()) %>%
   mutate(total_n = sum(n),
          percent = round(n/total_n, 4)*100,
-         Place_of_service = ifelse(pos == "20", "Urgent Care Facility",
-                            ifelse(pos == "23", "Emergency Room – Hospital", 
-                            ifelse(is.na(pos) == 0, "Not Urgent", 
-                            ifelse(is.na(pos) ==1, "Missing", NA))))) %>%
+         Place_of_service = ifelse(pos == pos_key$Code[1], pos_key$Value[1],
+                            ifelse(pos == pos_key$Code[2], pos_key$Value[2],
+                            ifelse(pos == pos_key$Code[3], pos_key$Value[3],       
+                            ifelse(pos == pos_key$Code[4], pos_key$Value[4],       
+                            ifelse(pos == pos_key$Code[5], pos_key$Value[5],       
+                            ifelse(pos == pos_key$Code[6], pos_key$Value[6],        
+                            ifelse(pos == pos_key$Code[7], pos_key$Value[7],
+                            ifelse(pos == pos_key$Code[8], pos_key$Value[8],     
+                            ifelse(pos == pos_key$Code[9], pos_key$Value[9],      
+                            ifelse(pos == pos_key$Code[10], pos_key$Value[10],      
+                            ifelse(pos == pos_key$Code[11], pos_key$Value[11],      
+                            ifelse(pos == pos_key$Code[12], pos_key$Value[12],    
+                            ifelse(pos == pos_key$Code[13], pos_key$Value[13],     
+                            ifelse(pos == pos_key$Code[14], pos_key$Value[14],        
+                            ifelse(pos == pos_key$Code[15], pos_key$Value[15],      
+                            ifelse(pos == pos_key$Code[16], pos_key$Value[16],     
+                            ifelse(pos == pos_key$Code[17], pos_key$Value[17],      
+                            ifelse(pos == pos_key$Code[18], pos_key$Value[18],     
+                            ifelse(pos == pos_key$Code[19], pos_key$Value[19],      
+                            ifelse(pos == pos_key$Code[20], pos_key$Value[20],       
+                            ifelse(pos == pos_key$Code[21], pos_key$Value[21],     
+                            ifelse(pos == pos_key$Code[22], pos_key$Value[22],      
+                            ifelse(pos == pos_key$Code[23], pos_key$Value[23],      
+                            ifelse(pos == pos_key$Code[24], pos_key$Value[24],      
+                            ifelse(pos == pos_key$Code[25], pos_key$Value[25],     
+                            ifelse(pos == pos_key$Code[26], pos_key$Value[26],      
+                            ifelse(pos == pos_key$Code[27], pos_key$Value[27],      
+                            ifelse(pos == pos_key$Code[28], pos_key$Value[28],      
+                            ifelse(pos == pos_key$Code[29], pos_key$Value[29],      
+                            ifelse(pos == pos_key$Code[30], pos_key$Value[30],     
+                            ifelse(pos == pos_key$Code[31], pos_key$Value[31],     
+                            ifelse(pos == pos_key$Code[32], pos_key$Value[32],      
+                            ifelse(pos == pos_key$Code[33], pos_key$Value[33],
+                            ifelse(pos == pos_key$Code[34], pos_key$Value[34],
+                            ifelse(pos == pos_key$Code[35], pos_key$Value[35],
+                            ifelse(pos == pos_key$Code[36], pos_key$Value[36],                                   
+                            ifelse(pos == pos_key$Code[37], pos_key$Value[37],
+                            ifelse(pos == pos_key$Code[38], pos_key$Value[38],                                   
+                            ifelse(pos == pos_key$Code[39], pos_key$Value[39],                                   
+                            ifelse(pos == pos_key$Code[40], pos_key$Value[40],                                   
+                            ifelse(pos == pos_key$Code[41], pos_key$Value[41],                                   
+                            ifelse(pos == pos_key$Code[42], pos_key$Value[42],                                   
+                            ifelse(pos == pos_key$Code[43], pos_key$Value[43],                                   
+                            ifelse(pos == pos_key$Code[44], pos_key$Value[44],                                  
+                            ifelse(pos == pos_key$Code[45], pos_key$Value[45],                                   
+                            ifelse(pos == pos_key$Code[46], pos_key$Value[46],                                   
+                            ifelse(is.na(pos), "Missing", NA
+                                   )))))))))))))))))))))))))))))))))))))))))))))))) %>%
     select(pos, Place_of_service, n, percent)
+
+pos2$Place_of_service[which(is.na(pos2$pos))] <- "Missing"
+pos2$pos[which(is.na(pos2$pos))] <- "Missing"
 
 knitr::kable(pos2, align = "c", caption = "Place of Service")
 
 ```
 
-## from date
+## from date (All data is in 2013)
 ```{r}
 fromdate2 <- oregon_df %>%
   select(fromdate) %>%
-  mutate(dates = as.Date(fromdate2$fromdate, "%Y-%m-%d"))
+  mutate(dates = as.Date(fromdate, "%Y-%m-%d"))
+
+fromdate_check <- oregon_df %>%
+  filter((fromdate > "2014-12-31"| fromdate < "2013-01-01"))
 
 summary(fromdate2)
 hist(fromdate2$dates, "days", freq = TRUE)
 
 ```
 
-
-## to date
+## to date (min: 1913-02-17; max: 2299-12-31)
 ```{r}
 todate2 <- oregon_df %>%
   select(todate) %>%
-  mutate(ddd = as.Date(todate2$todate, "%Y-%m-%d"))
+  mutate(ddd = as.Date(todate, "%Y-%m-%d"))
 
 
 todate3 <- oregon_df %>%
-  filter (todate > "2014-12-31")
+  filter (todate > "2014-12-31"| todate < "2013-01-01")
 todate3
 
 which(oregon_df$todate=="2299-12-31") # 129192
+which(oregon_df$todate=="1913-10-25") # 178869
 
 summary(todate2)
 
-hist(todate2$ddd, "days", freq = TRUE)
+hist(todate2$ddd[c(-129192,-178869)], "days", freq = TRUE)
 
 ```
 
-
-
 ## Length of stay
 ```{r}
-
+summary(as.factor(oregon_df$los))
 
 
 
@@ -1012,9 +1075,6 @@ summary(as.factor(oregon_df$icd_ver))/77069320 # percentage
 
 
 ```
-
-
-
 
 
 
