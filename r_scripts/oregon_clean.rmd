@@ -12,6 +12,7 @@ The Oregon data contains 77069320 obsversations in total in year of 2013, which 
 library(dplyr)
 library(data.table)
 library(knitr)
+library(readxl)
 getwd()
 
 # import data ------------------------------------------------------------------
@@ -48,14 +49,15 @@ oregon_df$yob <- as.numeric(oregon_df$yob)
 oregon_df[oregon_df=="*NULL*"] <- NA
 ```
 
-# summary statistics
+# summary statistics key variables for study 
+date, dx, need to know urgent and emergency department visits, sex, age, patientid, state of residence, zipcode, county, race
 
 ## 1. Personkey 
 ```{r}
 personkey2 <- oregon_df %>% 
   select(personkey) %>%
-  mutate(personkey_cat = ifelse(!is.na(personkey), "Non-Missing", 
-                         ifelse(is.na(personkey), "Missing", NA))) %>% 
+  mutate(personkey_cat = ifelse(is.na(personkey), "Missing",
+                         ifelse(!is.na(personkey), "Non-Missing", NA))) %>% 
   group_by(personkey_cat) %>%
   summarise(n = n()) %>%
   mutate(total_n =sum(n),
@@ -71,8 +73,8 @@ knitr::kable(personkey2, align = "c", caption = "Patient ID")
 ```{r}
 patid2 <- oregon_df %>% 
   select(patid) %>%
-  mutate(patid_cat = ifelse(!is.na(patid), "Non-Missing", 
-                         ifelse(is.na(patid), "Missing", NA))) %>% 
+  mutate(patid_cat = ifelse(is.na(patid), "Missing",
+                     ifelse(!is.na(patid), "Non-Missing", NA))) %>% 
   group_by(patid_cat) %>%
   summarise(n = n()) %>%
   mutate(total_n =sum(n),
@@ -101,7 +103,7 @@ knitr::kable(gender2, align = "c", caption = "Gender")
 
 ```
 
-## Age
+## 4. Age
 ```{r}
 oregon_df$yob <- as.numeric(oregon_df$yob)
 age2 <- oregon_df %>%
@@ -115,19 +117,17 @@ age2 <- oregon_df %>%
   summarise(n = n()) %>% 
   mutate(total_n = sum(n),
          percent = round(n/total_n, 4)*100,
-         age_cat = ifelse(age_ind == 0, "Age <15",
+         age_cat = ifelse(is.na(age_ind), "Missing",
+                   ifelse(age_ind == 0, "Age <15",
                    ifelse(age_ind == 1, "Age 15 to 65",
-                   ifelse(age_ind == 2, "Age >= 65",
-                   ifelse(is.na(age_ind), "Missing", NA))))) %>% 
+                   ifelse(age_ind == 2, "Age >= 65",NA))))) %>% 
   select(age_cat, age_ind, n, percent)
-
-age2[4,1] <- age2[4,2] <- "Missing" # change NA to "Missing"
 
 knitr::kable(age2, align = "c", caption = "Age")
  
 ```
 
-## Race
+## 5. Race
 ```{r}
 race2 <- oregon_df %>%
   select(race) %>%
@@ -150,7 +150,7 @@ knitr::kable(race2, align = "c", caption = "Race")
 
 ```
 
-## Enthicity
+## 6. Enthicity
 ```{r}
 ethn2 <- oregon_df %>%
   select(ethn) %>%
@@ -168,7 +168,7 @@ knitr::kable(ethn2, align = "c", caption = "Ethnicity")
 
 ```
 
-## State ???
+## 7. State 
 ```{r}
 state2 <- oregon_df %>%
   select(STATE) %>%
@@ -179,14 +179,14 @@ state2 <- oregon_df %>%
          state_cat = ifelse(STATE == "", "Missing",
                      ifelse(STATE == "OR", "Oregon",
                      ifelse(STATE != "OR", "Not Oregon",NA)))) %>%
-    select(STATE, state_cat, n, percent)
+  arrange(desc(state_cat)) %>%
+  select(STATE, state_cat, n, percent)
 
 knitr::kable(state2, align = "c", caption = "State")
 
-
 ```
 
-## ZIP 
+## 8. ZIP 
 ```{r}
 # summary(as.factor(oregon_df$ZIP))
 
@@ -206,12 +206,13 @@ knitr::kable(zip2, align = "c", caption = "ZIP COde")
 
 ```
 
-## MSA ??? missing 58
+## 9. MSA (Metropolitan and Micropolitan Statistical Areas Main)
 ```{r}
 msa2 <- oregon_df %>% 
   select(MSA) %>%
-  mutate(msa_cat = ifelse(!is.na(MSA), "Non-Missing", 
-                   ifelse(MSA=="     ", "Missing", NA))) %>% 
+  mutate(msa_cat = ifelse(MSA=="", "Missing",
+                   ifelse(!is.na(MSA), "Non-Missing", 
+                   NA))) %>% 
   group_by(msa_cat) %>%
   summarise(n = n()) %>%
   mutate(total_n =sum(n),
@@ -224,11 +225,9 @@ knitr::kable(msa2, align = "c", caption = "MSA")
 
 ```
 
-## Pos NA: 2974
+## 10. Pos (Urgent and Emergency) NA: 2974
 ```{r}
-library(readxl)
 pos_key <- read_excel("../instructions/LT_pos.xlsx")
-summary(pos_key)
 
 pos2 <- oregon_df %>%
   select(pos) 
@@ -243,7 +242,8 @@ pos2 <- pos2 %>%
   summarise(n = n()) %>%
   mutate(total_n = sum(n),
          percent = round(n/total_n, 4)*100,
-         Place_of_service = ifelse(pos == pos_key$Code[1], pos_key$Value[1],
+         Place_of_service = ifelse(is.na(pos), "Missing",
+                            ifelse(pos == pos_key$Code[1], pos_key$Value[1],
                             ifelse(pos == pos_key$Code[2], pos_key$Value[2],
                             ifelse(pos == pos_key$Code[3], pos_key$Value[3],       
                             ifelse(pos == pos_key$Code[4], pos_key$Value[4],       
@@ -278,801 +278,172 @@ pos2 <- pos2 %>%
                             ifelse(pos == pos_key$Code[33], pos_key$Value[33],
                             ifelse(pos == pos_key$Code[34], pos_key$Value[34],
                             ifelse(pos == pos_key$Code[35], pos_key$Value[35],
-                            ifelse(pos == pos_key$Code[36], pos_key$Value[36],                                   
+                            ifelse(pos == pos_key$Code[36], pos_key$Value[36],                            
                             ifelse(pos == pos_key$Code[37], pos_key$Value[37],
-                            ifelse(pos == pos_key$Code[38], pos_key$Value[38],                                   
-                            ifelse(pos == pos_key$Code[39], pos_key$Value[39],                                   
-                            ifelse(pos == pos_key$Code[40], pos_key$Value[40],                                   
-                            ifelse(pos == pos_key$Code[41], pos_key$Value[41],                                   
-                            ifelse(pos == pos_key$Code[42], pos_key$Value[42],                                   
-                            ifelse(pos == pos_key$Code[43], pos_key$Value[43],                                   
-                            ifelse(pos == pos_key$Code[44], pos_key$Value[44],                                  
-                            ifelse(pos == pos_key$Code[45], pos_key$Value[45],                                   
-                            ifelse(pos == pos_key$Code[46], pos_key$Value[46],                                   
-                            ifelse(is.na(pos), "Missing", NA
+                            ifelse(pos == pos_key$Code[38], pos_key$Value[38],                            
+                            ifelse(pos == pos_key$Code[39], pos_key$Value[39],                            
+                            ifelse(pos == pos_key$Code[40], pos_key$Value[40],                            
+                            ifelse(pos == pos_key$Code[41], pos_key$Value[41],                            
+                            ifelse(pos == pos_key$Code[42], pos_key$Value[42],                            
+                            ifelse(pos == pos_key$Code[43], pos_key$Value[43],                            
+                            ifelse(pos == pos_key$Code[44], pos_key$Value[44],                          
+                            ifelse(pos == pos_key$Code[45], pos_key$Value[45],                            
+                            ifelse(pos == pos_key$Code[46], pos_key$Value[46], NA
                                    )))))))))))))))))))))))))))))))))))))))))))))))) %>%
-    select(pos, Place_of_service, n, percent)
-
-pos2$Place_of_service[which(is.na(pos2$pos))] <- "Missing"
-pos2$pos[which(is.na(pos2$pos))] <- "Missing"
+  select(pos, Place_of_service, n, percent)
 
 knitr::kable(pos2, align = "c", caption = "Place of Service")
 
 ```
 
-## from date (All data is in 2013)
+## 11. from date (All data is in 2013)
 ```{r}
 fromdate2 <- oregon_df %>%
   select(fromdate) %>%
   mutate(dates = as.Date(fromdate, "%Y-%m-%d"))
 
+# filter the dates of 2013
 fromdate_check <- oregon_df %>%
-  filter((fromdate > "2014-12-31"| fromdate < "2013-01-01"))
+  filter((fromdate > "2013-12-31"| fromdate < "2013-01-01")) # All is 2013
 
 summary(fromdate2)
-hist(fromdate2$dates, "days", freq = TRUE)
+hist(fromdate2$dates, "days", freq = TRUE, xlab="fromdate", main="Histogram of from dates")
 
 ```
 
-## to date (min: 1913-02-17; max: 2299-12-31)
+## 12. to date (min: 1913-02-17; max: 2299-12-31) 
 ```{r}
 todate2 <- oregon_df %>%
   select(todate) %>%
-  mutate(ddd = as.Date(todate, "%Y-%m-%d"))
+  mutate(dates = as.Date(todate, "%Y-%m-%d"))
 
+# filter the appropriate to dates (2013-01-01 to 2014-06-30)
+todate3 <- todate2 %>%
+  filter(dates<=as.Date("2014-06-30")&dates>=as.Date("2013-01-01"))
 
-todate3 <- oregon_df %>%
-  filter (todate > "2014-12-31"| todate < "2013-01-01")
-todate3
-
-which(oregon_df$todate=="2299-12-31") # 129192
-which(oregon_df$todate=="1913-10-25") # 178869
-
-summary(todate2)
-
-hist(todate2$ddd[c(-129192,-178869)], "days", freq = TRUE)
+hist(todate3$dates, "days", freq = TRUE, xlab="todate", main="Histogram of to dates")
 
 ```
 
-## Length of stay
+## 13. Length of stay
 ```{r}
 summary(as.factor(oregon_df$los))
+summary(as.numeric(oregon_df$los)) # min: -2; max: 364
 
+# check length of stay overall range
+los2 <- oregon_df %>%
+  select(los) %>%
+  group_by(los) %>%
+  summarise(n = n()) %>%
+  mutate(total_n = sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+  select(los, n, percent)
 
+knitr::kable(los2, align = "c", caption = "Length of Stay Range")
 
+# density for length of stay
+hist(as.numeric(los2$los), freq = T, xlab = "los", main = "Length of Stay")
 
+# Check if fromdate and todate match los
+los3 <- oregon_df %>%
+  select(fromdate, todate, los) %>%
+  mutate(dif = as.numeric(as.Date(todate)-as.Date(fromdate))) %>%
+  select(los, dif) %>%
+  mutate(los_cat = ifelse(los=="", "Missing",
+                   ifelse(los==dif, "Right", 
+                   ifelse(los!=dif, "Wrong", NA)))) %>%
+  group_by(los_cat) %>%
+  summarise(n=n()) %>%
+  mutate(total_n = sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+  select(los_cat, n, percent)
+
+knitr::kable(los3, align = "c", caption = "Length of Stay Range Match From date and To Date")
 
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-## summary statistics key variables for study 
-(date, dx, need to know urgent and emergency department visits, sex, age, patientid, state of residence, zipcode, county, race)
+## dx1
 ```{r}
-summary(as.factor(oregon_df$personkey))
-summary(as.factor(oregon_df$patid))
-summary(as.factor(oregon_df$gender))
-summary(as.factor(2013-oregon_df$yob)) # birth year -> age
-summary(as.factor(oregon_df$race))
-summary(as.factor(oregon_df$ethn))
-summary(as.factor(oregon_df$STATE))
-summary(as.factor(oregon_df$ZIP))
-summary(as.factor(oregon_df$MSA)) 
-summary(as.factor(oregon_df$fromdate))
-summary(as.factor(oregon_df$todate))
-summary(as.factor(oregon_df$pos)) # 23&20?
-summary(as.factor(oregon_df$los))
-
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## 1) *personkey*, Unique person identifier
-person's ID, maximum is 14381640
-length: 8
-```{r personkey}
-summary(as.factor(oregon_df$personkey))
-min(oregon_df$personkey)
-max(oregon_df$personkey) # seems length is 8
-```
-
-## 2) *year*, Calendar year in which claim was incurred
-All is 2013
-integer (numeric); length: 4
-```{r year}
-summary(as.factor(oregon_df$year)) # all 2013, 77069320
-```
-
-## 3) *clmid*, Claim ID
-numeric; length: 8
-```{r claim id}
-summary(as.factor(oregon_df$clmid))
-```
-
-## 4) *line*, Claim line (Not Sure what this means)
-numeric; range: 0-9999
-```{r claim line}
-unique(as.numeric(oregon_df$line)) # 1362 levels, 0 - 9999
-```
-
-## 5) *clmtatus*, Claim status
-D: 8676643 (11.26%), E: 3324496 (4.31%), P: 65068181 (84.43%)
-character
-```{r claim status}
-summary(as.factor(oregon_df$clmstatus))
-#       D        E        P
-# 8676643  3324496 65068181
-
-summary(as.factor(oregon_df$clmstatus))/77069320 # percentage
-#          D          E          P
-# 0.11258232 0.04313644 0.84428124
-```
-
-## 6) *cob*, COB status (Coordination of benefits) 
-blank: 23517978 (30.52%); N: 44438688 (57.66%); Y: 9112654 (11.82%)
-character
-``` {r cob}
-summary(as.factor(oregon_df$cob)) 
-#                 N        Y
-# 23517978 44438688  9112654
-summary(as.factor(oregon_df$cob))/77069320 # percentage
-#                   N         Y
-# 0.3051536 0.5766067 0.1182397
-```
-
-## 7) *paytype*, Pay type
-C (58.50%), D (31.77%), G (2.08%), P (3.53%), T (4.12%)
-character
-``` {r pay type}
-summary(as.factor(oregon_df$paytype)) #C, D, G, P, T
-summary(as.factor(oregon_df$paytype))/77069320 # percentage
-#         C          D          G          P          T
-# 0.58498296 0.31771349 0.02081743 0.03532560 0.04116052
-```
-
-## 8) *prod*, Product code
-CHP, etc. Insurance type/product code [web](https://ushik.ahrq.gov/ViewItemDetails?&system=apcd&itemKey=194604000)
-character
-```{r product code}
-summary(as.factor(oregon_df$prod))
-```
-
-## 9) *payer*, APAC payer 
-All Payer All Claims [web](https://www.oregon.gov/oha/analytics/Pages/All-Payer-All-Claims.aspx)
-character
-```{r payer}
-summary(as.factor(oregon_df$payer))
-```
-
-## 10) *megflag*, Medical coverage flag
-The medical coverage flag indicates whether this member is covered for medical expenses [web](https://ushik.ahrq.gov/ViewItemDetails?&system=apcd&itemKey=196401000)
-0: (7.39%); 1: (91.57%); NA: (1.04%)
-numeric; range: 0-1
-```{r medical coverage flage}
-summary(as.factor(oregon_df$medflag))
-#       0        1     NA's
-# 5697342 70573441   798537
-summary(as.factor(oregon_df$medflag))/77069320 # percentage
-#          0          1       NA's
-# 0.07392490 0.91571381 0.01036128
-```
-
-## 11) *rxflag*, Pharmacy coverage flag
-This field indicates whether or not the member has prescription drug coverage. 
-[web](https://ushik.ahrq.gov/ViewItemDetails?&system=apcd&itemKey=196401000)
-0: (10.07%); 1: (88.89%); NA: (1.04%)
-numeric; range: 0-1
-```{r pharmacy converage flag}
-summary(as.factor(oregon_df$rxflag))
-#       0        1     NA's
-# 7761348 68509435   798537
-summary(as.factor(oregon_df$rxflag))/77069320 # percentage
-#          0          1       NA's
-# 0.10070607 0.88893265 0.01036128
-```
-
-## 12) *ohvmhflag*, Oregon High value medical home flag
-Required for participants in OHLC high value medical home initiative. 
-[web](https://ushik.ahrq.gov/ViewItemDetails?&system=apcd&itemKey=194764000&enableAsynchronousLoading=true)
-N: (69.15%); Y: (0.24%); NULL: (30.61%)
-character
-```{r Oregon High value medical home flag}
-summary(as.factor(oregon_df$ohvmhflag))
-#        N   *NULL*        Y
-# 53291284 23589431   188605
-summary(as.factor(oregon_df$ohvmhflag))/77069320 # percentage
-#           N      *NULL*           Y
-# 0.691472093 0.306080695 0.002447212
-```
-
-## 13) *pebb*, PEBB flag (NOT Provided)
-0: (95.95%); 1: (4.05%)
-numeric; range: 0-1
-```{r pebb flag}
-summary(as.factor(oregon_df$pebb))
-#        0        1
-# 73949154  3120166
-summary(as.factor(oregon_df$pebb))/77069320 # percentage
-#          0          1
-# 0.95951481 0.04048519
-```
-
-## 14) *oebb*, OEBB flag (NOT Provided)
-0: (96.39%); 1: (3.61%)
-numeric; range: 0-1
-```{r oebb flag}
-summary(as.factor(oregon_df$oebb))
-#        0        1
-# 74285962  2783358
-summary(as.factor(oregon_df$oebb))/77069320 # percentage
-#          0          1
-# 0.96388501 0.03611499
-```
-
-## 15) *patid*, Encrypted patient ID
-numeric
-```{r Encrypted patient ID}
-summary(as.factor(oregon_df$patid))
-```
-
-## 16) *gender*, Gender
-F: (60.56%); M: (39.38%); U (for unknown): (0.06%)
-character
-```{r gender}
-summary(as.factor(oregon_df$gender))
-#        F        M        U
-# 46672307 30350771    46242
-summary(as.factor(oregon_df$gender))/77069320 # percentage
-#            F            M            U
-# 0.6055886700 0.3938113247 0.0006000053
-```
-
-## 17) *yob*, Birth year
-old:1901 (116 years) young:2016 (1 year)
-numeric
-```{r birth year}
-summary(as.factor(oregon_df$yob)) # old:1901 young:2016
-```
-
-## 18) *race*, Race (Not sure the category means)
-1:(31%); 2: (2%); 3: (0.8%); 4: (0.3%); 5: (0.1%); 6: (0.3%); 9: (65%); NA: (0.03%)
-numeric; range: 1-9
-```{r race}
-summary(as.factor(oregon_df$race))
-#        1        2        3        4        5        6        9     NA's
-# 24132190  1611193   620854   203550    85465   248416 50141889    25763
-summary(as.factor(oregon_df$race))/77069320 # percentage
-#            1            2            3            4            5            6
-# 0.3131231727 0.0209057638 0.0080557867 0.0026411288 0.0011089367 0.0032232800
-#            9         NA's
-# 0.6506076478 0.0003342835
-```
-
-## 19) *ethn*, Ethnicity (Not sure the category means)
-1:(0.76%); 2: (9.60%); 3: (89.61%); NA: (0.03%)
-numeric; range: 1-3
-```{r ethnicity}
-summary(as.factor(oregon_df$ethn))
-#        1        2        3     NA's
-#  583948  7398053 69061589    25730
-summary(as.factor(oregon_df$ethn))/77069320 # percentage
-#            1            2            3         NA's
-# 0.0075769191 0.0959921925 0.8960970332 0.0003338553
-```
-
-## 20) *lang*, Primary spoken language 
-Not sure the category means. This web [web](http://www.niso.org/topics/ccm/ccmstandards/) might help.
-1:(47.70%); 2: (1.34%); 3: (0.001%); 4: (0.26%); 8: (0.65%); 9: (49.31%); NA: (0.74%)
-numeric; range: 1-9
-```{r language}
-summary(as.factor(oregon_df$lang))
-#        1        2        3        4        8        9     NA's
-# 36761368  1031059      587   203152   501575 38002063   569516
-round(summary(as.factor(oregon_df$lang))/77069320, 5)  # percentage
-#       1       2       3       4       8       9    NA's
-# 0.47699 0.01338 0.00001 0.00264 0.00651 0.49309 0.00739
-```
-
-## 21) *MSA*, Metropolitan and Micropolitan Statistical Areas Main???
-numeric
-```{r MSA}
-summary(as.factor(oregon_df$MSA))
-```
-
-## 22) *STATE*, Standard two character abbreviation
-OR: (99.33%); blank: (0.1%)
-character
-```{r State}
-summary(as.factor(oregon_df$STATE)) # OR: 76555225; blank: 78646
-76555225/77069320
-```
-
-## 23) *ZIP*, Zip code
-Freely available in the public domain. NA: (0.1%)
-numeric
-```{r ZIP code}
-summary(as.factor(oregon_df$ZIP)) # NA: 78646
-```
-
-## 24) *fromdate*, From date
-YYYY-MM-DD
-character
-```{r from date}
-summary(as.factor(oregon_df$fromdate))
-unique(as.factor(oregon_df$fromdate))
-```
-
-## 25) *todate*, To date
-YYYY-MM-DD
-character
-```{r to date}
-summary(as.factor(oregon_df$todate))
-```
-
-## 26) *paydate*, Pay date
-YYYY-MM-DD
-character
-```{r pay date}
-summary(as.factor(oregon_df$paydate))
-```
-
-## 27) *paid*, Total payment
-NA: (0.36%)
-numeric
-```{r total payment}
-summary(as.factor(oregon_df$paid)) # NA: 279811
-```
-
-## 28) *tob*, Type of bill
-blank: (52.61%); NULL: (25.12%)
-character
-```{r type of bill}
-summary(as.factor(oregon_df$tob)) # blank: 40545960 NULL: 19358510 
-```
-
-## 29) *pos*, Place of service code
-Not sure. [web](https://www.cms.gov/Medicare/Coding/place-of-service-codes/Place_of_Service_Code_Set.html) migh help.
-NULL: (9.22%)
-character
-```{r place of servis code}
-summary(as.factor(oregon_df$pos)) # NULL: 7106719
-```
-
-## 30) *dx1*, Principal diagnosis (For ICD9 code)
-[web](https://www.cms.gov/Medicare/Coding/ICD9ProviderDiagnosticCodes/codes.html)
-NULL: (31.81%)
-character
-```{r dx1}
-summary(as.factor(oregon_df$dx1)) # NULL: 24513232
-```
-
-## 31) *dx2*, Diagnosis 2
-NULL: (59.31%)
-character
-``` {r dx2}
-summary(as.factor(oregon_df$dx2)) # NULL: 45707452
-```
-
-## 32) *dx3*, Diagnosis 3
-NULL: (72.67%)
-character
-``` {r dx3}
-summary(as.factor(oregon_df$dx3)) # NULL: 56005306
-```
-
-## 33) *dx4*, Diagnosis 4
-NULL: (81.46%)
-character
-``` {r dx4}
-summary(as.factor(oregon_df$dx4)) # NULL: 62777450
-```
-
-## 34) *dx5*, Diagnosis 5
-NULL: (93.42%)
-character
-``` {r dx5}
-summary(as.factor(oregon_df$dx5)) # NULL: 71995284
-```
-
-## 35) *dx6*, Diagnosis 6
-NULL: (95.23%)
-character
-``` {r dx6}
-summary(as.factor(oregon_df$dx6)) # NULL: 73390409
-```
-
-## 36) *dx7*, Diagnosis 7
-NULL: (96.31%)
-character
-```{r dx7}
-summary(as.factor(oregon_df$dx7)) # NULL: 74225796
-```
-
-## *37) dx8*, Diagnosis 8
-NULL: (97.00%)
-character
-```{r dx8}
-summary(as.factor(oregon_df$dx8)) # NULL: 74759988
-```
-
-## 38) *dx9*, Diagnosis 9
-NULL: (98.55%)
-character
-```{r dx9}
-summary(as.factor(oregon_df$dx9)) # NULL: 75949570
-```
-
-## 39) *dx10*, Diagnosis 10
-NULL: (98.81%)
-character
-```{r dx10}
-summary(as.factor(oregon_df$dx10)) # NULL: 76151124
-```
-
-## 40) *dx11*, Diagnosis 11
-blank: (98.35%)
-character
-``` {r dx11}
-summary(as.factor(oregon_df$dx11)) # blank: 75801079
-```
-
-## 41) *dx12*, Diagnosis 12
-blank: (98.61%)
-character
-```{r dx12}
-summary(as.factor(oregon_df$dx12)) # blank: 76000733
-```
-
-## 42) *dx13*, Diagnosis 13
-blank: (98.86%)
-character
-```{r dx13}
-summary(as.factor(oregon_df$dx13)) # blank: 76193335
-```
-
-## 43) *poa1*, POA code 1
-N: (0.07%); Y: (5.94%); blank: (93.99%)
-character
-```{r poa1} 
-summary(as.factor(oregon_df$poa1))
-#                 N        Y
-# 72434455    58842  4576023
-summary(as.factor(oregon_df$poa1))/77069320 # percentage
-#                         N            Y
-# 0.9398610887 0.0007634945 0.0593754168
-```
-
-## 44) *poa2*, POA code 2
-N: (0.34%); Y: (3.15%); blank: (96.51%)
-character
-```{r poa2}
-summary(as.factor(oregon_df$poa2))
-#                 N        Y
-# 74380115   261029  2428176
-summary(as.factor(oregon_df$poa2))/77069320 # percentage
-#                       N           Y
-# 0.965106673 0.003386938 0.031506389
-```
-
-## 45) *poa3*, POA code 3
-N: (0.34%); Y: (2.75%); blank: (96.91%)
-character
-```{r poa3}
-summary(as.factor(oregon_df$poa3))
-#                 N        Y
-# 74688528   264287  2116505
-summary(as.factor(oregon_df$poa3))/77069320 # percentage
-#                       N           Y
-# 0.969108434 0.003429212 0.027462355
-```
-
-## 46) *px1*, Principal inpt procedure
-blank: (52.61%); NULL: (45.38%)
-character
-```{r px1}
-summary(as.factor(oregon_df$px1)) # blank: 40545960; NULL: 34975994
-```
-
-## 47) *px2*, Procedure 2
-blank: (52.61%); NULL: (46.06%)
-character
-```{r px2}
-summary(as.factor(oregon_df$px2)) # blank: 40545960 NULL: 35502262
-```
-
-## 48) *px3*, Procedure 3
-blank: (52.61%); NULL: (45.38%)
-character
-```{r px3}
-summary(as.factor(oregon_df$px3)) # blank: 40545960; NULL: 34975994
-```
-
-## 49) *proccode*, CPT or HCPCS procedure code
-Current Procedural Terminology (CPT) Healthcare Common Procedure Coding System (HCPCS) 
-[web1](https://www.cms.gov/Medicare/Coding/MedHCPCSGenInfo/index.html?redirect=/medhcpcsgenin)
-[web2](https://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets/index.html?redirect=/hcpcsrelea)
-NULL: (34.88%)
-character
-```{r procedure ccode}
-summary(as.factor(oregon_df$proccode)) # NULL: 26880271
-```
-
-## 50) *mod1*, Prodcure code modifier 1
-[web](https://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets/index.html?redirect=/hcpcsrelea)
-NULL: (82.31%)
-character
-```{r Prodcure code modifier 1}
-summary(as.factor(oregon_df$mod1)) # NULL: 63437297
-```
-
-## 51) *mod2*, Prodcure code modifier 2
-NULL: (97.94%)
-character 
-```{r Prodcure code modifier 2}
-summary(as.factor(oregon_df$mod2)) # NULL: 75483898
-```
-
-## 52) *megcode*, code???
-NA: (0.002%)
-numeric
-```{r megcode}
-summary(as.factor(oregon_df$megcode)) # NA: 1751
-```
-
-## 53) *megdesc*, description
-character
-```{r megdesc}
-summary(as.factor(oregon_df$megdesc))
-```
-
-## 54) *megbodysys*, short name for body part???
-Ex: Oral and Dental (Unknown: 9.06%)
-character
-```{r megbodysys}
-summary(as.factor(oregon_df$megbodysys)) # Unknown: 6979372
-```
-
-## 55) *megstate*, stage???
-Unknown: (41.62%)
-character
-```{r megstate}
-summary(as.factor(oregon_df$megstage)) # Unknown: 32074926
-```
-
-## 56) *megtype*, type???
-9 NOT-CATEGPROZED: 9.06%; Acute: 44.20%; Chronic: 40.48%; Well Care: 6.26; blank:0.00%
-  character
-```{r megtype}
-summary(as.factor(oregon_df$megtype))
-#                   9 NOT-CATEGORIZED             Acute           Chronic
-#              1751           6979372          34062467          31197648
-#         Well Care
-#           4828082
-round(summary(as.factor(oregon_df$megtype))/77069320,4) # percentage
-#                   9 NOT-CATEGORIZED             Acute           Chronic
-#            0.0000            0.0906            0.4420            0.4048
-#         Well Care
-#            0.0626
-
-```
-
-## 57) *megcomplete*, complete?
-0: (13.09%); 1: (86.90%); NA: (22.72%)
-numeric; range: 0-1
-```{r megcomplete}
-summary(as.factor(oregon_df$megcomplete))
-#        0        1     NA's
-# 10090656 66976913     1751
-summary(as.factor(oregon_df$megcomplete))/77069320 # percentage
-#            0            1         NA's
-# 1.309296e-01 8.690477e-01 2.271981e-05
-```
-
-## 58) *megnum*, number???
-numeric; range: 147-103100055
-```{r megnum}
-summary(as.factor(oregon_df$megnum))
-max(oregon_df$megnum)
-min(oregon_df$megnum)
-```
-
-## 59) *megdays*, days???
-numeric; range: 1-42452
-```{r megdays}
-summary(as.factor(oregon_df$megdays))
-max(oregon_df$megdays)
-min(oregon_df$megdays)
-```
-
-## 60) *megproprate*, proportion???
-numeric; range: 0-1
-```{r megproprate}
-summary(as.factor(oregon_df$megprorate))
-```
-
-## 61) *megoutlier*, outliers?
-0: (7.94%); 1: (29.06%)
-numeric; range: 0-1
-```{r megoutlier}
-summary(as.factor(oregon_df$megoutlier))
-#        0        1
-# 54675387 22393933
-summary(as.factor(oregon_df$megoutlier))/77069320 # percentage
-#         0         1
-# 0.7094313 0.2905687
-```
-
-## 62) *meglow*, low?
-False: (97.50%); True: (2.50%)
-logical
-```{r meglow}
-summary(as.factor(oregon_df$meglow)) 
-#    FALSE     TRUE
-# 75145616  1923704
-summary(as.factor(oregon_df$meglow))/77069320 # percentage
-#     FALSE      TRUE
-# 0.9750393 0.0249607
-```
-
-## 63) *meghigh*, high???
-False: (73.44%); True: (26.56%)
-logical
-```{r meghigh}
-summary(as.factor(oregon_df$meghigh))
-#    FALSE     TRUE
-# 56599091 20470229
-summary(as.factor(oregon_df$meghigh))/77069320 # percentage
-#    FALSE     TRUE
-# 0.734392 0.265608
-```
-
-## 64) *ndc*, National Drug Code
-[web](http://www.fda.gov/Drugs/InformationOnDrugs/ucm142438.htm)
-blank: (69.55%)
-character
-``` {r ndc}
-# ndc
-summary(as.numeric(oregon_df$ndc)) # blank: 53599072
-```
-
-## 65) *rxclass*, NDC therapeutic class
-blank: (69.55%); NULL: (2.31%)
-character
-```{r NDC therapeutic class}
-summary(as.factor(oregon_df$rxclass)) # blank: 53599072; NULL: 177765
-```
-
-## 66) *qtydisp*, Quantity dispensed
-NA: (2.37%)
-numeric
-```{r Quantity dispensed}
-summary(as.factor(as.character(oregon_df$qtydisp))) # NA: 182736
-```
-
-## 67) *rxdays*, Days supply
-NA: (69.57%)
-numeric
-```{r rxdays}
-summary(as.factor(oregon_df$rxdays)) # NA: 53619826
-```
-
-## 68) *daw*, Dispense as written code
-NA: (69.55%)
-numeric; range: 0-9
-```{r daw}
-summary(as.factor(oregon_df$daw)) # NA: 53599072
-```
-
-## 69) *ptstatus*, Discharge status
-blank: (52.61%); NULL: (35.39%)
-character
-```{r ptstatus}
-summary(as.factor(oregon_df$ptstatus)) # blank: 40545960; NULL: 27273631 
-```
-
-## 70) *los*, Length of stay
-NULL: (52.61%)
-numeric
-```{r los}
-summary(as.factor(oregon_df$los)) # NULL: 40545960
-```
-
-## 71) *msdrg*, MS-DRG
-blank: (52.98%); NULL: (44.04%)
-character
-```{r msdrg}
-summary(as.factor(oregon_df$msdrg)) # blank: 40828376; NULL: 33942845
-```
-
-## 72) *icd_ver*, icd version
-False: (68.19%); NA: (31.81%)
-logical
-```{r icd_ver}
-summary(as.factor(oregon_df$icd_ver))
-#    FALSE     NA's
-# 52556088 24513232
-summary(as.factor(oregon_df$icd_ver))/77069320 # percentage
-#     FALSE      NA's
-# 0.6819327 0.3180673
-
-```
-
-
-## Clean data
-
-```{r }
-# Clean data, 76986701 left (maybe later)
-#oregon_full_df <- oregon_full %>%
-# filter non-missing value of year of birth, gender, race, STATE
-#  filter (is.na(yob)==F) %>%
-#  filter (gender!='U') %>%
-#  filter (is.na(race)==F) %>%
-#  filter (STATE!='')
-
-# Explore no dx1 and no ndc, see if the dx2 or other reasons, 1042984 obs
-# oregon_full_miss <- oregon_full %>%
-#  filter (dx1=='*NULL*') %>%
-#  filter (ndc=="")
-
-# fwrite(oregon_full_miss, "../data/oregon_full_miss.csv")
-
-# read_path1 <- paste0("./data/oregon_full_miss.csv")
-# oregon_miss <- fread(read_path1, sep = ",")
-
-# oregon_miss_df <- oregon_miss %>%
-#   filter (dx2!='*NULL*') # 981 obs
-
-
-# filter dx1, no ndc, 52490460
-# oregon_full_dx1 <- oregon_full_df %>%
-#   filter (dx1!='*NULL*')
-
-
-# filter ndc, no dx1, 23453379
-# oregon_full_ndc <- oregon_full_df %>%
-#  filter (ndc!="")
-
-# fwrite(oregon_full_dx1, "../data/oregon_full_dx1.csv")
-# fwrite(oregon_full_ndc, "../data/oregon_full_ndc.csv")
-
-
-
+dx1_2 <- oregon_df %>% 
+  select(dx1) %>%
+  mutate(dx1_cat = ifelse(is.na(dx1), "Missing",
+                     ifelse(!is.na(dx1), "Non-Missing", NA))) %>% 
+  group_by(dx1_cat) %>%
+  summarise(n = n()) %>%
+  mutate(total_n =sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+      select(dx1_cat, n, percent)
+
+# table ----
+knitr::kable(dx1_2, align = "c", caption = "dx1")
+
+```
+
+## dx2
+```{r}
+dx2_2 <- oregon_df %>% 
+  select(dx2) %>%
+  mutate(dx2_cat = ifelse(is.na(dx2), "Missing",
+                     ifelse(!is.na(dx2), "Non-Missing", NA))) %>% 
+  group_by(dx2_cat) %>%
+  summarise(n = n()) %>%
+  mutate(total_n =sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+      select(dx2_cat, n, percent)
+
+# table ----
+knitr::kable(dx2_2, align = "c", caption = "dx2")
+
+```
+
+## dx3
+```{r}
+dx3_2 <- oregon_df %>% 
+  select(dx3) %>%
+  mutate(dx3_cat = ifelse(is.na(dx3), "Missing",
+                     ifelse(!is.na(dx3), "Non-Missing", NA))) %>% 
+  group_by(dx3_cat) %>%
+  summarise(n = n()) %>%
+  mutate(total_n =sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+      select(dx3_cat, n, percent)
+
+# table ----
+knitr::kable(dx3_2, align = "c", caption = "dx3")
+
+```
+
+## dx4
+```{r}
+dx4_2 <- oregon_df %>% 
+  select(dx4) %>%
+  mutate(dx4_cat = ifelse(is.na(dx4), "Missing",
+                     ifelse(!is.na(dx4), "Non-Missing", NA))) %>% 
+  group_by(dx4_cat) %>%
+  summarise(n = n()) %>%
+  mutate(total_n =sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+      select(dx4_cat, n, percent)
+
+# table ----
+knitr::kable(dx4_2, align = "c", caption = "dx4")
+
+```
+
+## dx5
+```{r}
+dx5_2 <- oregon_df %>% 
+  select(dx5) %>%
+  mutate(dx5_cat = ifelse(is.na(dx5), "Missing",
+                     ifelse(!is.na(dx5), "Non-Missing", NA))) %>% 
+  group_by(dx5_cat) %>%
+  summarise(n = n()) %>%
+  mutate(total_n =sum(n),
+         percent = round(n/total_n, 4)*100) %>%
+      select(dx5_cat, n, percent)
+
+# table ----
+knitr::kable(dx5_2, align = "c", caption = "dx5")
 
 ```
 
