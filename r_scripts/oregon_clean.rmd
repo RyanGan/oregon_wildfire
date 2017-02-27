@@ -69,6 +69,50 @@ knitr::kable(personkey2, align = "c", caption = "Patient ID")
 
 ```
 
+
+## How many visits does unique personkey have?
+```{r}
+visit <- oregon_df %>%
+  select(personkey, clmid) %>%
+  mutate(num_visit = NA) 
+  
+for (i in 1: length(oregon_df$personkey)){
+  visit$num_visit[i] <- length(unique(visit$clmid[which(visit$personkey==visit$personkey[i])]))
+  
+}
+
+a<-unique(oregon_df$personkey)
+
+
+visit2 <- visit %>%
+  select(personkey, num_visit) %>%
+  distinct(personkey, num_visit)
+
+visit3 <- visit2 %>%
+  group_by(num_visit) %>%
+  summarise(n = n()) %>%
+  mutate(total_n =sum(n),
+  percent = round(n/total_n, 4)*100) %>% 
+  select(num_visit, n, percent)
+  
+m <- mean(visit2$num_visit)
+median(visit2$num_visit)
+m # 4.61
+
+knitr::kable(visit3, align = "c", caption = "Visits")
+
+hist(visit3$num_visit, br= 20)
+
+ggplot(visit3, aes(x=num_visit)) +
+  geom_density()
+
+
+
+```
+
+
+
+
 ## 2. Patid
 ```{r}
 patid2 <- oregon_df %>% 
@@ -337,7 +381,7 @@ los2 <- oregon_df %>%
   summarise(n = n()) %>%
   mutate(total_n = sum(n),
          percent = round(n/total_n, 4)*100) %>%
-  select(los, n, percent)
+  select(los, n, percent) 
 
 knitr::kable(los2, align = "c", caption = "Length of Stay Range")
 
@@ -356,7 +400,7 @@ los3 <- oregon_df %>%
   summarise(n=n()) %>%
   mutate(total_n = sum(n),
          percent = round(n/total_n, 4)*100) %>%
-  select(los_cat, n, percent)
+  select(los_cat, n, percent) 
 
 knitr::kable(los3, align = "c", caption = "Length of Stay Range Match From date and To Date")
 
@@ -446,6 +490,19 @@ dx5_2 <- oregon_df %>%
 knitr::kable(dx5_2, align = "c", caption = "dx5")
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
