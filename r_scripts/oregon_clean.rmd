@@ -493,4 +493,3 @@ knitr::kable(dx5_2, align = "c", caption = "dx5")
 
 
 
-
