@@ -254,7 +254,7 @@ knitr::kable(msa2, align = "c", caption = "MSA")
 
 ## 10. Pos (Urgent and Emergency) NA: 2974
 ```{r}
-pos_key <- read_excel("../instructions/LT_pos.xlsx")
+pos_key <- read_excel("../LT_pos.xlsx")
 
 pos2 <- oregon_df %>%
   select(pos) 
