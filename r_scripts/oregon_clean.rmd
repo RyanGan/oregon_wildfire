@@ -18,7 +18,7 @@ getwd()
 
 # import data ------------------------------------------------------------------
 
-read_path <- paste0("../data/gan_episodes_of_care.txt")
+read_path <- paste0("../../../data/data_original/gan_episodes_of_care.txt")
 
 # import the full dataframe, change column class to character
 read_path <- paste0("../data/gan_episodes_of_care.txt")
