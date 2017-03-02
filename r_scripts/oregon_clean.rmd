@@ -17,22 +17,17 @@ library(ggplot2)
 getwd()
 
 # import data ------------------------------------------------------------------
-# Read in first 200,000 lines for exploration.
 
 read_path <- paste0("../data/gan_episodes_of_care.txt")
-oregon_df <- fread(read_path, sep = "|", nrows = 200000, showProgress = T)
-fwrite(oregon_df, "../data/oregon_epis_care_reduced.csv")
 
-# I wrote a reduced dataframe of 200,000 rows to get an idea of data structure
-
-# import the reduced dataframe
+# import the full dataframe, change column class to character
+read_path <- paste0("../data/gan_episodes_of_care.txt")
 start_time <- Sys.time()
-oregon_df <- fread("../data/oregon_epis_care_reduced.csv", sep = ",", 
-                   colClasses = rep("character", 72))
+oregon_df <- fread(read_path, sep = "|", showProgress = T, 
+                   colClasses = rep("character", 72)) 
 stop_time <-  Sys.time() - start_time 
-
 # time it took
-stop_time # 1.968219 secs
+stop_time # 20 mins
 
 ```
 
