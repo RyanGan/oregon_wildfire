@@ -8,5 +8,7 @@
 # call libraries
 library(rmarkdown)
 
+# call markdown doc.
 rmarkdown::render('./oregon_clean.rmd')
+
 
