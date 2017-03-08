@@ -18,21 +18,16 @@ getwd()
 
 # import data ------------------------------------------------------------------
 
-read_path <- paste0("../data/gan_episodes_of_care.txt")
-
-# import the full dataframe, change column class to character
-read_path <- paste0("../data/gan_episodes_of_care.txt")
+read_path <- paste0("../../../data/data_original/gan_episodes_of_care.txt")
 start_time <- Sys.time()
-oregon_df <- fread(read_path, sep = "|", showProgress = T,fill = T, 
+oregon_df <- fread(read_path, sep = "|", showProgress = T, 
                    colClasses = rep("character", 72)) 
 stop_time <-  Sys.time() - start_time 
-
-# Note RG: fill = T allows fread to fill in any missing data
-
-# import time
+# time it took
 stop_time # about 20 mins
 
 ```
+
 
 ## The overall summary  of data set
 72 variables in total.
@@ -92,11 +87,9 @@ colnames(m) <- c("Mean", "Median", "Max")
 
 knitr::kable(m, align = "c", caption = "Statistics")
 
-hist(visit3$num_visit, freq = T, xlab = "number of visit", main = "Visiting number for each personkey")
+ggplot(visit3, aes(n)) + geom_density()
 
 ```
-
-
 
 
 ## 2. Patid
@@ -257,7 +250,7 @@ knitr::kable(msa2, align = "c", caption = "MSA")
 
 ## 10. Pos (Urgent and Emergency) NA: 2974
 ```{r}
-pos_key <- read_excel("../data/LT_pos.xlsx")
+pos_key <- read_excel("../LT_pos.xlsx")
 
 pos2 <- oregon_df %>%
   select(pos) 
@@ -477,11 +470,7 @@ knitr::kable(dx5_2, align = "c", caption = "dx5")
 
 ```
 
-## Total Time Markdown File Ran
-```{r}
-stop_time2 <-  Sys.time() - start_time 
-stop_time2
-```
+
 
 
 
