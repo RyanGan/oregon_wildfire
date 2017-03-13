@@ -8,7 +8,7 @@
 library(rgdal) # package for shape files
 library(sp)
 library(rgeos) # rgeos package contains the intersect and area commands I need
-library(tidyverse)
+library(dplyr)
 library(data.table)
 library(readxl)
 # parallel computing libraries
@@ -16,7 +16,6 @@ library(foreach)
 library(doParallel)
 
 getwd()
-setwd("C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire")
 
 # Import Shapefiles  -----------------------------------------------------------
 # WRF Grid
@@ -220,9 +219,6 @@ tail(wrf_grid_name, 50L)
 # empty matrix
 zip_wrf_proportion <- matrix(nrow = 489, ncol = 1610, byrow = T,
                              dimnames = list(or_zip_name, wrf_grid_name))
-
-summary(smoke_grid)
-# summary(zip_wrf_proportion)
 
 # matrix should be faster and less memory than a df
 # start time
