@@ -189,7 +189,7 @@ zip_wrf_proportion <- matrix(nrow = 417, ncol = 1610, byrow = T,
 start <- Sys.time()
 
 # first I want to subset out each zipcode shapefile
-foreach(i=1:length(or_zip_name)) %dopar% {
+for (i in 1:length(or_zip_name)) {
   # output value of zipcode
   zipcode <- as.character(or_zip_name[i]) 
   # limit shapefile to particular zipcode
@@ -222,7 +222,7 @@ stopCluster(cl)
 stop <- Sys.time() - start
 stop # 33.97498 mins
 
-zip_proportion_df <- as.data.frame(as.table(zip_wrf_proportion))
+zip_proportion_df <- data.frame(zip_wrf_proportion)
 
 write_path <- paste0('../../../data/data_new/',
                      'zip_wrf_proportion.csv')
