@@ -169,8 +169,11 @@ clusterCall(cl, function() library(rgdal))
 clusterCall(cl, function() library(sp))
 clusterCall(cl, function() library(rgeos))
 # since I have another foreach loop, I need to load foreach on the clusters
-clusterCall(cl, function() library(doParallel))
-clusterCall(cl, function() library(foreach))
+#clusterCall(cl, function() library(doParallel))
+#clusterCall(cl, function() library(foreach))
+
+clusterExport(cl, "or_zip_map")
+clusterExport(cl, "smoke_grid")
 
 # Loop to estimate proportion of area covered by each grid for each zip --------
 # I'm expecting a matrix of 489 zipcodes * 1610 wrf_grids 
@@ -189,14 +192,19 @@ zip_wrf_proportion <- matrix(nrow = 417, ncol = 1610, byrow = T,
 start <- Sys.time()
 
 # first I want to subset out each zipcode shapefile
-for (i in 1:length(or_zip_name)) {
+foreach(i=1:10) %dopar% {
   # output value of zipcode
   zipcode <- as.character(or_zip_name[i]) 
   # limit shapefile to particular zipcode
   zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
   # convert to polygon
   zip_poly <-SpatialPolygons(zip_shape@polygons)
+
+  plot(zip_poly)
+}
   
+
+
   # now I can create the second loop that finds the proportion of the area of
   # the zipcode polygon that overlaps with each WRF-Grid
   for(j in 1:length(wrf_grid_name)){
