@@ -14,88 +14,40 @@ library(readxl)
 # parallel computing libraries
 library(foreach) 
 library(doParallel)
+library(readr)
 
 getwd()
 # "/home/jyliu/wildfire/local_git_repo/oregon_wildfire/r_scripts"
 
 # Import Shapefiles  -----------------------------------------------------------
 # WRF Grid
-grid_dir <- paste0('../../../data/data_new/oregon_grid.shp')
+grid_dir <- paste0('../../../data/data_new/or_shapefile/oregon_grid.shp')
 
 smoke_grid <- readOGR(dsn = grid_dir, layer = 'oregon_grid') 
 
 summary(smoke_grid) 
-plot(smoke_grid) 
-invisible(text(getSpPPolygonsLabptSlots(smoke_grid), 
-               labels=as.character(smoke_grid$WRFGRID_ID)))
-
 summary(smoke_grid@data$WRFGRID_ID)
 
 # Zipcode shapefile
-shp_dir <- paste0('./shapefile/tl_2013_us_zcta510/tl_2013_us_zcta510.shp')
+shp_dir <- paste0('../../../data/data_original/', 
+                 'tl_2013_us_zcta510/tl_2013_us_zcta510.shp')
 
 us_zip_2013 <- readOGR(dsn = shp_dir, layer = 'tl_2013_us_zcta510')
 summary(us_zip_2013)
 # plot(us_zip_2013)
 
-## import data
-# because it use overall ZIP, so I filter the full data set with same requirements 
-# of separate disease.
-var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
-              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
-              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
 
-setwd("C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire/data_new")
-
-or_zip_2013 <- data_frame()
-n <- 0
-
-start <- Sys.time()
-for(m in var_list){ # begin first loop of variable names (outcomes)
-  
-  read_path <- paste('oregon', m, 'jul_to_oct_claim.csv', sep='_')
-  or_disease <- read_csv( read_path)
-  
-  or_disease$dx11 <- as.character(or_disease$dx11)
-  or_disease$dx12 <- as.character(or_disease$dx12)
-  
-  # iteration which binds rows of unique ids
-  or_zip_2013 <- bind_rows(or_zip_2013, or_disease)
-  n <- n + length((or_disease$personkey))
-  
-}  
-
-total_time <- Sys.time() - start
-total_time # Time difference of 0.8644149 secs
-
-write_path <- paste0('C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire/data_new/',
-                     'or_zip.csv')
-write_csv(or_zip_2013, paste0(write_path))
-
-
-### ----------------------------------------------------------------------------
-read_path <- paste0('./or_zip.csv')
-or_zip_2013 <- read_csv(read_path)
-
-
-### ----------------------------------------------------------------------------
-# convert to character vector
-or_zip_2013$ZIP <- as.character(or_zip_2013$ZIP)
-
-
-
-### whole zip code shape
-read_path2 <- paste0('C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire/', 
-                     'oregon_zipcode.csv')
-or_zip <- read_csv(read_path2)
+### whole oregon zip code
+read_path <- paste0('../../../data/data_original/oregon_zipcode.csv')
+or_zip <- read_csv(read_path)
 names(or_zip) <- c('zip','type','city','county','area')
-or_zip$zip <- as.character(or_zip$zip)
 
 # check on zip code in colorado range
 # removing anyways
 
 # limit to just Colorado state zipcodes
 or_zip_map <- us_zip_2013[us_zip_2013$ZCTA5CE10 %in% or_zip$zip,]
+
 
 # output zipcodes from washington zipcode map to bind values to
 # plot map to check
@@ -104,15 +56,16 @@ plot(or_zip_map)
 # saving wash shapefile ----
 # save shapefile to use in future work
 summary(or_zip_map)
+or_zip <- as.character(sort(or_zip_map@data$ZCTA5CE10))
 
-# save the Colorado zips to a shapefile to use later
+
+# save the Oregon zips to a shapefile to use later
 # create save path
-save_path <- paste0('../shapefile/or_zip_2013_shape_files')
+save_path <- paste0('../../../data/data_new/or_zip_2013_shape_files')
 
 writeOGR(or_zip_map, layer = 'or_zip_2013_shape_files', save_path, driver = "ESRI Shapefile")
 
 
-#
 # Set coordinate reference system for smoke gird
 nad83 <- '+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0'
 proj4string(smoke_grid) <- nad83
@@ -202,31 +155,41 @@ shape_zip <- SpatialPolygons(test_zip_map@polygons)
 zip_262_int <- gIntersection(poly_262, shape_zip)
 
 plot(zip_262_int)
-prop_int_262 <- gArea(zip_296_int)/gArea(poly_262)
+prop_int_262 <- gArea(zip_262_int)/gArea(poly_262)
 prop_int_262 # 6.0% of grid is covered by zip
 
 
 
+# Setup for parallel computing before for loop ---------------------------------
+cores <- detectCores() # 48
+cl <- makeCluster(cores) # use half the cores on the vet cluster
+registerDoParallel(cl)
+# load packages on each cluster
+clusterCall(cl, function() library(rgdal))
+clusterCall(cl, function() library(sp))
+clusterCall(cl, function() library(rgeos))
+# since I have another foreach loop, I need to load foreach on the clusters
+clusterCall(cl, function() library(doParallel))
+clusterCall(cl, function() library(foreach))
 
 # Loop to estimate proportion of area covered by each grid for each zip --------
-# I'm expecting a matrix of 567 zipcodes * 1620 wrf_grids 
-
-
-or_zip_name <- na.omit(or_zip$zip)
+# I'm expecting a matrix of 489 zipcodes * 1610 wrf_grids 
+or_zip_name <- or_zip
 length(or_zip_name)
 wrf_grid_name <- as.character(smoke_grid@data$WRFGRID_ID)
 length(wrf_grid_name)
 tail(wrf_grid_name, 50L)
 # empty matrix
-zip_wrf_proportion <- matrix(nrow = 489, ncol = 1610, byrow = T,
+zip_wrf_proportion <- matrix(nrow = 417, ncol = 1610, byrow = T,
                              dimnames = list(or_zip_name, wrf_grid_name))
 
 # matrix should be faster and less memory than a df
 # start time
-start <- proc.time()
+
+start <- Sys.time()
 
 # first I want to subset out each zipcode shapefile
-for(i in 1:length(or_zip_name)){
+foreach(i=1:length(or_zip_name)) %dopar% {
   # output value of zipcode
   zipcode <- as.character(or_zip_name[i]) 
   # limit shapefile to particular zipcode
@@ -252,9 +215,20 @@ for(i in 1:length(or_zip_name)){
   }
 }
 
+# stop cluster
+stopCluster(cl)
+
 # stop time
-stop <- proc.time() - start
-stop
+stop <- Sys.time() - start
+stop # 33.97498 mins
+
+zip_proportion_df <- as.data.frame(as.table(zip_wrf_proportion))
+
+write_path <- paste0('../../../data/data_new/',
+                     'zip_wrf_proportion.csv')
+write_csv(zip_proportion_df, paste0(write_path))
+
+
 
 
 
