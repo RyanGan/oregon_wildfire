@@ -159,22 +159,6 @@ prop_int_262 <- gArea(zip_262_int)/gArea(poly_262)
 prop_int_262 # 6.0% of grid is covered by zip
 
 
-
-# Setup for parallel computing before for loop ---------------------------------
-cores <- detectCores() # 48
-cl <- makeCluster(cores) # use half the cores on the vet cluster
-registerDoParallel(cl)
-# load packages on each cluster
-clusterCall(cl, function() library(rgdal))
-clusterCall(cl, function() library(sp))
-clusterCall(cl, function() library(rgeos))
-# since I have another foreach loop, I need to load foreach on the clusters
-#clusterCall(cl, function() library(doParallel))
-#clusterCall(cl, function() library(foreach))
-
-clusterExport(cl, "or_zip_map")
-clusterExport(cl, "smoke_grid")
-
 # Loop to estimate proportion of area covered by each grid for each zip --------
 # I'm expecting a matrix of 489 zipcodes * 1610 wrf_grids 
 or_zip_name <- or_zip
@@ -185,6 +169,25 @@ tail(wrf_grid_name, 50L)
 # empty matrix
 zip_wrf_proportion <- matrix(nrow = 417, ncol = 1610, byrow = T,
                              dimnames = list(or_zip_name, wrf_grid_name))
+
+# Setup for parallel computing before for loop ---------------------------------
+cores <- detectCores() # 48
+cl <- makeCluster(cores) # use half the cores on the vet cluster
+registerDoParallel(cl)
+# load packages on each cluster
+clusterCall(cl, function() library(rgdal))
+clusterCall(cl, function() library(sp))
+clusterCall(cl, function() library(rgeos))
+
+# since I have another foreach loop, I need to load foreach on the clusters
+#clusterCall(cl, function() library(doParallel))
+#clusterCall(cl, function() library(foreach))
+
+clusterExport(cl, "or_zip_map", envir = .GlobalEnv)
+clusterExport(cl, "or_zip_name", envir = .GlobalEnv)
+clusterExport(cl, "smoke_grid", envir = .GlobalEnv)
+clusterExport(cl, "wrf_grid_name", envir = .GlobalEnv)
+clusterExport(cl, "zip_wrf_proportion", envir = .GlobalEnv)
 
 # matrix should be faster and less memory than a df
 # start time
@@ -200,19 +203,11 @@ foreach(i=1:10) %dopar% {
   # convert to polygon
   zip_poly <-SpatialPolygons(zip_shape@polygons)
 
-  plot(zip_poly)
-}
-  
-
-
-  # now I can create the second loop that finds the proportion of the area of
-  # the zipcode polygon that overlaps with each WRF-Grid
-  for(j in 1:length(wrf_grid_name)){
+for(j in 1:length(wrf_grid_name)){
     # output each grid and create a polygon
     wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == j, ]
     # now what about grid 719; should be much less
     wrf_poly <- SpatialPolygons(wrf_grid@polygons)
-    
     
     zip_wrf_intersect <- gIntersection(wrf_poly, zip_poly)
     # if empty, then set to 0, else find the proportion
@@ -221,10 +216,32 @@ foreach(i=1:10) %dopar% {
     # populate the matrix based on i position and j position
     zip_wrf_proportion[[i,j]] <- grid_prop
   }
+  
 }
+
+stopCluster(cl)
+stop <- Sys.time() - start
+stop # 33.97498 mins
+
+
+zipcode1 <- as.character(or_zip_name[1]) 
+
+zip_shape1 <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode1, ]
+zip_poly1 <-SpatialPolygons(zip_shape1@polygons)
+plot(zip_poly1)
+
+# stop time
+stop <- Sys.time() - start
+stop # 33.97498 mins
+
+  
+
 
 # stop cluster
 stopCluster(cl)
+
+
+
 
 # stop time
 stop <- Sys.time() - start
