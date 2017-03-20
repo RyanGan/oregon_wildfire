@@ -189,21 +189,54 @@ clusterExport(cl, "smoke_grid", envir = .GlobalEnv)
 clusterExport(cl, "wrf_grid_name", envir = .GlobalEnv)
 clusterExport(cl, "zip_wrf_proportion", envir = .GlobalEnv)
 
+f1 <- function(x){
+  zipcode <- as.character(x) 
+  # limit shapefile to particular zipcode
+  zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
+  # convert to polygon
+  zip_poly <-SpatialPolygons(zip_shape@polygons)
+  zip_area <- gArea(zip_poly)
+}
+a <- parLapply(cl,or_zip_name, f1)
+
+f2 <- function(y){
+  wrf_grid <- y[y@data$WRFGRID_ID == wrf_grid_name[262], ]
+  # now what about grid 719; should be much less
+  wrf_poly <- SpatialPolygons(wrf_grid@polygons)
+  d <- list(wrf_grid)
+  
+  zip_wrf_intersect <- gIntersection(d[[1]], a[202][[1]])
+  # if empty, then set to 0, else find the proportion
+  grid_prop <- ifelse(is.null(zip_wrf_intersect),
+                      0, gArea(zip_wrf_intersect)/gArea(wrf_poly))
+  # populate the matrix based on i position and j position
+  zip_wrf_proportion <- grid_prop
+}
+b <- parLapply(cl,list(smoke_grid), f2)
+
+
+stopCluster(cl)
+
+
+
+
+
+
 # matrix should be faster and less memory than a df
 # start time
 
 start <- Sys.time()
 
 # first I want to subset out each zipcode shapefile
-foreach(i=1:10) %dopar% {
+foreach(i=201:210) %dopar% {
   # output value of zipcode
   zipcode <- as.character(or_zip_name[i]) 
   # limit shapefile to particular zipcode
   zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
   # convert to polygon
   zip_poly <-SpatialPolygons(zip_shape@polygons)
-
-for(j in 1:length(wrf_grid_name)){
+}
+for(j in 261:270){
     # output each grid and create a polygon
     wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == j, ]
     # now what about grid 719; should be much less
@@ -218,6 +251,7 @@ for(j in 1:length(wrf_grid_name)){
   }
   
 }
+
 
 stopCluster(cl)
 stop <- Sys.time() - start
