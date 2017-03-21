@@ -195,24 +195,33 @@ f1 <- function(x){
   zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
   # convert to polygon
   zip_poly <-SpatialPolygons(zip_shape@polygons)
-  zip_area <- gArea(zip_poly)
 }
-a <- parLapply(cl,or_zip_name, f1)
+a <- lapply(or_zip_name, f1) # list
+b <- a[1] # list
+c <- a[[1]] # spatial polygon
 
-f2 <- function(y){
-  wrf_grid <- y[y@data$WRFGRID_ID == wrf_grid_name[262], ]
+vars1 <- c(1:1610)
+f2 <- function(n){
+  wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == n,] # sp df
   # now what about grid 719; should be much less
-  wrf_poly <- SpatialPolygons(wrf_grid@polygons)
-  d <- list(wrf_grid)
-  
-  zip_wrf_intersect <- gIntersection(d[[1]], a[202][[1]])
+  wrf_poly <- SpatialPolygons(wrf_grid@polygons) # sp
+}
+d <- lapply(vars1, f2) # list of 1610 wrf_grid
+e <- d[1]
+g <- d[[1]] # sp
+
+
+for(i in 201:300){
+  for(j in 201:300){
+  zip_wrf_intersect <- gIntersection(d[[j]], a[[i]])
   # if empty, then set to 0, else find the proportion
   grid_prop <- ifelse(is.null(zip_wrf_intersect),
-                      0, gArea(zip_wrf_intersect)/gArea(wrf_poly))
+                      0, gArea(zip_wrf_intersect)/gArea(d[[j]]))
   # populate the matrix based on i position and j position
-  zip_wrf_proportion <- grid_prop
+  zip_wrf_proportion[i, j] <- grid_prop
 }
-b <- parLapply(cl,list(smoke_grid), f2)
+}
+
 
 
 stopCluster(cl)
