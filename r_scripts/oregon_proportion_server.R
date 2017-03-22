@@ -12,8 +12,9 @@ library(dplyr)
 library(data.table)
 library(readxl)
 # parallel computing libraries
-library(foreach) 
+# library(foreach) 
 library(doParallel)
+library(parallel)
 library(readr)
 
 getwd()
@@ -26,7 +27,7 @@ grid_dir <- paste0('../../../data/data_new/or_shapefile/oregon_grid.shp')
 smoke_grid <- readOGR(dsn = grid_dir, layer = 'oregon_grid') 
 
 summary(smoke_grid) 
-summary(smoke_grid@data$WRFGRID_ID)
+# summary(smoke_grid@data$WRFGRID_ID)
 
 # Zipcode shapefile
 shp_dir <- paste0('../../../data/data_original/', 
@@ -42,12 +43,8 @@ read_path <- paste0('../../../data/data_original/oregon_zipcode.csv')
 or_zip <- read_csv(read_path)
 names(or_zip) <- c('zip','type','city','county','area')
 
-# check on zip code in colorado range
-# removing anyways
-
-# limit to just Colorado state zipcodes
+# limit to just Oregon state zipcodes
 or_zip_map <- us_zip_2013[us_zip_2013$ZCTA5CE10 %in% or_zip$zip,]
-
 
 # output zipcodes from washington zipcode map to bind values to
 # plot map to check
@@ -58,13 +55,12 @@ plot(or_zip_map)
 summary(or_zip_map)
 or_zip <- as.character(sort(or_zip_map@data$ZCTA5CE10))
 
-
 # save the Oregon zips to a shapefile to use later
 # create save path
+# !! will show error when overlay the writing file, so please write one time
 save_path <- paste0('../../../data/data_new/or_zip_2013_shape_files')
 
 writeOGR(or_zip_map, layer = 'or_zip_2013_shape_files', save_path, driver = "ESRI Shapefile")
-
 
 # Set coordinate reference system for smoke gird
 nad83 <- '+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0'
@@ -76,10 +72,12 @@ plot(or_zip_map, add=T)
 # looks like they overlay pretty well, same projections
 summary(smoke_grid)
 
+
+
 # Test code to figure out proportion calculations in each WRF-Grid -------------
 # Trying 'over' function in sp package
 # limit to a specific zip code
-test_zip <- c(97405)
+test_zip <- c(97405) # the 202th zip code after cleaning for following use
 test_zip_map <- or_zip_map[or_zip_map$ZCTA5CE10 %in% test_zip,]
 
 plot(test_zip_map)
@@ -87,13 +85,11 @@ plot(smoke_grid, add = T)
 invisible(text(getSpPPolygonsLabptSlots(smoke_grid), 
                labels=as.character(smoke_grid$WRFGRID_ID)))
 
-
 # smoke grid over test zip map
 test_grid <- over(smoke_grid, test_zip_map)
 summary(test_grid) # 14 grids over the zip code
 test_grid2 <- test_grid %>% filter(!is.na(ZCTA5CE10))
 test_grid2
-
 
 # test zip map over zip grid
 plot(smoke_grid)
@@ -158,11 +154,11 @@ plot(zip_262_int)
 prop_int_262 <- gArea(zip_262_int)/gArea(poly_262)
 prop_int_262 # 6.0% of grid is covered by zip
 # ------------------------------------------------------------------------------
-
+# End of Checking
 
 
 # Loop to estimate proportion of area covered by each grid for each zip --------
-# I'm expecting a matrix of 489 zipcodes * 1610 wrf_grids 
+# I'm expecting a matrix of 417 zipcodes * 1610 wrf_grids 
 or_zip_name <- or_zip
 length(or_zip_name)
 wrf_grid_name <- as.character(smoke_grid@data$WRFGRID_ID)
@@ -171,6 +167,28 @@ tail(wrf_grid_name, 50L)
 # empty matrix
 zip_wrf_proportion <- matrix(nrow = 417, ncol = 1610, byrow = T,
                              dimnames = list(or_zip_name, wrf_grid_name))
+
+f1 <- function(x){
+  zipcode <- as.character(x) 
+  # limit shapefile to particular zipcode
+  zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
+  # convert to polygon
+  zip_poly <-SpatialPolygons(zip_shape@polygons)
+}
+zip_polygon <- lapply(or_zip_name, f1) # list
+# b <- zip_polygon[1] # list
+# c <- zip_polygon[[1]] # spatial polygon
+
+vars1 <- c(1:1610)
+f2 <- function(n){
+  wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == n,] # sp df
+  # now what about grid 719; should be much less
+  wrf_poly <- SpatialPolygons(wrf_grid@polygons) # sp
+}
+wrf_polygon <- lapply(vars1, f2) # list of 1610 wrf_grid
+# e <- wrf_polygon[1]
+# g <- wrf_polygon[[1]] # sp
+
 
 # Setup for parallel computing before for loop ---------------------------------
 cores <- detectCores() # 48
@@ -189,52 +207,33 @@ clusterExport(cl, "or_zip_map", envir = .GlobalEnv)
 clusterExport(cl, "or_zip_name", envir = .GlobalEnv)
 clusterExport(cl, "smoke_grid", envir = .GlobalEnv)
 clusterExport(cl, "wrf_grid_name", envir = .GlobalEnv)
-
-f1 <- function(x){
-  zipcode <- as.character(x) 
-  # limit shapefile to particular zipcode
-  zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
-  # convert to polygon
-  zip_poly <-SpatialPolygons(zip_shape@polygons)
-}
-a <- lapply(or_zip_name, f1) # list
-b <- a[1] # list
-c <- a[[1]] # spatial polygon
-
-vars1 <- c(1:1610)
-f2 <- function(n){
-  wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == n,] # sp df
-  # now what about grid 719; should be much less
-  wrf_poly <- SpatialPolygons(wrf_grid@polygons) # sp
-}
-d <- lapply(vars1, f2) # list of 1610 wrf_grid
-e <- d[1]
-g <- d[[1]] # sp
+clusterExport(cl, "zip_polygon", envir = .GlobalEnv)
+clusterExport(cl, "wrf_polygon", envir = .GlobalEnv)
 
 start <- proc.time()
 f3 <- function(x,y){
-  zip_wrf_intersect <- gIntersection(d[y][[1]], a[x][[1]])
+  zip_wrf_intersect <- gIntersection(wrf_polygon[y][[1]], zip_polygon[x][[1]])
   grid_prop <- ifelse(is.null(zip_wrf_intersect),
-                      0, gArea(zip_wrf_intersect)/gArea(d[y][[1]]))
+                      0, gArea(zip_wrf_intersect)/gArea(wrf_polygon[y][[1]]))
 
 }
-proportion <- mapply(f3, rep(1:417, each=1610), rep(1:1610,417))
+proportion <- mcmapply(f3, rep(1:417, each=1610), rep(1:1610,417))
 stop <- proc.time() - start
 stop 
-#     user   system  elapsed
-# 1430.911   22.854 1455.315
+#    user  system elapsed
+# 713.886  14.929 809.123
+
+stopCluster(cl)
 
 zip_wrf_proportion_new <- matrix(proportion, nrow = 417, ncol = 1610, byrow = T,
                                     dimnames = list(or_zip_name, wrf_grid_name))
-
-stopCluster(cl)
 
 zip_proportion_new_df <- data.frame(zip_wrf_proportion_new)
 
 write_path <- paste0('../../../data/data_new/',
                      'zip_wrf_proportion_new.csv')
 write_csv(zip_proportion_new_df, paste0(write_path))
-
+# ------------------------------------------------------------------------------
 
 
 ## Nested for loop 
@@ -279,11 +278,16 @@ write_path <- paste0('../../../data/data_new/',
 write_csv(zip_proportion_df, paste0(write_path))
 
 
+### Check if these two matrix are same -----------------------------------------
 
+read_path_1 <- paste0('../../../data/data_new/',
+                     'zip_wrf_proportion.csv')
+zip_wrf_proportion_for <- read_csv(read_path_1)
+read_path_2 <- paste0('../../../data/data_new/',
+                     'zip_wrf_proportion_new.csv')
+zip_wrf_proportion_apply <- read_csv(read_path_2)
 
-
-
-
+identical(zip_wrf_proportion_for, zip_wrf_proportion_apply)
 
 
 
