@@ -157,6 +157,8 @@ zip_262_int <- gIntersection(poly_262, shape_zip)
 plot(zip_262_int)
 prop_int_262 <- gArea(zip_262_int)/gArea(poly_262)
 prop_int_262 # 6.0% of grid is covered by zip
+# ------------------------------------------------------------------------------
+
 
 
 # Loop to estimate proportion of area covered by each grid for each zip --------
@@ -187,7 +189,6 @@ clusterExport(cl, "or_zip_map", envir = .GlobalEnv)
 clusterExport(cl, "or_zip_name", envir = .GlobalEnv)
 clusterExport(cl, "smoke_grid", envir = .GlobalEnv)
 clusterExport(cl, "wrf_grid_name", envir = .GlobalEnv)
-clusterExport(cl, "zip_wrf_proportion", envir = .GlobalEnv)
 
 f1 <- function(x){
   zipcode <- as.character(x) 
@@ -210,41 +211,45 @@ d <- lapply(vars1, f2) # list of 1610 wrf_grid
 e <- d[1]
 g <- d[[1]] # sp
 
-
-for(i in 201:300){
-  for(j in 201:300){
-  zip_wrf_intersect <- gIntersection(d[[j]], a[[i]])
-  # if empty, then set to 0, else find the proportion
+start <- proc.time()
+f3 <- function(x,y){
+  zip_wrf_intersect <- gIntersection(d[y][[1]], a[x][[1]])
   grid_prop <- ifelse(is.null(zip_wrf_intersect),
-                      0, gArea(zip_wrf_intersect)/gArea(d[[j]]))
-  # populate the matrix based on i position and j position
-  zip_wrf_proportion[i, j] <- grid_prop
-}
-}
+                      0, gArea(zip_wrf_intersect)/gArea(d[y][[1]]))
 
+}
+proportion <- mapply(f3, rep(1:417, each=1610), rep(1:1610,417))
+stop <- proc.time() - start
+stop 
+#     user   system  elapsed
+# 1430.911   22.854 1455.315
 
+zip_wrf_proportion_new <- matrix(proportion, nrow = 417, ncol = 1610, byrow = T,
+                                    dimnames = list(or_zip_name, wrf_grid_name))
 
 stopCluster(cl)
 
+zip_proportion_new_df <- data.frame(zip_wrf_proportion_new)
+
+write_path <- paste0('../../../data/data_new/',
+                     'zip_wrf_proportion_new.csv')
+write_csv(zip_proportion_new_df, paste0(write_path))
 
 
 
-
-
-# matrix should be faster and less memory than a df
+## Nested for loop 
+# matrix should be faster and less memory than a df-----------------------------
 # start time
-
 start <- Sys.time()
 
 # first I want to subset out each zipcode shapefile
-foreach(i=201:210) %dopar% {
+for (i in 201:210) %dopar% {
   # output value of zipcode
   zipcode <- as.character(or_zip_name[i]) 
   # limit shapefile to particular zipcode
   zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
   # convert to polygon
   zip_poly <-SpatialPolygons(zip_shape@polygons)
-}
 for(j in 261:270){
     # output each grid and create a polygon
     wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == j, ]
@@ -258,37 +263,14 @@ for(j in 261:270){
     # populate the matrix based on i position and j position
     zip_wrf_proportion[[i,j]] <- grid_prop
   }
-  
 }
-
-
-stopCluster(cl)
-stop <- Sys.time() - start
-stop # 33.97498 mins
-
-
-zipcode1 <- as.character(or_zip_name[1]) 
-
-zip_shape1 <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode1, ]
-zip_poly1 <-SpatialPolygons(zip_shape1@polygons)
-plot(zip_poly1)
 
 # stop time
 stop <- Sys.time() - start
 stop # 33.97498 mins
-
-  
-
 
 # stop cluster
 stopCluster(cl)
-
-
-
-
-# stop time
-stop <- Sys.time() - start
-stop # 33.97498 mins
 
 zip_proportion_df <- data.frame(zip_wrf_proportion)
 
