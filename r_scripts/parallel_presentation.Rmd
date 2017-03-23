@@ -1,0 +1,99 @@
+---
+title: "Parallel for Oregon Zip and WRF_Grid Intersection Proportion"
+author: "Jingyang Liu"
+date: "March 23, 2017"
+output: slidy_presentation
+---
+
+```{r library setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(rgdal) # package for shape files
+library(sp)
+library(rgeos) # rgeos package contains the intersect and area commands I need
+library(dplyr)
+library(data.table)
+library(readxl)
+# parallel computing libraries
+# library(foreach) 
+library(doParallel)
+library(parallel)
+library(readr)
+```
+
+```{r shapefile prepare, include=FALSE}
+## Imoport WRF Grid file of Oregon
+setwd("C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire")
+grid_dir <- paste0('./shapefile/oregon_grid.shp')
+smoke_grid <- readOGR(dsn = grid_dir, layer = 'oregon_grid') # wrf_grid
+
+## Import U.S. shapefile
+shp_dir <- paste0('./shapefile/tl_2013_us_zcta510/tl_2013_us_zcta510.shp')
+us_zip_2013 <- readOGR(dsn = shp_dir, layer = 'tl_2013_us_zcta510')
+
+## Filter the U.S. shapefile only to Oregon State Zip Code
+read_path2 <- paste0('C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire/', 
+                     'oregon_zipcode.csv')
+or_zip <- read_csv(read_path2)
+names(or_zip) <- c('zip','type','city','county','area')
+or_zip_map <- us_zip_2013[us_zip_2013$ZCTA5CE10 %in% or_zip$zip,]
+or_zip <- as.character(sort(or_zip_map@data$ZCTA5CE10))
+
+nad83 <- '+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0'
+proj4string(smoke_grid) <- nad83
+```
+
+
+## Shapefile preparation: 2013 Oregon Zip code Shapefile and WRF Grid
+The shapefile of Oregon can be subset from the whole U.S. shapefile by filtering the zip code in Oregon State.
+The whole U.S shapefile can be found from United States Census website:
+<br/>https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2013&layergroup=ZIP+Code+Tabulation+Areas
+<br/>The Oregon zip code can also be found from: 
+<br/>https://www.unitedstateszipcodes.org/or/
+
+The plot below shows a Oregon State shapefile and an overlay of projected WRF Grid and Oregon shapefile.
+```{r overlay}
+plot(or_zip_map)
+plot(smoke_grid)
+plot(or_zip_map, add=T)
+```
+
+The Oregon shapefile contains some lack or extra, which may because the zip code changes (but U.S. shapefile is for 2013).
+
+## Steps
+
+
+
+
+## Why using for loop?
+
+<ul class="incremental"> 
+  <li>One choice: <br/>  simple calculation; copy and paste</li> 
+  <li>Another choice: <br/>  for loop</li> 
+</ul> 
+
+
+
+
+
+## Apply Family
+
+- The apply() Function
+- The lapply() Function
+- The sapply() Function
+- The tapply() Function
+- The mapply() Function
+
+
+
+
+## Parallel on server
+
+```{r cars, echo = TRUE}
+summary(cars)
+```
+
+
+
+
+
+
