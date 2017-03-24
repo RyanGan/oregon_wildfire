@@ -60,8 +60,89 @@ plot(or_zip_map, add=T)
 The Oregon shapefile contains some lack or extra, which may because the zip code changes (but U.S. shapefile is for 2013).
 
 ## Steps
+Choose zip code = 94705. WRF Grid = 261 and 262.
+```{r test}
+test_zip <- c(97405)
+test_zip_map <- or_zip_map[or_zip_map$ZCTA5CE10 %in% test_zip,]
+
+plot(test_zip_map)
+plot(smoke_grid, add = T)
+invisible(text(getSpPPolygonsLabptSlots(smoke_grid), 
+               labels=as.character(smoke_grid$WRFGRID_ID)))
+
+```
 
 
+
+```{r}
+test_grid <- over(smoke_grid, test_zip_map)
+summary(test_grid) # 14 grids over the zip code
+test_grid2 <- test_grid %>% filter(!is.na(ZCTA5CE10))
+test_grid2
+
+
+# test zip map over zip grid
+plot(smoke_grid)
+plot(test_zip_map, add = T)
+zip_over_grid <- over(test_zip_map, smoke_grid)
+summary(zip_over_grid) # this way retains the values
+
+
+shape_zip <- SpatialPolygons(test_zip_map@polygons)
+shape_grid <- SpatialPolygons(smoke_grid@polygons)
+plot(shape_zip)
+plot(shape_grid, add = T)
+# try and plot the values for this zipcode for 9/21
+invisible(text(getSpPPolygonsLabptSlots(smoke_grid), 
+               labels=as.character(smoke_grid$WRFGRID_ID)))
+
+# output the WRF Grid 261 and 262 for test
+wrf_grid_261 <- smoke_grid[smoke_grid@data$WRFGRID_ID == 261, ]
+plot(wrf_grid_261)
+
+wrf_grid_262 <- smoke_grid[smoke_grid@data$WRFGRID_ID == 262, ]
+plot(wrf_grid_262)
+
+# calculate the area of grid 297
+gArea(SpatialPolygons(wrf_grid_261@polygons))
+gArea(SpatialPolygons(wrf_grid_262@polygons))
+
+
+# Subset to one zip code and two different WRF grids ---------------------------
+# plot zip and 2 grids
+plot(test_zip_map)
+#invisible(text(getSpPPolygonsLabptSlots(test_zip_map), 
+#               labels=as.character(test_zip_map$ZCTA5CE10)))
+plot(wrf_grid_261, add = T)
+invisible(text(getSpPPolygonsLabptSlots(wrf_grid_261), 
+               labels=as.character(wrf_grid_261$WRFGRID_ID)))
+plot(wrf_grid_262, add=T)
+invisible(text(getSpPPolygonsLabptSlots(wrf_grid_262), 
+               labels=as.character(wrf_grid_262$WRFGRID_ID)))
+
+# Start with the intersection with wrf grid 297 and zipcode
+# first I need to convert the spatial polygon to just polygon
+poly_261 <- SpatialPolygons(wrf_grid_261@polygons)
+shape_zip <- SpatialPolygons(test_zip_map@polygons)
+
+zip_261_int <- gIntersection(poly_261, shape_zip)
+
+plot(zip_261_int)
+prop_261_int <- gArea(zip_261_int)/gArea(poly_261)
+prop_261_int # 41.8% of grid is covered by zip
+
+# now what about grid 296
+poly_262 <- SpatialPolygons(wrf_grid_262@polygons)
+shape_zip <- SpatialPolygons(test_zip_map@polygons)
+
+zip_262_int <- gIntersection(poly_262, shape_zip)
+
+plot(zip_262_int)
+prop_int_262 <- gArea(zip_296_int)/gArea(poly_262)
+prop_int_262 # 6.0% of grid is covered by zip
+
+
+```
 
 
 ## Why using for loop?
