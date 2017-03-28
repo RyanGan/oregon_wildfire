@@ -5,8 +5,7 @@ date: "March 23, 2017"
 output: slidy_presentation
 ---
 
-```{r library setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+```{r librarysetup, include=FALSE}
 library(rgdal) # package for shape files
 library(sp)
 library(rgeos) # rgeos package contains the intersect and area commands I need
@@ -44,27 +43,37 @@ proj4string(smoke_grid) <- nad83
 
 
 ## Shapefile preparation: 2013 Oregon Zip code Shapefile and WRF Grid
-The shapefile of Oregon can be subset from the whole U.S. shapefile by filtering the zip code in Oregon State.
-<br/>The whole U.S shapefile can be found from United States Census website:
+
+Some libraries for spatial data analysis and parallel computing:
+```{r, eval = FALSE}
+library(rgdal)     # package for shape files
+library(sp)        # spatial polygon
+library(rgeos)     # rgeos package contains the intersect and area commands
+library(parallel)  # parallel computing libraries
+```
+
+
+The **shapefile of Oregon** can be subset from the whole U.S. shapefile by filtering the zip code in Oregon State.
+
+<br/>The **whole U.S shapefile** can be found from United States Census website:
 <br/>https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2013&layergroup=ZIP+Code+Tabulation+Areas
-<br/>The Oregon zip code can also be found from: 
+
+<br/>The **Oregon zip code** can also be found from: 
 <br/>https://www.unitedstateszipcodes.org/or/
 
-The plot below shows a Oregon State shapefile and an overlay of projected WRF Grid and Oregon shapefile.
-```{r overlay}
+The plot below shows an Oregon State shapefile and an overlay of projected WRF Grid and Oregon shapefile.
+```{r overlay, echo=FALSE}
 plot(or_zip_map)
 plot(smoke_grid)
 plot(or_zip_map, add=T)
 ```
 
-The Oregon shapefile contains some lack or extra, which may because the zip code changes (but U.S. shapefile is for 2013).
 
 
-## Steps of calculating the proportion of a specific zip code polygon and WRF Grid.
-1. Choose zip code = 94705. WRF Grid = 261 and 262. (6 WRF Grid in total. Only 
-two are chosen for test)
-```{r test, warning= FALSE}
-
+## Steps of calculating the proportion of intersection of a specific zip code polygon and WRF Grid.
+1. Choose a zip code (94705 here) for testing. WRF Grid = 261 and 262. (6 WRF 
+Grids in total. Only two are chosen for convenience)
+```{r test, warning= FALSE, echo=FALSE}
 test_zip <- c(97405)
 test_zip_map <- or_zip_map[or_zip_map$ZCTA5CE10 %in% test_zip,]
 
@@ -76,16 +85,8 @@ invisible(text(getSpPPolygonsLabptSlots(smoke_grid),
 ```
 
 
-```{r include = FALSE}
-test_grid <- over(smoke_grid, test_zip_map)
-summary(test_grid) # 6 grids over the zip code
-test_grid2 <- test_grid %>% filter(!is.na(ZCTA5CE10))
-test_grid2
-```
-
-
-2. Show the actual location in the map.
-```{r}
+2. The actual location in the map.
+```{r, echo=FALSE}
 # test zip map over zip grid
 plot(smoke_grid)
 plot(test_zip_map, add = T)
@@ -132,7 +133,7 @@ gArea(SpatialPolygons(wrf_grid_262@polygons))
 
 ## Steps (Continued)
 3. Show the intersection of chosen WRF Grid and zip code.
-```{r show, warning=FALSE}
+```{r show, warning=FALSE, echo=FALSE}
 # Subset to one zip code and two different WRF grids ---------------------------
 # plot zip and 2 grids
 plot(test_zip_map)
@@ -148,7 +149,7 @@ invisible(text(getSpPPolygonsLabptSlots(wrf_grid_262),
 
 
 4. The proportion of two WRF Grid.
-```{r calculation, warning=FALSE}
+```{r calculation, warning=FALSE, echo=FALSE}
 # Start with the intersection with wrf grid 261 and zipcode
 # first I need to convert the spatial polygon to just polygon
 poly_261 <- SpatialPolygons(wrf_grid_261@polygons)
@@ -182,46 +183,48 @@ prop_int_262 # 6.0% of grid is covered by zip
 ## Why using for loop?
 
 <ul class="incremental"> 
-  <li> One choice: <br/>  simple calculation; copy and paste</li> 
+  <li> One choice: <br/>  simple calculation; copy and paste codes.</li> 
   <li> Another choice: for loop
-  <br/> When analyzing big data set (like millions of observations), it is 
-  unrealistic to copy so many rows of similar or same code.</li><br/>
+  <br/> When analyzing big data set (for this data set, there are 417 zip codes 
+  and 1610 WRF Grids in total), it is unrealistic to copy so many rows 
+  (417*1610 = 671,370 times) of similar or same code.</li><br/>
   <li> And... <br/> Why using apply function? </li>
-  <li> Code Readability <br/>  Understand the purporse more directly.</li> 
-  <li> Working Efficiency <br/>  When analyzing big data set (like millions of 
-  observations), it is unrealistic to copy so many rows of similar or same code.</li> 
+  <li> **Working Efficiency** <br/> **Vectorization.** Faster than for loop. It 
+  works on margins of an array or matrix, not like for loop.</li> 
+  <li> **Code Readability** <br/>  Understand the purporse more directly.</li> 
 </ul> 
 
 
 
 
 ## Apply Family
+>- Returns a vector or array or list of values obtained by applying a function to 
+margins of an array or matrix.
 
-- The apply() Function
+>- The apply() Function
 <br/> Apply functions over array margins.<br/>
 
-- The lapply() Function
+>- The lapply() Function
 <br/> Apply a function over a list or vector.<br/> 
 Apply a given function to every element of a list and obtain a list as result.<br/>
 
-- The sapply() Function
+>- The sapply() Function
 <br/> Apply a function over a list or vector.<br/>
 Works like lapply(), but it tries to simplify the output to the most elementary data structure that is possible. 
 
-- The tapply() Function
+>- The tapply() Function
 <br/> Apply a function over a ragged array.
 
-- The mapply() Function
+>- The mapply() Function
 <br/> Apply a function to multiple list or vector arguments.
 
 
 
 
 ## Parallel on server
-One core vs Multiple cores
+For loop vs Apply
 
-```{r}
-
+```{r, eval=FALSE}
 for(i in 1:length(or_zip_name)){
   # output value of zipcode
   zipcode <- as.character(or_zip_name[i]) 
@@ -280,6 +283,8 @@ proportion <- mcmapply(f3, rep(1:417, each=1610), rep(1:1610,417))
 
 ```
 
+
+One core vs Multiple cores
 
 
 
