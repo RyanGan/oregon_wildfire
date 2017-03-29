@@ -244,8 +244,7 @@ clusterExport(cl, "or_zip_map", envir = .GlobalEnv)
 clusterExport(cl, "or_zip_name", envir = .GlobalEnv)
 clusterExport(cl, "smoke_grid", envir = .GlobalEnv)
 clusterExport(cl, "wrf_grid_name", envir = .GlobalEnv)
-clusterExport(cl, "zip_polygon", envir = .GlobalEnv)
-clusterExport(cl, "wrf_polygon", envir = .GlobalEnv)
+clusterExport(cl, "zip_wrf_proportion", envir = .GlobalEnv)
 
 ```
 1. Forloop (one core, or not parallel computing)
