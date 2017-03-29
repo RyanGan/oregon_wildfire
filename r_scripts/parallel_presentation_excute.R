@@ -8,7 +8,7 @@
 # call libraries
 library(rmarkdown)
 
-# call markdown doc.
-rmarkdown::render('./parallel_presentation.Rmd')
-
+# call markdown doc
+# specify an option for incremental rendering
+render("parallel_presentation.Rmd", slidy_presentation(incremental = TRUE))
 
