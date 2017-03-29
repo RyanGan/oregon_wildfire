@@ -219,8 +219,7 @@ Works like lapply(), but it tries to simplify the output to the most elementary 
 
 
 ## Parallel on server
-For loop vs Apply
-
+**For loop vs Apply**
 
 ```{r prepare, include = FALSE}
 or_zip_name <- or_zip
@@ -247,18 +246,18 @@ clusterExport(cl, "wrf_grid_name", envir = .GlobalEnv)
 clusterExport(cl, "zip_wrf_proportion", envir = .GlobalEnv)
 
 ```
-1. Forloop (one core, or not parallel computing)
+**1. Forloop** (one core, or not parallel computing)
 
 ```{r forloop, echo = FALSE}
 start <- proc.time()
-for (i in 201:310) {
+for (i in 1:417) {
   # output value of zipcode
   zipcode <- as.character(or_zip_name[i]) 
   # limit shapefile to particular zipcode
   zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
   # convert to polygon
   zip_poly <-SpatialPolygons(zip_shape@polygons)
-for(j in 201:300){
+for(j in 1:1610){
     # output each grid and create a polygon
     wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == j, ]
     # now what about grid 719; should be much less
@@ -276,7 +275,7 @@ stop <- proc.time() - start
 stop 
 ```
 
-2. Mapply function (one core)
+**2. Mapply function** (one core)
 
 ```{r mapply, echo = FALSE}
 start <- proc.time()
@@ -304,13 +303,15 @@ f3 <- function(x,y){
                       0, gArea(zip_wrf_intersect)/gArea(wrf_polygon[y][[1]]))
 
 }
-proportion <- mapply(f3, rep(201:300, each=100), rep(201:300,100))
+proportion1 <- mapply(f3, rep(1:417, each=1610), rep(1:1610,417))
 stop <- proc.time() - start
 stop 
 
 ```
 
-3. Mcmapply function in parallel computing (multiple cores)
+**One core vs Multiple cores**
+
+**3. Mcmapply function** in parallel computing (multiple cores)
 
 ```{r mcmapply, echo=FALSE}
 start <- proc.time()
@@ -338,11 +339,41 @@ f3 <- function(x,y){
                       0, gArea(zip_wrf_intersect)/gArea(wrf_polygon[y][[1]]))
 
 }
-proportion <- mcmapply(f3, rep(201:300, each=100), rep(201:300,100))
+proportion <- mcmapply(f3, rep(1:417, each=1610), rep(1:1610,417))
 stop <- proc.time() - start
 stop 
 
 stopCluster(cl)
+
+```
+
+Another important thing:
+Check if they are identical!
+```{r, echo=FALSE}
+## write matrix of for loop formed
+zip_proportion_df <- data.frame(zip_wrf_proportion)
+
+write_path <- paste0('../../../data/data_new/',
+                     'zip_wrf_proportion2.csv')
+write_csv(zip_proportion_df, paste0(write_path))
+
+## write matrix of apply function formed
+zip_wrf_proportion_new <- matrix(proportion, nrow = 417, ncol = 1610, byrow = T,
+                                    dimnames = list(or_zip_name, wrf_grid_name))
+
+zip_proportion_new_df <- data.frame(zip_wrf_proportion_new)
+write_path <- paste0('../../../data/data_new/',
+                     'zip_wrf_proportion_new2.csv')
+write_csv(zip_proportion_new_df, paste0(write_path))
+
+read_path_1 <- paste0('../../../data/data_new/',
+                     'zip_wrf_proportion2.csv')
+zip_wrf_proportion_for <- read_csv(read_path_1)
+read_path_2 <- paste0('../../../data/data_new/',
+                     'zip_wrf_proportion_new2.csv')
+zip_wrf_proportion_apply <- read_csv(read_path_2)
+
+identical(zip_wrf_proportion_for, zip_wrf_proportion_apply)
 
 ```
 
