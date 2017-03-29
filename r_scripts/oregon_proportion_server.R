@@ -242,7 +242,7 @@ write_csv(zip_proportion_new_df, paste0(write_path))
 start <- Sys.time()
 
 # first I want to subset out each zipcode shapefile
-for (i in 201:210) %dopar% {
+for (i in 201:210) {
   # output value of zipcode
   zipcode <- as.character(or_zip_name[i]) 
   # limit shapefile to particular zipcode
