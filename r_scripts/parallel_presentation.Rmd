@@ -250,14 +250,14 @@ clusterExport(cl, "zip_wrf_proportion", envir = .GlobalEnv)
 
 ```{r forloop, echo = FALSE}
 start <- proc.time()
-for (i in 1:417) {
+for (i in 201:300) {
   # output value of zipcode
   zipcode <- as.character(or_zip_name[i]) 
   # limit shapefile to particular zipcode
   zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
   # convert to polygon
   zip_poly <-SpatialPolygons(zip_shape@polygons)
-for(j in 1:1610){
+for(j in 201:300){
     # output each grid and create a polygon
     wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == j, ]
     # now what about grid 719; should be much less
@@ -303,7 +303,7 @@ f3 <- function(x,y){
                       0, gArea(zip_wrf_intersect)/gArea(wrf_polygon[y][[1]]))
 
 }
-proportion1 <- mapply(f3, rep(1:417, each=1610), rep(1:1610,417))
+proportion1 <- mapply(f3, rep(201:300, each=100), rep(201:300,100))
 stop <- proc.time() - start
 stop 
 
@@ -339,7 +339,7 @@ f3 <- function(x,y){
                       0, gArea(zip_wrf_intersect)/gArea(wrf_polygon[y][[1]]))
 
 }
-proportion <- mcmapply(f3, rep(1:417, each=1610), rep(1:1610,417))
+proportion <- mcmapply(f3, rep(201:300, each=100), rep(201:300,100))
 stop <- proc.time() - start
 stop 
 
@@ -349,7 +349,7 @@ stopCluster(cl)
 
 Another important thing:
 Check if they are identical!
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning = FALSE, include = FALSE}
 ## write matrix of for loop formed
 zip_proportion_df <- data.frame(zip_wrf_proportion)
 
@@ -376,7 +376,6 @@ zip_wrf_proportion_apply <- read_csv(read_path_2)
 identical(zip_wrf_proportion_for, zip_wrf_proportion_apply)
 
 ```
-
 
 
 
