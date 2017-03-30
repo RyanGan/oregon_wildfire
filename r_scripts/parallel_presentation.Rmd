@@ -41,30 +41,39 @@ proj4string(smoke_grid) <- nad83
 ```
 
 
-## Shapefile preparation: 2013 Oregon Zip code Shapefile and WRF Grid
+## Background
 
-Some libraries for spatial data analysis and parallel computing:
-```{r, eval = FALSE}
-library(rgdal)     # package for shape files
-library(sp)        # spatial polygon
-library(rgeos)     # rgeos package contains the intersect and area commands
-library(parallel)  # parallel computing libraries
-```
-
-
-The **shapefile of Oregon** can be subset from the whole U.S. shapefile by filtering the zip code in Oregon State.
-
-<br/>The **whole U.S shapefile** can be found from United States Census website:
-<br/>https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2013&layergroup=ZIP+Code+Tabulation+Areas
-
-<br/>The **Oregon zip code** can also be found from: 
-<br/>https://www.unitedstateszipcodes.org/or/
-
-The plot below shows an Oregon State shapefile and an overlay of projected WRF Grid and Oregon shapefile.
+**Goal:** Estimate population-weighted PM2.5 for each ZIP code.
+<br/>
+**Problem:** The population data is for WRF Grid, not ZIP code.
+<br/>
+**Preparation:** 2013 Oregon Zip code Shapefile and WRF Grid
+<br/>
+**First Step:** Calculate the proportion of intersection of ZIP code and grid box
+*The plot below shows an Oregon State shapefile and an overlay of projected WRF Grid and Oregon shapefile.*
 ```{r overlay, echo=FALSE}
 plot(or_zip_map)
 plot(smoke_grid)
 plot(or_zip_map, add=T)
+```
+
+**Example:** *Intersection for small area (Portland 97229); and big area (97910).*
+
+```{r, echo = FALSE, warning=FALSE}
+test_zip <- c(97229)
+test_zip_map <- or_zip_map[or_zip_map$ZCTA5CE10 %in% test_zip,]
+
+plot(test_zip_map)
+plot(smoke_grid, add = T)
+invisible(text(getSpPPolygonsLabptSlots(smoke_grid), 
+               labels=as.character(smoke_grid$WRFGRID_ID)))
+
+test_zip <- c(97910)
+test_zip_map <- or_zip_map[or_zip_map$ZCTA5CE10 %in% test_zip,]
+
+plot(test_zip_map)
+plot(smoke_grid, add = T)
+
 ```
 
 
