@@ -45,9 +45,9 @@ proj4string(smoke_grid) <- nad83
 
 **Goal:** Estimate population-weighted PM2.5 for each ZIP code.
 <br/>
-**Problem:** The population data is for WRF Grid, not ZIP code.
-<br/>
 **Preparation:** 2013 Oregon Zip code Shapefile and WRF Grid
+<br/>
+**Problem:** The population data is for WRF Grid, not ZIP code.
 <br/>
 **First Step:** Calculate the proportion of intersection of ZIP code and grid box
 *The plot below shows an Oregon State shapefile and an overlay of projected WRF Grid and Oregon shapefile.*
@@ -228,9 +228,16 @@ Works like lapply(), but it tries to simplify the output to the most elementary 
 
 
 ## Parallel on server
+![serial to solve problems](./serialProblem.jpg)
+
+![Parallel to solve problems](./parallelProblem.jpg)
+
+
+
+## Comparisons
 **For loop vs Apply**
 
-```{r prepare, include = FALSE}
+```{r prepare}
 or_zip_name <- or_zip
 length(or_zip_name)
 wrf_grid_name <- as.character(smoke_grid@data$WRFGRID_ID)
@@ -242,7 +249,9 @@ zip_wrf_proportion <- matrix(nrow = 417, ncol = 1610, byrow = T,
 vars1 <- c(1:1610)
 z <- rep(201:300, each=100)
 w <- rep(201:300,100)
+```
 
+```{r parallel set}
 # Setup for parallel computing before for loop ---------------------------------
 cores <- detectCores() # 48
 cl <- makeCluster(cores) # use half the cores on the vet cluster
@@ -262,9 +271,10 @@ clusterExport(cl, "w", envir = .GlobalEnv)
 clusterExport(cl, "vars1", envir = .GlobalEnv)
 
 ```
+
 **1. Forloop** (one core, or not parallel computing)
 
-```{r forloop, echo = FALSE}
+```{r forloop}
 start <- proc.time()
 for (i in 201:300) {
   # output value of zipcode
@@ -292,7 +302,7 @@ stop
 
 **2. Mapply function** (one core)
 
-```{r mapply, echo = FALSE}
+```{r mapply}
 start <- proc.time()
 f1 <- function(x){
   zipcode <- as.character(x) 
@@ -360,9 +370,9 @@ stopCluster(cl)
 
 ```
 
-Another important thing:
+## Another important thing:
 Check if they are identical!
-```{r, echo=FALSE, warning = FALSE, include = FALSE}
+```{r, echo=FALSE, warning = FALSE, include = FALSE, message = FALSE}
 ## write matrix of for loop formed
 zip_proportion_df <- data.frame(zip_wrf_proportion)
 
