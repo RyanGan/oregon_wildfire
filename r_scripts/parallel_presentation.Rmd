@@ -251,7 +251,7 @@ z <- rep(201:300, each=100)
 w <- rep(201:300,100)
 ```
 
-```{r parallel set}
+```{r parallel set, echo = FALSE}
 # Setup for parallel computing before for loop ---------------------------------
 cores <- detectCores() # 48
 cl <- makeCluster(cores) # use half the cores on the vet cluster
@@ -372,7 +372,7 @@ stopCluster(cl)
 
 ## Another important thing:
 Check if they are identical!
-```{r, echo=FALSE, warning = FALSE, include = FALSE, message = FALSE}
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
 ## write matrix of for loop formed
 zip_proportion_df <- data.frame(zip_wrf_proportion)
 
