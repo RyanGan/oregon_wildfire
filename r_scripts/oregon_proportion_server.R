@@ -22,11 +22,11 @@ getwd()
 
 # Import Shapefiles  -----------------------------------------------------------
 # WRF Grid
-grid_dir <- paste0('../../../data/data_new/or_shapefile/oregon_grid.shp')
+grid_dir <- paste0('../../../data/data_original/oregon_new_grid.shp')
 
-smoke_grid <- readOGR(dsn = grid_dir, layer = 'oregon_grid') 
+smoke_grid <- readOGR(dsn = grid_dir, layer = 'oregon_new_grid') 
 
-summary(smoke_grid) 
+# summary(smoke_grid) 
 # summary(smoke_grid@data$WRFGRID_ID)
 
 # Zipcode shapefile
@@ -58,9 +58,9 @@ or_zip <- as.character(sort(or_zip_map@data$ZCTA5CE10))
 # save the Oregon zips to a shapefile to use later
 # create save path
 # !! will show error when overlay the writing file, so please write one time
-save_path <- paste0('../../../data/data_new/or_zip_2013_shape_files')
+save_path <- paste0('../../../data/data_new/or_zip_2013_shape_files_new')
 
-writeOGR(or_zip_map, layer = 'or_zip_2013_shape_files', save_path, driver = "ESRI Shapefile")
+writeOGR(or_zip_map, layer = 'or_zip_2013_shape_files_new', save_path, driver = "ESRI Shapefile")
 
 # Set coordinate reference system for smoke gird
 nad83 <- '+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0'
@@ -71,7 +71,6 @@ plot(smoke_grid)
 plot(or_zip_map, add=T)
 # looks like they overlay pretty well, same projections
 summary(smoke_grid)
-
 
 
 # Test code to figure out proportion calculations in each WRF-Grid -------------
@@ -109,16 +108,16 @@ plot(shape_grid, add = T)
 invisible(text(getSpPPolygonsLabptSlots(smoke_grid), 
                labels=as.character(smoke_grid$WRFGRID_ID)))
 
-# output the WRF Grid 261 and 262 for test
-wrf_grid_261 <- smoke_grid[smoke_grid@data$WRFGRID_ID == 261, ]
-plot(wrf_grid_261)
+# output the WRF Grid 297 and 298 for test
+wrf_grid_297 <- smoke_grid[smoke_grid@data$WRFGRID_ID == 297, ]
+plot(wrf_grid_297)
 
-wrf_grid_262 <- smoke_grid[smoke_grid@data$WRFGRID_ID == 262, ]
-plot(wrf_grid_262)
+wrf_grid_298 <- smoke_grid[smoke_grid@data$WRFGRID_ID == 298, ]
+plot(wrf_grid_298)
 
 # calculate the area of grid 297
-gArea(SpatialPolygons(wrf_grid_261@polygons))
-gArea(SpatialPolygons(wrf_grid_262@polygons))
+gArea(SpatialPolygons(wrf_grid_297@polygons))
+gArea(SpatialPolygons(wrf_grid_298@polygons))
 
 
 # Subset to one zip code and two different WRF grids ---------------------------
@@ -126,33 +125,33 @@ gArea(SpatialPolygons(wrf_grid_262@polygons))
 plot(test_zip_map)
 #invisible(text(getSpPPolygonsLabptSlots(test_zip_map), 
 #               labels=as.character(test_zip_map$ZCTA5CE10)))
-plot(wrf_grid_261, add = T)
-invisible(text(getSpPPolygonsLabptSlots(wrf_grid_261), 
-               labels=as.character(wrf_grid_261$WRFGRID_ID)))
-plot(wrf_grid_262, add=T)
-invisible(text(getSpPPolygonsLabptSlots(wrf_grid_262), 
-               labels=as.character(wrf_grid_262$WRFGRID_ID)))
+plot(wrf_grid_297, add = T)
+invisible(text(getSpPPolygonsLabptSlots(wrf_grid_297), 
+               labels=as.character(wrf_grid_297$WRFGRID_ID)))
+plot(wrf_grid_298, add=T)
+invisible(text(getSpPPolygonsLabptSlots(wrf_grid_298), 
+               labels=as.character(wrf_grid_298$WRFGRID_ID)))
 
 # Start with the intersection with wrf grid 297 and zipcode
 # first I need to convert the spatial polygon to just polygon
-poly_261 <- SpatialPolygons(wrf_grid_261@polygons)
+poly_297 <- SpatialPolygons(wrf_grid_297@polygons)
 shape_zip <- SpatialPolygons(test_zip_map@polygons)
 
-zip_261_int <- gIntersection(poly_261, shape_zip)
+zip_297_int <- gIntersection(poly_297, shape_zip)
 
-plot(zip_261_int)
-prop_261_int <- gArea(zip_261_int)/gArea(poly_261)
-prop_261_int # 41.8% of grid is covered by zip
+plot(zip_297_int)
+prop_297_int <- gArea(zip_297_int)/gArea(poly_297)
+prop_297_int # 41.8% of grid is covered by zip
 
 # now what about grid 296
-poly_262 <- SpatialPolygons(wrf_grid_262@polygons)
+poly_298 <- SpatialPolygons(wrf_grid_298@polygons)
 shape_zip <- SpatialPolygons(test_zip_map@polygons)
 
-zip_262_int <- gIntersection(poly_262, shape_zip)
+zip_298_int <- gIntersection(poly_298, shape_zip)
 
-plot(zip_262_int)
-prop_int_262 <- gArea(zip_262_int)/gArea(poly_262)
-prop_int_262 # 6.0% of grid is covered by zip
+plot(zip_298_int)
+prop_int_298 <- gArea(zip_298_int)/gArea(poly_298)
+prop_int_298 # 6.0% of grid is covered by zip
 # ------------------------------------------------------------------------------
 # End of Checking
 
@@ -165,7 +164,7 @@ wrf_grid_name <- as.character(smoke_grid@data$WRFGRID_ID)
 length(wrf_grid_name)
 tail(wrf_grid_name, 50L)
 # empty matrix
-zip_wrf_proportion <- matrix(nrow = 417, ncol = 1610, byrow = T,
+zip_wrf_proportion <- matrix(nrow = 417, ncol = 1575, byrow = T,
                              dimnames = list(or_zip_name, wrf_grid_name))
 
 f1 <- function(x){
@@ -179,7 +178,7 @@ zip_polygon <- lapply(or_zip_name, f1) # list
 # b <- zip_polygon[1] # list
 # c <- zip_polygon[[1]] # spatial polygon
 
-vars1 <- c(1:1610)
+vars1 <- c(1:1575)
 f2 <- function(n){
   wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == n,] # sp df
   # now what about grid 719; should be much less
@@ -188,6 +187,9 @@ f2 <- function(n){
 wrf_polygon <- lapply(vars1, f2) # list of 1610 wrf_grid
 # e <- wrf_polygon[1]
 # g <- wrf_polygon[[1]] # sp
+
+z <- rep(1:417, each=1575)
+w <- rep(1:1575,417)
 
 
 # Setup for parallel computing before for loop ---------------------------------
@@ -203,12 +205,14 @@ clusterCall(cl, function() library(rgeos))
 #clusterCall(cl, function() library(doParallel))
 #clusterCall(cl, function() library(foreach))
 
-clusterExport(cl, "or_zip_map", envir = .GlobalEnv)
-clusterExport(cl, "or_zip_name", envir = .GlobalEnv)
-clusterExport(cl, "smoke_grid", envir = .GlobalEnv)
-clusterExport(cl, "wrf_grid_name", envir = .GlobalEnv)
+# clusterExport(cl, "or_zip_map", envir = .GlobalEnv)
+# clusterExport(cl, "or_zip_name", envir = .GlobalEnv)
+# clusterExport(cl, "smoke_grid", envir = .GlobalEnv)
+# clusterExport(cl, "wrf_grid_name", envir = .GlobalEnv)
 clusterExport(cl, "zip_polygon", envir = .GlobalEnv)
 clusterExport(cl, "wrf_polygon", envir = .GlobalEnv)
+clusterExport(cl, "z", envir = .GlobalEnv)
+clusterExport(cl, "w", envir = .GlobalEnv)
 
 start <- proc.time()
 f3 <- function(x,y){
@@ -217,15 +221,15 @@ f3 <- function(x,y){
                       0, gArea(zip_wrf_intersect)/gArea(wrf_polygon[y][[1]]))
 
 }
-proportion <- mcmapply(f3, rep(1:417, each=1610), rep(1:1610,417))
+proportion <- mcmapply(f3, z, w)
 stop <- proc.time() - start
-stop 
-#    user  system elapsed
-# 713.886  14.929 809.123
+stop # 11.8167 mins
+#   user  system elapsed
+#  0.379   0.161 709.193
 
 stopCluster(cl)
 
-zip_wrf_proportion_new <- matrix(proportion, nrow = 417, ncol = 1610, byrow = T,
+zip_wrf_proportion_new <- matrix(proportion, nrow = 417, ncol = 1575, byrow = T,
                                     dimnames = list(or_zip_name, wrf_grid_name))
 
 zip_proportion_new_df <- data.frame(zip_wrf_proportion_new)
@@ -235,6 +239,7 @@ write_path <- paste0('../../../data/data_new/',
 write_csv(zip_proportion_new_df, paste0(write_path))
 # ------------------------------------------------------------------------------
 
+  
 
 ## Nested for loop 
 # matrix should be faster and less memory than a df-----------------------------
@@ -242,14 +247,14 @@ write_csv(zip_proportion_new_df, paste0(write_path))
 start <- Sys.time()
 
 # first I want to subset out each zipcode shapefile
-for (i in 201:210) {
+for (i in 1:417) {
   # output value of zipcode
   zipcode <- as.character(or_zip_name[i]) 
   # limit shapefile to particular zipcode
   zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
   # convert to polygon
   zip_poly <-SpatialPolygons(zip_shape@polygons)
-for(j in 261:270){
+for(j in 1:1575){
     # output each grid and create a polygon
     wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == j, ]
     # now what about grid 719; should be much less
@@ -269,7 +274,6 @@ stop <- Sys.time() - start
 stop # 33.97498 mins
 
 # stop cluster
-stopCluster(cl)
 
 zip_proportion_df <- data.frame(zip_wrf_proportion)
 
