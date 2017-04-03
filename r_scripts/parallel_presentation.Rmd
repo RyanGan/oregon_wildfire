@@ -266,7 +266,7 @@ z <- rep(201:300, each=100)
 w <- rep(201:300,100)
 ```
 
-```{r parallel set, eval = FALSE}
+```{r parallel, eval = FALSE}
 # Setup for parallel computing before for loop ---------------------------------
 cores <- detectCores() # 48
 cl <- makeCluster(cores) # use half the cores on the vet cluster
