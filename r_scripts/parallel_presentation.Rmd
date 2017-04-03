@@ -199,7 +199,6 @@ prop_int_262 # 6.0% of grid is covered by zip
   <li> And... <br/> Why using apply function? </li>
   <li> **Working Efficiency** <br/> **Vectorization.** Faster than for loop. It 
   works on margins of an array or matrix, not like for loop.</li> 
-  <li> **Code Readability** <br/>  Understand the purporse more directly.</li> 
 </ul> 
 
 
@@ -216,9 +215,25 @@ margins of an array or matrix.
 <br/> Apply a function over a list or vector.<br/> 
 Apply a given function to every element of a list and obtain a list as result.<br/>
 
+An example: 
+```{r, include = FALSE}
+A <- matrix(1:4, 2, 2)
+B <- matrix(5:10, 2, 3)
+```
+
+```{r}
+L <- list(A, B)
+lapply(L, "[", , 2)
+```
+
 >- The sapply() Function
 <br/> Apply a function over a list or vector.<br/>
 Works like lapply(), but it tries to simplify the output to the most elementary data structure that is possible. 
+
+```{r}
+L <- list(A, B)
+sapply(L, function(x) x[ , 2])
+```
 
 >- The tapply() Function
 <br/> Apply a function over a ragged array.
@@ -251,7 +266,28 @@ z <- rep(201:300, each=100)
 w <- rep(201:300,100)
 ```
 
-```{r parallel set, echo = FALSE}
+```{r parallel set, eval = FALSE}
+# Setup for parallel computing before for loop ---------------------------------
+cores <- detectCores() # 48
+cl <- makeCluster(cores) # use half the cores on the vet cluster
+registerDoParallel(cl)
+# load packages on each cluster
+clusterCall(cl, function() library(rgdal))
+clusterCall(cl, function() library(sp))
+clusterCall(cl, function() library(rgeos))
+
+clusterExport(cl, "or_zip_map", envir = .GlobalEnv)
+clusterExport(cl, "or_zip_name", envir = .GlobalEnv)
+clusterExport(cl, "smoke_grid", envir = .GlobalEnv)
+clusterExport(cl, "wrf_grid_name", envir = .GlobalEnv)
+clusterExport(cl, "zip_wrf_proportion", envir = .GlobalEnv)
+clusterExport(cl, "z", envir = .GlobalEnv)
+clusterExport(cl, "w", envir = .GlobalEnv)
+clusterExport(cl, "vars1", envir = .GlobalEnv)
+
+```
+
+```{r parallel set, include = FALSE}
 # Setup for parallel computing before for loop ---------------------------------
 cores <- detectCores() # 48
 cl <- makeCluster(cores) # use half the cores on the vet cluster
@@ -337,7 +373,7 @@ stop
 
 **3. Mcmapply function** in parallel computing (multiple cores)
 
-```{r mcmapply, echo=FALSE}
+```{r mcmapply}
 start <- proc.time()
 
 f1 <- function(x){
