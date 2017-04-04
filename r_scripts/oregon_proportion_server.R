@@ -55,6 +55,13 @@ plot(or_zip_map)
 summary(or_zip_map)
 or_zip <- as.character(sort(or_zip_map@data$ZCTA5CE10))
 
+or_zip_df <- data.frame(or_zip)
+
+write_path <- paste0('../../../data/data_new/',
+                     'or_zip.csv')
+write_csv(or_zip_df, paste0(write_path))
+
+
 # save the Oregon zips to a shapefile to use later
 # create save path
 # !! will show error when overlay the writing file, so please write one time
