@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-# Title: Case crossover for diseases (Oregon State) for server
+# Title: Case crossover for diseases (Oregon State)
 # Author: Jingyang Liu
 # Date Created: Feb 24, 2017
 # R version: 3.3.2
