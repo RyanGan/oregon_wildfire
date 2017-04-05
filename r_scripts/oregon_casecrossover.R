@@ -20,7 +20,7 @@ var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd',
 start <- Sys.time()
 for (i in var_list){
   read_path <- paste('oregon', i, 'claims_2013.csv', sep='_')
-  or_disease <- read_csv( read_path)
+  or_disease <- read_csv(read_path)
     
   or_disease <- or_disease %>% 
     group_by(personkey) %>% 
@@ -34,20 +34,20 @@ for (i in var_list){
     filter(row_number() == 1) %>%
     # add new transverted from date
     mutate(dates = as.Date(fromdate, "%m/%d/%Y")) %>%
-    filter(dates >= '2013-07-01' & 
-           dates <= '2013-10-31') 
+    filter(dates >= '2013-05-01' & 
+           dates <= '2013-09-30') 
   
   # Create a permanent case-cross over dataset
-  file_name <- paste('oregon', i, 'jul_to_oct_claim.csv', sep = '_')
+  file_name <- paste('oregon', i, 'may_to_sep_claim.csv', sep = '_')
   
   # write permanent dataset
   write_csv(or_disease, paste0("../data_new/", file_name))
   
 }
 total_time <- Sys.time() - start
-total_time # Time difference of 5 mins
+total_time # Time difference of 5.154874 mins
 
-setwd("../data_new/")
+setwd("../data_new/update")
 
 
 
@@ -56,7 +56,7 @@ setwd("../data_new/")
 start <- Sys.time()
 for(m in var_list){ # begin first loop of variable names (outcomes)
 
-  read_path <- paste('oregon', m, 'jul_to_oct_claim.csv', sep='_')
+  read_path <- paste('oregon', m, 'may_to_sep_claim.csv', sep='_')
   disease <- read_csv( read_path)
   
   outcome_id <- disease %>%
@@ -74,9 +74,9 @@ for(m in var_list){ # begin first loop of variable names (outcomes)
     # find the replicate times of weeks
     dates_l <- outcome_id[[k,74]] 
     n1 <- 0
-    d=as.Date("2013-07-01")
+    d=as.Date("2013-05-01")
     i=1
-    while (dates_l >= "2013-07-01"){
+    while (dates_l >= "2013-05-01"){
       dates_l <- dates_l - 7
       d[i] = dates_l
       i = i+1
@@ -87,9 +87,9 @@ for(m in var_list){ # begin first loop of variable names (outcomes)
     
     dates_l <- outcome_id[[k,74]] 
     n2=0
-    e=as.Date("2013-10-31")
+    e=as.Date("2013-09-30")
     j=1
-    while (dates_l <= "2013-10-31"){
+    while (dates_l <= "2013-09-30"){
       dates_l <- dates_l + 7
       e[j]=dates_l
       j=j+1
@@ -124,7 +124,7 @@ for(m in var_list){ # begin first loop of variable names (outcomes)
     arrange(id, dates) # order by id and date
   
   # Create a permanent case-cross over dataset
-  file_name <- paste('or', m, 'jul_to_oct_casecross.csv', sep = '_')
+  file_name <- paste('or', m, 'may_to_sep_casecross.csv', sep = '_')
   
   # write permanent dataset
   write_csv(outcome_casecross, paste0("./", file_name))
@@ -132,11 +132,11 @@ for(m in var_list){ # begin first loop of variable names (outcomes)
 
 # sweet this works
 total_time <- Sys.time() - start
-total_time # Time difference of 1.305516 hours
+total_time # Time difference of 2.225269 hours
 
 
 ## Check
-read_path <- paste0("or_asthma_jul_to_oct_casecross.csv")
+read_path <- paste0("or_asthma_may_to_sep_casecross.csv")
 sam_1 <- read_csv(read_path)
 
 head(sam_1, 20L)
