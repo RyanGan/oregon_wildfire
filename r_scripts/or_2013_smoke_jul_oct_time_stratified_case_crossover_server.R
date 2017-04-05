@@ -29,9 +29,9 @@ library(lubridate) # working with date
 # Read in smoke data created in loop -------------------------------------------
 
 # read in zipcode level populatoin-weighted pm
-read_path <- paste0('../../data/pm_data/zip_pm_to_merge_with_chars.csv')
+read_path <- paste0('../../../data/data_new/zip_pm_to_merge_with_chars.csv')
 
-zip_smoke <- read_csv(read_path) 
+zip_smoke <- read_csv(read_path) # 63801 rows
 
 # descriptives of the two smoke datasets
 summary(zip_smoke)
@@ -42,11 +42,11 @@ zip_smoke_w_lag <- zip_smoke %>% arrange(ZIPCODE, date) %>%
   # group by zipcode
   group_by(ZIPCODE) %>% 
   # wrf
-  mutate(wrf_pm_lag1 = lag(wrf_pm, 1, order_by = ZIPCODE), 
-         wrf_pm_lag2 = lag(wrf_pm, 2, order_by = ZIPCODE),
-         wrf_pm_lag3 = lag(wrf_pm, 3, order_by = ZIPCODE),
-         wrf_pm_lag4 = lag(wrf_pm, 4, order_by = ZIPCODE),
-         wrf_pm_lag5 = lag(wrf_pm, 5, order_by = ZIPCODE),
+  mutate(wrf_f_pm_lag1 = lag(wrf_f_pm, 1, order_by = ZIPCODE), 
+         wrf_f_pm_lag2 = lag(wrf_f_pm, 2, order_by = ZIPCODE),
+         wrf_f_pm_lag3 = lag(wrf_f_pm, 3, order_by = ZIPCODE),
+         wrf_f_pm_lag4 = lag(wrf_f_pm, 4, order_by = ZIPCODE),
+         wrf_f_pm_lag5 = lag(wrf_f_pm, 5, order_by = ZIPCODE),
          # wrf no fire lag
          wrf_nf_pm_lag1 = lag(wrf_nf_pm, 1, order_by = ZIPCODE),
          wrf_nf_pm_lag2 = lag(wrf_nf_pm, 2, order_by = ZIPCODE),
@@ -65,12 +65,6 @@ zip_smoke_w_lag <- zip_smoke %>% arrange(ZIPCODE, date) %>%
          geo_wt_pm_lag3 = lag(geo_wt_pm, 3, order_by = ZIPCODE),
          geo_wt_pm_lag4 = lag(geo_wt_pm, 4, order_by = ZIPCODE),
          geo_wt_pm_lag5 = lag(geo_wt_pm, 5, order_by = ZIPCODE),
-         # global reg pm
-         global_reg_pm_lag1 = lag(global_reg_pm, 1, order_by = ZIPCODE),
-         global_reg_pm_lag2 = lag(global_reg_pm, 2, order_by = ZIPCODE),
-         global_reg_pm_lag3 = lag(global_reg_pm, 3, order_by = ZIPCODE),
-         global_reg_pm_lag4 = lag(global_reg_pm, 4, order_by = ZIPCODE),
-         global_reg_pm_lag5 = lag(global_reg_pm, 5, order_by = ZIPCODE),
          # krig pm
          krig_pm_lag1 = lag(krig_pm, 1, order_by = ZIPCODE),
          krig_pm_lag2 = lag(krig_pm, 2, order_by = ZIPCODE),
@@ -89,24 +83,12 @@ zip_smoke_w_lag <- zip_smoke %>% arrange(ZIPCODE, date) %>%
          geo_smk_pm_lag3 = lag(geo_smk_pm, 3, order_by = ZIPCODE),
          geo_smk_pm_lag4 = lag(geo_smk_pm, 4, order_by = ZIPCODE),
          geo_smk_pm_lag5 = lag(geo_smk_pm, 5, order_by = ZIPCODE),
-         # global smk pm
-         global_smk_pm_lag1 = lag(global_smk_pm, 1, order_by = ZIPCODE),
-         global_smk_pm_lag2 = lag(global_smk_pm, 2, order_by = ZIPCODE),
-         global_smk_pm_lag3 = lag(global_smk_pm, 3, order_by = ZIPCODE),
-         global_smk_pm_lag4 = lag(global_smk_pm, 4, order_by = ZIPCODE),
-         global_smk_pm_lag5 = lag(global_smk_pm, 5, order_by = ZIPCODE),
          # krig smk pm
          krig_smk_pm_lag1 = lag(krig_smk_pm, 1, order_by = ZIPCODE),
          krig_smk_pm_lag2 = lag(krig_smk_pm, 2, order_by = ZIPCODE),
          krig_smk_pm_lag3 = lag(krig_smk_pm, 3, order_by = ZIPCODE),
          krig_smk_pm_lag4 = lag(krig_smk_pm, 4, order_by = ZIPCODE),
-         krig_smk_pm_lag5 = lag(krig_smk_pm, 5, order_by = ZIPCODE),
-         # temp
-         wrf_temp_lag1 = lag(wrf_temp, 1, order_by = ZIPCODE),
-         wrf_temp_lag2 = lag(wrf_temp, 2, order_by = ZIPCODE),
-         wrf_temp_lag3 = lag(wrf_temp, 3, order_by = ZIPCODE),
-         wrf_temp_lag4 = lag(wrf_temp, 4, order_by = ZIPCODE),
-         wrf_temp_lag5 = lag(wrf_temp, 5, order_by = ZIPCODE)) %>% 
+         krig_smk_pm_lag5 = lag(krig_smk_pm, 5, order_by = ZIPCODE)) %>% 
   # ungroup by zip
   ungroup(ZIPCODE) %>% 
   # attach a zip indicator for each smoke variable
@@ -119,87 +101,6 @@ zip_smoke_w_lag <- zip_smoke %>% arrange(ZIPCODE, date) %>%
 #   select(ZIPCODE, date, geo_smk_pm_zip, geo_smk_pm_lag1_zip,
 #          geo_smk_pm_lag2_zip, geo_smk_pm_lag3_zip) # looks good
 
-# County PM2.5 estimates
-# create lag variables that take smoke values from n previous days for county
-county_smoke_w_lag <- county_smoke %>% arrange(county, date) %>%
-  group_by(county) %>% 
-  # wrf
-  mutate(wrf_pm_lag1 = lag(wrf_pm, 1, order_by = county), 
-         wrf_pm_lag2 = lag(wrf_pm, 2, order_by = county),
-         wrf_pm_lag3 = lag(wrf_pm, 3, order_by = county),
-         wrf_pm_lag4 = lag(wrf_pm, 4, order_by = county),
-         wrf_pm_lag5 = lag(wrf_pm, 5, order_by = county),
-         # wrf no fire lag
-         wrf_nf_pm_lag1 = lag(wrf_nf_pm, 1, order_by = county),
-         wrf_nf_pm_lag2 = lag(wrf_nf_pm, 2, order_by = county),
-         wrf_nf_pm_lag3 = lag(wrf_nf_pm, 3, order_by = county),
-         wrf_nf_pm_lag4 = lag(wrf_nf_pm, 4, order_by = county),
-         wrf_nf_pm_lag5 = lag(wrf_nf_pm, 5, order_by = county),
-         # wrf_smk_pm
-         wrf_smk_pm_lag1 = lag(wrf_smk_pm, 1, order_by = county),
-         wrf_smk_pm_lag2 = lag(wrf_smk_pm, 2, order_by = county),
-         wrf_smk_pm_lag3 = lag(wrf_smk_pm, 3, order_by = county),
-         wrf_smk_pm_lag4 = lag(wrf_smk_pm, 4, order_by = county),
-         wrf_smk_pm_lag5 = lag(wrf_smk_pm, 5, order_by = county),
-         # geo weighted pm
-         geo_wt_pm_lag1 = lag(geo_wt_pm, 1, order_by = county),
-         geo_wt_pm_lag2 = lag(geo_wt_pm, 2, order_by = county),
-         geo_wt_pm_lag3 = lag(geo_wt_pm, 3, order_by = county),
-         geo_wt_pm_lag4 = lag(geo_wt_pm, 4, order_by = county),
-         geo_wt_pm_lag5 = lag(geo_wt_pm, 5, order_by = county),
-         # global reg pm
-         global_reg_pm_lag1 = lag(global_reg_pm, 1, order_by = county),
-         global_reg_pm_lag2 = lag(global_reg_pm, 2, order_by = county),
-         global_reg_pm_lag3 = lag(global_reg_pm, 3, order_by = county),
-         global_reg_pm_lag4 = lag(global_reg_pm, 4, order_by = county),
-         global_reg_pm_lag5 = lag(global_reg_pm, 5, order_by = county),
-         # krig pm
-         krig_pm_lag1 = lag(krig_pm, 1, order_by = county),
-         krig_pm_lag2 = lag(krig_pm, 2, order_by = county),
-         krig_pm_lag3 = lag(krig_pm, 3, order_by = county),
-         krig_pm_lag4 = lag(krig_pm, 4, order_by = county),
-         krig_pm_lag5 = lag(krig_pm, 5, order_by = county),   
-         # background pm
-         background_pm_lag1 = lag(background_pm, 1, order_by = county),
-         background_pm_lag2 = lag(background_pm, 2, order_by = county),
-         background_pm_lag3 = lag(background_pm, 3, order_by = county),
-         background_pm_lag4 = lag(background_pm, 4, order_by = county),
-         background_pm_lag5 = lag(background_pm, 5, order_by = county),   
-         # geo_smk_pm 
-         geo_smk_pm_lag1 = lag(geo_smk_pm, 1, order_by = county),
-         geo_smk_pm_lag2 = lag(geo_smk_pm, 2, order_by = county),
-         geo_smk_pm_lag3 = lag(geo_smk_pm, 3, order_by = county),
-         geo_smk_pm_lag4 = lag(geo_smk_pm, 4, order_by = county),
-         geo_smk_pm_lag5 = lag(geo_smk_pm, 5, order_by = county),
-         # global smk pm
-         global_smk_pm_lag1 = lag(global_smk_pm, 1, order_by = county),
-         global_smk_pm_lag2 = lag(global_smk_pm, 2, order_by = county),
-         global_smk_pm_lag3 = lag(global_smk_pm, 3, order_by = county),
-         global_smk_pm_lag4 = lag(global_smk_pm, 4, order_by = county),
-         global_smk_pm_lag5 = lag(global_smk_pm, 5, order_by = county),
-         # krig smk pm
-         krig_smk_pm_lag1 = lag(krig_smk_pm, 1, order_by = county),
-         krig_smk_pm_lag2 = lag(krig_smk_pm, 2, order_by = county),
-         krig_smk_pm_lag3 = lag(krig_smk_pm, 3, order_by = county),
-         krig_smk_pm_lag4 = lag(krig_smk_pm, 4, order_by = county),
-         krig_smk_pm_lag5 = lag(krig_smk_pm, 5, order_by = county),
-         # temp
-         wrf_temp_lag1 = lag(wrf_temp, 1, order_by = county),
-         wrf_temp_lag2 = lag(wrf_temp, 2, order_by = county),
-         wrf_temp_lag3 = lag(wrf_temp, 3, order_by = county),
-         wrf_temp_lag4 = lag(wrf_temp, 4, order_by = county),
-         wrf_temp_lag5 = lag(wrf_temp, 5, order_by = county)) %>% 
-  # ungroup county
-  ungroup(county) %>% 
-  # attach a zip indicator for each smoke variable
-  setNames(paste(colnames(.), "county", sep="_")) %>% 
-  # remove the '_zip' from the zipcode and date variable 
-  rename(county = county_county, date = date_county)
-
-# check 
-# check <- county_smoke_w_lag %>% 
-#    select(county, date, geo_smk_pm_county, geo_smk_pm_lag1_county,
-#           geo_smk_pm_lag2_county, geo_smk_pm_lag3_county) # looks good
 
 # Infile the Permanent Cleaned CHARS 2012 DataFrame ----------------------------
 # Put this file on the atmos server ASAP
