@@ -68,8 +68,8 @@ wrf_f_path <- paste0("oregon_wrffirePM_2013.csv")
 wrf_f <- read_csv(wrf_f_path)
 
 # WRF temperature
-# wrf_temp_path <- paste0("WRF-Chem_2mTemperature_wash2012.csv")
-# wrf_temp <- read_csv(wrf_temp_path)
+wrf_temp_path <- paste0("oregon_wrf_temperature_2013.csv")
+wrf_temp <- read_csv(wrf_temp_path)
 
 
 # Dataframes of PM2.5 attributed to wildfire smoke -----------------------------
@@ -117,10 +117,11 @@ head(krig_smk_pm[, 1:10])
 # create a list of the dataframes I want to loop through
 df_list <- list(wrf_f = wrf_f, wrf_nf = wrf_nf, wrf_smk_pm = wrf_smk_pm, 
                 geo_wt = geo_wt,  krig = krig, background = background, 
-                geo_smk_pm = geo_smk_pm, krig_smk_pm = krig_smk_pm)
+                geo_smk_pm = geo_smk_pm, krig_smk_pm = krig_smk_pm, 
+                wrf_temp = wrf_temp)
 
 df_name <- c('wrf_f', 'wrf_nf', 'wrf_smk_pm', 'geo_wt', 'krig', 'background', 
-             'geo_smk_pm', 'krig_smk_pm')
+             'geo_smk_pm', 'krig_smk_pm', "wrf_temp")
 
 
 # General approach to producing population-weighted zipcode-specific PM2.5 -----
@@ -261,7 +262,7 @@ for(i in 1:length(df_list)){
 } # end loop
 
 stop <- proc.time() - start
-stop # 5.01 sec
+stop # 5.92 sec
 
 # very fast loop, much easier than my extract function
 
@@ -277,14 +278,15 @@ stop # 5.01 sec
 tidy_loop <- list(wrf_f_df = wrf_f_df, wrf_nf_df = wrf_nf_df,
                   wrf_smk_pm_df = wrf_smk_pm_df,
                   geo_wt_df = geo_wt_df, krig_df = krig_df, background_df = background_df,
-                  geo_smk_pm_df = geo_smk_pm_df, krig_smk_pm_df = krig_smk_pm_df)
+                  geo_smk_pm_df = geo_smk_pm_df, krig_smk_pm_df = krig_smk_pm_df, 
+                  wrf_temp_df = wrf_temp_df)
 
 
 pm_name <- c('wrf_f_pm', 'wrf_nf_pm', 'wrf_smk_pm', 'geo_wt_pm',
-             'krig_pm', 'background_pm', 'geo_smk_pm', 'krig_smk_pm')
+             'krig_pm', 'background_pm', 'geo_smk_pm', 'krig_smk_pm', "wrf_temp")
 
 # empty dataframe
-or_pm_pop_wt_2013 <- data.frame(matrix(vector(), 63801, 10, # rows, columns (417*153)
+or_pm_pop_wt_2013 <- data.frame(matrix(vector(), 63801, 11, # rows, columns (417*153)
                                        dimnames = list(c(), c("ZIPCODE", "date",
                                                               pm_name))), stringsAsFactors = F)
 # probably not efficient to fill cols 1 and 2 on each loop, but eh, it's fast anyways
@@ -318,55 +320,3 @@ write_path <- paste0('./zip_pm_to_merge_with_chars.csv')
 write_csv(or_pm_pop_wt_2013, write_path)
 
 # looks good; write premanent file to merge with health data
-
-# Calculation checks -----------------------------------------------------------
-
-which(colnames(geo_smk_pm_df)== 'X20130921')
-check <- geo_smk_pm_df[4, 145]
-check
-# this is the geo_smk_pm value on sept 21st for zipcode 97005
-# value of 107.7 population weighted average for zipcode 97005 on Sept 21st
-# my old way of estimating prodced a geo_smk mean of 98.698, and max of 113.2,
-# and min of 78.9 ???
-
-# Checking the population wted estimate values with the observed values
-# Using Spokane Monroe station and zip 99205
-geo_wt_samp <- data.frame(geo_wt_df)
-zip <- filter(geo_wt_samp, ZIPCODE == "97405")
-
-spokane_check <- zip[, 60:95]
-spokane_check
-
-# these estimates are very close to the ground site measures from 09/2012
-# WRF Grid 1042 covers all of this zipcode; check proportion
-zip_97405_proportion <- zip_grid_proportion %>% filter(ZIPCODE == "97405")
-zip_97405_proportion[, c(1015:1017, 1042:1045)]
-
-# check 98858
-zip_97005_proportion <- zip_grid_proportion %>% filter(ZIPCODE == 97005)
-grid_overlap_97005 <- zip_97005_proportion[, c(663:668, 690:694, 717:721,
-                                               743:748)]
-
-overlap_vector_97005 <- data.frame(t(grid_overlap_97005))
-
-
-# find values from geo_wt_df for the same grid boxes on 9/21
-geo_grid <- geo_wt[c(662:667, 689:693, 716:720, 742:747), c(1,86)]
-geo_grid
-
-# find population in each grid
-pop_grid_921 <- population_grid[c(662:667, 689:693, 716:720, 742:747), c(1,5)]
-
-# bind all columns together
-zip_99858_pop_pm <- cbind(overlap_vector_98858, geo_grid, pop_grid_921)
-
-pop_wt_avg_99858 <- sum(zip_99858_pop_pm[, 1] * zip_99858_pop_pm[, 3] *
-                          zip_99858_pop_pm[, 5]) / sum(zip_99858_pop_pm[, 1] * zip_99858_pop_pm[, 5])
-
-pop_wt_avg_99858 # 114.1497
-
-# check with the value in the actual dataframe
-which(colnames(geo_wt_df)== 'X20120921')
-check <- geo_wt_df[124, 84]
-check # same value, 114.1497
-
