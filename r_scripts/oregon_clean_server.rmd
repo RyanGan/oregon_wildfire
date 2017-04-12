@@ -1,5 +1,5 @@
 ---
-title: "Oregon_Wildfire_full"
+title: "Oregon_Wildfire_explore_full_server"
 author: "Jingyang Liu"
 date: "February 15, 2017"
 ---
