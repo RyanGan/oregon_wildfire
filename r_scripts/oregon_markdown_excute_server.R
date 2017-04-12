@@ -9,6 +9,6 @@
 library(rmarkdown)
 
 # call markdown doc.
-rmarkdown::render('./oregon_clean.rmd')
+rmarkdown::render('./oregon_data_explore_server.rmd')
 
 
