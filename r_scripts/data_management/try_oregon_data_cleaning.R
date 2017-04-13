@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-# Title: Oregon 2013 claims data for MobaXterm
+# Title: Oregon 2013 claims data for MobaXterm (Practice)
 # Author: Jingyang Liu
 # Date Created: Feb 9th, 2017
 # R Version: 3.3.2

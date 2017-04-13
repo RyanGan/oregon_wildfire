@@ -1,5 +1,5 @@
 ---
-title: "Oregon_Wildfire_reduced"
+title: "Oregon_Wildfire_explore_full_server"
 author: "Jingyang Liu"
 date: "February 15, 2017"
 ---
@@ -17,27 +17,21 @@ library(ggplot2)
 getwd()
 
 # import data ------------------------------------------------------------------
-# Read in first 200,000 lines for exploration.
 
-read_path <- paste0("../data/gan_episodes_of_care.txt")
-oregon_df <- fread(read_path, sep = "|", nrows = 200000, showProgress = T)
-fwrite(oregon_df, "../data/oregon_epis_care_reduced.csv")
-
-# I wrote a reduced dataframe of 200,000 rows to get an idea of data structure
-
-# import the reduced dataframe
+read_path <- paste0("../../../data/data_original/gan_episodes_of_care.txt")
 start_time <- Sys.time()
-oregon_df <- fread("../data/oregon_epis_care_reduced.csv", sep = ",", 
-                   colClasses = rep("character", 72))
+oregon_df <- fread(read_path, sep = "|", showProgress = T, 
+                   colClasses = rep("character", 72)) 
 stop_time <-  Sys.time() - start_time 
-
 # time it took
-stop_time # 1.968219 secs
+stop_time # about 20 mins
 
 ```
 
+
 ## The overall summary  of data set
 72 variables in total.
+
 ```{r overall summary}
 # Check data structure
 # summary(oregon_df)
@@ -93,11 +87,9 @@ colnames(m) <- c("Mean", "Median", "Max")
 
 knitr::kable(m, align = "c", caption = "Statistics")
 
-hist(visit3$num_visit, freq = T, xlab = "number of visit", main = "Visiting number for each personkey")
+ggplot(visit3, aes(n)) + geom_density()
 
 ```
-
-
 
 
 ## 2. Patid
@@ -258,7 +250,7 @@ knitr::kable(msa2, align = "c", caption = "MSA")
 
 ## 10. Pos (Urgent and Emergency) NA: 2974
 ```{r}
-pos_key <- read_excel("../instructions/LT_pos.xlsx")
+pos_key <- read_excel("../LT_pos.xlsx")
 
 pos2 <- oregon_df %>%
   select(pos) 
@@ -477,20 +469,5 @@ dx5_2 <- oregon_df %>%
 knitr::kable(dx5_2, align = "c", caption = "dx5")
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

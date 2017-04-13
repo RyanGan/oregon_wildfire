@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-# Title: Small data set case crossover studies
+# Title: Small data set case crossover studies (Practice)
 # Author: Jingyang Liu
 # Date Created: Feb 24, 2017
 # R Version: 3.3.2
