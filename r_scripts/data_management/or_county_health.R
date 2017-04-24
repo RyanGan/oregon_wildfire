@@ -169,17 +169,58 @@ stop # 33.17 secs
 not_match <- which((zip_county_proportion > 0)&(zip_county_proportion < 1), arr.ind=T )
 dim(not_match) # 582
 
-not_match_value <- zip_county_proportion[not_match[,1], not_match[,2]]
+zip_county_prop_df <- data.frame(zip_county_proportion)
 
-# 1st col
-# rownames(not_match)
-
-# 2nd col
-# colnames(zip_county_proportion[,not_match[,2]])
-
-# 3rd col
+zip_county_prop_df2 <- zip_county_prop_df %>%
+  mutate(county_order = NA) %>%
+  mutate(county_name = NA)
 
 
+for (i in 1:length(zip_county_prop_df[,1])){
+  find_order <- which(zip_county_prop_df[i,]==(max(zip_county_prop_df[i,], na.rm=TRUE)))
+  zip_county_prop_df2$county_order[i] <- find_order
+  zip_county_prop_df2$county_name[i] <- colnames(zip_county_prop_df2[zip_county_prop_df2$county_order[i]])
+}
 
+zip_county_prop_df2 <- zip_county_prop_df2 %>%
+  mutate(zip=rownames(zip_county_prop_df))
+
+### Check using the zip county file from website
+or_check_county <- read_csv('./oregon_zip_county.csv')
+head(or_check_county)
+names(or_check_county) <- c('zip','city','county','area')
+
+or_check_county_df <- data.frame(or_check_county)
+
+or_check <- zip_county_prop_df2 %>%
+  select(zip, county_name) 
+
+or_check2 <- or_check_county %>%
+  select(zip, city, county)
+  
+or_check3 <- or_check2%>%
+  filter(zip %in% or_check$zip)
+  
+
+or_check4 <- or_check %>%
+  filter(zip %in% or_check3$zip)
+
+or_check5 <- or_check%>%
+  filter(!zip %in% or_check3$zip) # 97471
+
+a <- which(or_check4$county_name=="Hood.River") # 27, 36
+or_check4$county_name[a] <- "Hood River"
+
+or_check_combine <- or_check %>%
+  left_join(or_check, or_check2, by = "zip")
+
+b <- which(or_check3$county!=or_check4$county_name)
+# 11 147 160 162 167 168 184 346 347 348 349
+
+or_check3$county[b]
+or_check4$county[b]
+
+or_check3$zip[b]
+#  [1] 97014 97326 97347 97350 97358 97360 97378 97758 97759 97760 97761
 
 
