@@ -1,5 +1,5 @@
 #-------------------------------------------------------------------------------
-# Title: Check and exploring the unreasonable plot
+# Title: Zip Code Assigned in County and Check
 # Author: Jingyang Liu                                                                   
 # Date Created: April 11, 2017                                                  
 # R version: 3.3.3                                                       
