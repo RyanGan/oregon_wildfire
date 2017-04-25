@@ -262,8 +262,8 @@ zip_wrf_proportion <- matrix(nrow = 417, ncol = 1610, byrow = T,
                              dimnames = list(or_zip_name, wrf_grid_name))
 
 vars1 <- c(1:1610)
-z <- rep(201:300, each=100)
-w <- rep(201:300,100)
+z <- rep(1:417, each=1610)
+w <- rep(1:1610,417)
 ```
 
 ```{r parallel, eval = FALSE}
@@ -312,14 +312,14 @@ clusterExport(cl, "vars1", envir = .GlobalEnv)
 
 ```{r forloop}
 start <- proc.time()
-for (i in 201:300) {
+for (i in 1:417) {
   # output value of zipcode
   zipcode <- or_zip_name[i]
   # limit shapefile to particular zipcode
   zip_shape <- or_zip_map[or_zip_map$ZCTA5CE10 %in% zipcode, ]
   # convert to polygon
   zip_poly <-SpatialPolygons(zip_shape@polygons)
-for(j in 201:300){
+for(j in 1:1610){
     # output each grid and create a polygon
     wrf_grid <- smoke_grid[smoke_grid@data$WRFGRID_ID == j, ]
     wrf_poly <- SpatialPolygons(wrf_grid@polygons)
