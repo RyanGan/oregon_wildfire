@@ -29,7 +29,7 @@ library(lubridate) # working with date
 # Read in smoke data created in loop -------------------------------------------
 
 # read in zipcode level populatoin-weighted pm
-read_path <- paste0('../../../data/data_new/zip_pm_to_merge_with_chars.csv')
+read_path <- paste0('C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire_new/data/Oregon_PM/zip_pm_to_merge_with_acap.csv')
 
 zip_smoke <- read_csv(read_path) # 63801 rows
 
@@ -88,7 +88,13 @@ zip_smoke_w_lag <- zip_smoke %>% arrange(ZIPCODE, date) %>%
          krig_smk_pm_lag2 = lag(krig_smk_pm, 2, order_by = ZIPCODE),
          krig_smk_pm_lag3 = lag(krig_smk_pm, 3, order_by = ZIPCODE),
          krig_smk_pm_lag4 = lag(krig_smk_pm, 4, order_by = ZIPCODE),
-         krig_smk_pm_lag5 = lag(krig_smk_pm, 5, order_by = ZIPCODE)) %>% 
+         krig_smk_pm_lag5 = lag(krig_smk_pm, 5, order_by = ZIPCODE),
+         # temp
+         wrf_temp_lag1 = lag(wrf_temp, 1, order_by = ZIPCODE),
+         wrf_temp_lag2 = lag(wrf_temp, 2, order_by = ZIPCODE),
+         wrf_temp_lag3 = lag(wrf_temp, 3, order_by = ZIPCODE),
+         wrf_temp_lag4 = lag(wrf_temp, 4, order_by = ZIPCODE),
+         wrf_temp_lag5 = lag(wrf_temp, 5, order_by = ZIPCODE)) %>% 
   # ungroup by zip
   ungroup(ZIPCODE) %>% 
   # attach a zip indicator for each smoke variable
@@ -97,9 +103,9 @@ zip_smoke_w_lag <- zip_smoke %>% arrange(ZIPCODE, date) %>%
   rename(ZIPCODE = ZIPCODE_zip, date = date_zip)
 
 # # check 
-# check <- zip_smoke_w_lag %>% 
-#   select(ZIPCODE, date, geo_smk_pm_zip, geo_smk_pm_lag1_zip,
-#          geo_smk_pm_lag2_zip, geo_smk_pm_lag3_zip) # looks good
+ check <- zip_smoke_w_lag %>% 
+   select(ZIPCODE, date, geo_smk_pm_zip, geo_smk_pm_lag1_zip,
+         geo_smk_pm_lag2_zip, geo_smk_pm_lag3_zip) # looks good
 
 
 
@@ -126,34 +132,34 @@ for(j in var_list) { # begin first loop of variable names (outcomes)
     # indicator for male=0, female=1, unknown = 2
     mutate(age = 2013-yob,
            sex_ind =ifelse(gender == "F", 1, 
-                    ifelse(gender == "M", 0, 2)),
+                           ifelse(gender == "M", 0, 2)),
            age_ind = ifelse(age < 15, 0,
-                     ifelse(age >= 15 & age < 65, 1,
-                     ifelse(age >= 65 & age <=105, 2, NA)))
-           ) %>% # end of mutate 
+                            ifelse(age >= 15 & age < 65, 1,
+                                   ifelse(age >= 65 & age <=105, 2, NA)))
+    ) %>% # end of mutate 
     # create variables
     mutate(day = as.factor(weekdays(fromdate)),
            day_admit = as.factor(weekdays(date)),
            month_smk = month(fromdate),
            month_admit = month(date),
            season_smk = ifelse(fromdate >= "2013-03-20" &  
-                               fromdate <= "2013-06-21", "spring",
-                        ifelse(fromdate >= "2013-06-22" &  
-                               fromdate <= "2013-09-22", "summer",
-                        ifelse(fromdate >= "2013-09-23" & 
-                              fromdate <= "2013-12-21", "fall", "other"))),
+                                 fromdate <= "2013-06-21", "spring",
+                               ifelse(fromdate >= "2013-06-22" &  
+                                        fromdate <= "2013-09-22", "summer",
+                                      ifelse(fromdate >= "2013-09-23" & 
+                                               fromdate <= "2013-12-21", "fall", "other"))),
            season_admit = ifelse(date >= "2013-03-20" &  
-                                 date <= "2013-06-21", "spring",
-                          ifelse(date >= "2013-06-22" &  
-                                 date <= "2013-09-22", "summer",
-                          ifelse(date >= "2013-09-23" & 
-                                 date <= "2013-12-21", "fall", "other")))) %>%
-      # join with zip-level pm estimates
+                                   date <= "2013-06-21", "spring",
+                                 ifelse(date >= "2013-06-22" &  
+                                          date <= "2013-09-22", "summer",
+                                        ifelse(date >= "2013-09-23" & 
+                                                 date <= "2013-12-21", "fall", "other")))) %>%
+    # join with zip-level pm estimates
     left_join(zip_smoke_w_lag, by = c("date", "ZIPCODE"))%>%
     arrange(personkey, fromdate) # order by id and fromdate
   
   
-   
+  
   
   # checks
   # glimpse(outcome_casecross)
@@ -170,7 +176,7 @@ for(j in var_list) { # begin first loop of variable names (outcomes)
 } # End of the overall loop
 
 total_time <- Sys.time() - start
-total_time # 7.970039 mins
+total_time # 8.097143 mins
 
 
 
