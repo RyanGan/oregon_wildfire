@@ -20,7 +20,7 @@ library(dplyr)
 #               "smoke_data/created_pm_estimates")
 
 # relative path 
-dir <- paste0("./data/Oregon/")
+dir <- paste0("../oregon_wildfire_new/data/Oregon_PM/")
 setwd(dir)
 getwd()
 list.files()
@@ -94,6 +94,7 @@ head(wrf_smk_pm[, 1:10])
 # repeat 153 columns in total.
 background[,5:156] <- background[,4]
 colnames(background) <- colnames(krig)
+head(background[, 1:10])
 
 # Geo weight and krig dataframes subtracting off background pm2.5
 # Geo-weighted regression smoke
@@ -316,7 +317,29 @@ head(or_pm_pop_wt_2013)
 df_check <- or_pm_pop_wt_2013 %>% filter(ZIPCODE == 97005 & date == '2013-09-21')
 df_check
 
-write_path <- paste0('./zip_pm_to_merge_with_chars.csv')
+write_path <- paste0('./zip_pm_to_merge_with_acap.csv')
 write_csv(or_pm_pop_wt_2013, write_path)
 
 # looks good; write premanent file to merge with health data
+
+
+
+
+# Calculation checks -----------------------------------------------------------
+
+which(colnames(geo_smk_pm_df)== 'X20130921')
+check <- geo_smk_pm_df[4, 145]
+check
+# this is the geo_smk_pm value on sept 21st for zipcode 97005
+# value of 107.7 population weighted average for zipcode 97005 on Sept 21st
+# my old way of estimating prodced a geo_smk mean of 98.698, and max of 113.2,
+# and min of 78.9 ???
+
+# Checking the population wted estimate values with the observed values
+# Using Spokane Monroe station and zip 99205
+geo_wt_samp <- data.frame(geo_wt_df)
+zip <- filter(geo_wt_samp, ZIPCODE == "97405")
+
+spokane_check <- zip[, 60:95]
+spokane_check
+
