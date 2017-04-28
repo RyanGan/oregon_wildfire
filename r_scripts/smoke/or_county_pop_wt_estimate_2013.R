@@ -315,36 +315,36 @@ head(or_county_pm_pop_wt_2013)
 # County FIPS codes for Rish
 getwd() # check WD, can use a relative path on my pc
 # infile fips codes (I mispelled as fps)
-county_fips <- read_csv('./wa_county.csv') %>% 
-  rename(county = wa_county_name, fips = wa_county_fps) # rename variables
-
-head(county_fips)
+# county_fips <- read.table('../../instructions/oregon_FIPS.txt', sep = ",")
 
 
+# or_fips <- county_fips %>% 
+#   rename(county = V4, fips = V3) %>% # rename variables
+#   select(county, fips)
+  
+# head(or_fips)
 
+# write_csv(or_fips, '../../instructions/oregon_FIPS.csv')
 
+oregon_fips <- read_csv('../../instructions/oregon_FIPS.csv')
+which(oregon_fips=="Hood River")
 
-
+oregon_fips$county[14] <- "Hood.River"
 
 # merge in fips codes
-wash_county_pm_pop_wt_2012_w_fips <- county_fips %>% 
-  full_join(wash_county_pm_pop_wt_2012, by = 'county') 
+or_county_pm_pop_wt_2013_w_fips <- oregon_fips %>% 
+  full_join(or_county_pm_pop_wt_2013, by = 'county') 
 
+summary(or_county_pm_pop_wt_2013_w_fips)
 
-summary(wash_county_pm_pop_wt_2012_w_fips)
-
-
-df_check <- wash_county_pm_pop_wt_2012_w_fips %>% 
-  filter(county == 'Chelan' & date == '2012-09-21')
+df_check <- or_county_pm_pop_wt_2013_w_fips %>% 
+  filter(county == 'Yamhill' & date == '2013-09-21')
 df_check
 
 # Write permanent dataframe ----------------------------------------------------
 
-write_path <- paste0('./wa_county_pop_wt_pm.csv')
-write_csv(wash_county_pm_pop_wt_2012_w_fips, write_path)
-
-
-
+write_path <- paste0('../../data_new/county_data/or_county_pop_wt_pm.csv')
+write_csv(or_county_pm_pop_wt_2013_w_fips, write_path)
 
 
 
