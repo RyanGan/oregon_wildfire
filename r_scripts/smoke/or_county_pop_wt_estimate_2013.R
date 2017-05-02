@@ -285,7 +285,7 @@ pm_name <- c('wrf_f_pm', 'wrf_nf_pm', 'wrf_smk_pm', 'geo_wt_pm',
 # empty dataframe
 or_county_pm_pop_wt_2013 <- data.frame(matrix(vector(), 5508, 11, # rows, columns (36*153)
                                               dimnames = list(c(), c("county", "date",
-                                                                      pm_name))), stringsAsFactors = F)
+                                                                     pm_name))), stringsAsFactors = F)
 
 # probably not efficient to fill cols 1 and 2 on each loop, but eh, it's fast anyways
 
@@ -324,7 +324,7 @@ or_fips <- county_fips %>%
   filter(V2=="41") %>%
   rename(county = V4, fips = V3, state = V1, st_code = V2) %>% # rename variables
   select(state, st_code, county, fips)
-  
+
 head(or_fips)
 
 write_csv(or_fips, '../../instructions/oregon_FIPS.csv')
@@ -342,7 +342,9 @@ oregon_fips <- oregon_fips %>%
 
 # merge in fips codes
 or_county_pm_pop_wt_2013_w_fips <- oregon_fips %>% 
-  full_join(or_county_pm_pop_wt_2013, by = 'county') 
+  full_join(or_county_pm_pop_wt_2013, by = 'county') %>%
+  select(-st_code, -fips) %>%
+  rename(fips = st_county_fips, wrf_pm = wrf_f_pm)
 
 summary(or_county_pm_pop_wt_2013_w_fips)
 
@@ -354,10 +356,5 @@ df_check
 
 write_path <- paste0('../../data_new/county_data/or_county_pop_wt_pm.csv')
 write_csv(or_county_pm_pop_wt_2013_w_fips, write_path)
-
-
-
-
-
 
 
