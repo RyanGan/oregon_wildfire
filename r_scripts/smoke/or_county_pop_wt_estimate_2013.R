@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 #     Title: Oregon population-weighted smoke PM2.5 by day and county
 #     Author: Jingyang Liu                                                                
-#     Date Created: 6/16/16   Date Modified: 6/28/16                                                   
+#     Date Created: Apr 2017   Date Modified: May 02, 2017                                                 
 #     R version: 3.3.3                                                       
 #-------------------------------------------------------------------------------
 
@@ -13,9 +13,10 @@
 
 # load libraries ---------------------------------------------------------------
 library(tidyverse)
+library(data.table)
 
 # Setting Working Directory ----------------------------------------------------
-dir <- paste0("../oregon_wildfire_new/data/Oregon_PM/")
+dir <- paste0("../data/Oregon_PM/")
 setwd(dir)
 getwd()
 list.files()
@@ -315,21 +316,29 @@ head(or_county_pm_pop_wt_2013)
 # County FIPS codes for Rish
 getwd() # check WD, can use a relative path on my pc
 # infile fips codes (I mispelled as fps)
-# county_fips <- read.table('../../instructions/oregon_FIPS.txt', sep = ",")
+
+county_fips <- read.table('../../instructions/us_fips.txt', sep = ",", colClasses = rep("character", 5))
 
 
-# or_fips <- county_fips %>% 
-#   rename(county = V4, fips = V3) %>% # rename variables
-#   select(county, fips)
+or_fips <- county_fips %>% 
+  filter(V2=="41") %>%
+  rename(county = V4, fips = V3, state = V1, st_code = V2) %>% # rename variables
+  select(state, st_code, county, fips)
   
-# head(or_fips)
+head(or_fips)
 
-# write_csv(or_fips, '../../instructions/oregon_FIPS.csv')
+write_csv(or_fips, '../../instructions/oregon_FIPS.csv')
 
 oregon_fips <- read_csv('../../instructions/oregon_FIPS.csv')
-which(oregon_fips=="Hood River")
+# remove the "County" character
+# factor(oregon_fips$county)
+oregon_fips$county <- gsub(" County", "", as.character(factor(oregon_fips$county)))
 
+which(oregon_fips$county=="Hood River")
 oregon_fips$county[14] <- "Hood.River"
+
+oregon_fips <- oregon_fips %>%
+  mutate(st_county_fips = with(oregon_fips, paste0(st_code, fips)))
 
 # merge in fips codes
 or_county_pm_pop_wt_2013_w_fips <- oregon_fips %>% 
@@ -345,6 +354,7 @@ df_check
 
 write_path <- paste0('../../data_new/county_data/or_county_pop_wt_pm.csv')
 write_csv(or_county_pm_pop_wt_2013_w_fips, write_path)
+
 
 
 
