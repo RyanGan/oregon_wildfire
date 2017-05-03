@@ -8,6 +8,19 @@
 ## Case crossover for each disease
 ## We can get the unique personkey with the first visit from data_new/casecrossover/ file
 
+# library(tidyverse)
+library(data.table)
+library(readr)
+library(dplyr)
+
+getwd() # [1] "/home/jyliu/wildfire/local_git_repo/oregon_wildfire/r_scripts"
+setwd("../../../data/data_new/casecrossover")
+
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+
 start <- Sys.time()
 for(m in var_list){ # begin first loop of variable names (outcomes)
 
@@ -88,3 +101,5 @@ for(m in var_list){ # begin first loop of variable names (outcomes)
 # sweet this works
 total_time <- Sys.time() - start
 total_time # Time difference of 2.225269 hours
+
+
