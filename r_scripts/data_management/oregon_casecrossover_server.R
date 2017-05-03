@@ -100,6 +100,6 @@ for(m in var_list){ # begin first loop of variable names (outcomes)
 
 # sweet this works
 total_time <- Sys.time() - start
-total_time # Time difference of 2.225269 hours
+total_time # Time difference of 1.046643 hours
 
 
