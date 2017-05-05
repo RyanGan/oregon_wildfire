@@ -105,6 +105,6 @@ summary(or_2013_county_er_time_series)
 
 # write permanent dataframe
 
-write_path <- paste0("../data_new/county_data/or_asthma_county_time_series.csv")
+write_path <- paste0("../data_new/county_data/or_2013_county_er_time_series.csv")
 
 write_csv(or_2013_county_er_time_series, write_path)
