@@ -108,3 +108,27 @@ summary(or_2013_county_er_time_series)
 write_path <- paste0("../data_new/county_data/or_2013_county_er_time_series.csv")
 
 write_csv(or_2013_county_er_time_series, write_path)
+
+
+
+### Change county "Hood.River" to "Hood River"
+library(readr)
+setwd("C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire_new/data_new/county_data/")
+read_path1 <- paste("./or_2013_county_er_time_series.csv")
+read_path2 <- paste("./or_county_pop_wt_pm.csv")
+
+or_1 <- read_csv(read_path1)
+or_2 <- read_csv(read_path2)
+
+or_1$county[which(or_1$county=="Hood.River")] <- "Hood River"
+or_2$county[which(or_2$county=="Hood.River")] <- "Hood River"
+
+write_path1 <- paste0("./or_2013_county_er_time_series.csv")
+write_csv(or_1, write_path1)
+
+write_path2 <- paste0("./or_county_pop_wt_pm.csv")
+write_csv(or_2, write_path2)
+
+
+
+
