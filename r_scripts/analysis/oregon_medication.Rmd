@@ -16,14 +16,25 @@ library(htmlTable)
 ```
 
 ## Overview
-For Oregon All Payer All Claims
+For this research I have the Oregon All Payer All Claims (APAC) data set in 2013. I want to research on the effects of wildfire smoke on pharmacy health outcome of asthma. NDC (National Drug Code) is the code that the data set offered. The standard NDC I use the link below, which is a ndc list in 2013, which fits my original data set. 
+(http://ww2.ncqa.org/hedis-quality-measurement/hedis-measures/hedis-2013/hedis-2013-final-ndc-lists)
+
+The data cleaning and casecrossover study are done with server, the following are done with local R.
 
 
-Focus on GWR
+## Preparation
+1. Data cleaning
 
+There are about 77,000,000 claims in total data set. Some have the NDC but another are null or missing. So I choose the claims in Oregon State with ndc, which is 23,330,714 claims. Also, the POS (Place of service code) all show "pharmacy" type.
 
-## Data cleaning (Previous prepare work and code omitted)
-I filter the observations in whole data set with only ndc (National Drug Code) exists. Also I limit the state to Oregon State. 
+For ndc, I choose the people who use the beta 2 agonists (one inhaler) for the day's first visit to form the sample. Because the ndc csv file has more information than what I need, I filter the ndc file by SQLite Studio (code and steps not attached) to a file only containing the beta 2 agonists medication. 
+
+After choosing the claims with beta 2 agonists, the data set is reduced to 232,665. After choosing one day's first visit, the data set is the final data set we research on, containing 24,538 claims.
+
+2. Smoke model
+
+In this research, we foocus on GWR method (geographically weighted ridge regression). There are also WRF-Chem model (Weather Research and Forecasting with Chemistry) and Krig model. To reduce the occurance error I will compare all three models.
+
 
 ```{r import original data, eval=FALSE, echo=FALSE}
 ### Import whole data set ------------------------------------------------------
@@ -394,10 +405,10 @@ print(tab)
 ```
 
 
-### Overall Age Categories
+### Overall plot
 
 
-```{r time stratified age strata cdc met, warning =F, echo = F, results='asis'} 
+```{r overall, warning =F, echo = F, results='asis'} 
 # dataframe list
 
 method_list <- c('WRF-Chem Smoke', 'Kriging Smoke', 'Geo-Weighted Smoke')
@@ -1052,8 +1063,167 @@ wrf_geo_sex_plot$upper95 <- as.numeric(wrf_geo_sex_plot$upper95)
 
 ### Time series
 
+The time series for the number of pharmacy in each day (and separated with different counties).
+The overall time series plot shows a 
+
+!!! In claim data I make a proportion table of county and zip code because we need to make shapefiles. In this pharmacy I choose a different data set 
 
 
+```{r time series, warning=FALSE, message=FALSE}
+read_path7 <- paste0("../data_new/medication/oregon_asthma_ndc.csv")
+or_ndc_claim <- read_csv(read_path7)
+
+or_ndc_asthma <- or_ndc_claim %>%
+  select(personkey, num_visit, clmid, line, ZIP, dates) 
+
+# Join data with names of Oregon counties 
+oregon_fips <- read_csv('../instructions/oregon_FIPS.csv')
+# remove the "County" character
+# factor(oregon_fips$county)
+oregon_fips$county <- gsub(" County", "", as.character(factor(oregon_fips$county)))
+
+oregon_fips <- oregon_fips %>%
+  mutate(st_county_fips = with(oregon_fips, paste0(st_code, fips)))
+
+### Join county with zip
+read_path <- paste0('../data_new/update/or_zip_county_prop.csv') 
+or_zip_county <- read_csv(read_path)
+
+or_zip_county <- or_zip_county %>%
+  select(zip, county_name) %>%
+  rename(county = county_name) %>%
+  rename(ZIP = zip) %>%
+  full_join(oregon_fips, by = "county") %>%
+  select(ZIP, county, state, st_county_fips) %>%
+  rename(fips = st_county_fips)
+
+or_zip_county$county[which(or_zip_county$county=="Hood.River")] <- "Hood River"
+
+# Import population weighted county PM2.5
+pm_path <- paste0("../data_new/county_data/or_county_pop_wt_pm.csv")
+county_pm <- read_csv(pm_path)
+
+# create a working dataset 'or_2013'
+or_ndc_county_time_series <- or_ndc_asthma %>% 
+  # join in the washington county name based on CHARS county identifier
+  left_join(or_zip_county, by = "ZIP") %>% 
+  # rename 'admit_date_impute' to 'date'
+  rename(date = dates) %>%
+  # rename(date = admit_date_impute) %>% 
+  # group by county of residence and date
+  group_by(county, date) %>% 
+  # sum up each primary diagnosis for each outcome for each day for each county
+  summarise(n_obs = n()) %>% 
+  # join daily county estimates of pm2.5
+  left_join(county_pm, by = c('date', 'county'))
+
+# which(is.na(or_ndc_county_time_series$county))
+# or_ndc_county_time_series[113,]
+# which(or_zip_county$ZIP=="97078")
+
+summary(or_ndc_asthma)
+summary(or_ndc_county_time_series)
+summary(as.factor(or_ndc_county_time_series$county)) # 125 is missing out of 3592 (3.16%)
+
+# remove NA values
+which(is.na(or_ndc_county_time_series$county)) # 3468-3592
+or_ndc_county_time_series <- or_ndc_county_time_series[-c(3468:3592),]
+
+# write permanent dataframe
+
+write_path5 <- paste0("../data_new/medication/or_ndc_county_time_series.csv")
+write_csv(or_ndc_county_time_series, write_path5)
+
+## Check for missing values in sparsely populated counties. set to 0 (But no)
+# check_missing <- filter(or_ndc_county_time_series, is.na(n_obs))
+# mutate each to fill in missing values (Still no)
+# check2 <- check_missing %>% mutate_each(funs(new = ifelse(is.na(.), 0, .)), 
+#                                         n_obs:wrf_temp)
+
+
+plot_county <- ggplot(or_ndc_county_time_series, aes(y =n_obs, x = date)) +
+               geom_jitter() + facet_wrap(~county)
+
+
+plot_county_line <- ggplot(or_ndc_county_time_series, aes(y =n_obs, x = date)) +
+                    facet_wrap(~county) + geom_line()
+
+print(plot_county)
+print(plot_county_line)
+# save figure
+ggsave("../plot_new/ndc_county_ts.pdf", plot = plot_county, 
+       width = 12, height = 8, units = "in")
+ggsave("../plot_new/ndc_county_ts_line.pdf", plot = plot_county_line, 
+       width = 12, height = 8, units = "in")
+
+
+plot_ts <- ggplot(or_ndc_county_time_series, aes(y =n_obs, x = date)) +
+           geom_jitter()
+
+print(plot_ts)
+# save figure
+ggsave("../plot_new/ndc_ts.pdf", plot = plot_ts, 
+       width = 12, height = 8, units = "in")
+
+
+
+
+
+```
+
+Because we could see a large and distinct strata dotted time series in some big counties (such as Multnomah), I hope to find if the weekday and weekend have the different observation numbers/
+
+```{r}
+or_ndc_county_time_series_week <- or_ndc_county_time_series%>%
+  mutate(day_admit = as.factor(weekdays(date)),
+         month_admit = month(date)) %>%
+  mutate(outcome = 1)
+
+plot_ts_week <- ggplot(or_ndc_county_time_series_week, aes(y =n_obs, x = date)) +
+           geom_jitter() + facet_wrap(~day_admit)
+
+print(plot_ts_week)
+ggsave("../plot_new/ndc_ts_week.pdf", plot = plot_ts_week, 
+       width = 12, height = 8, units = "in")
+
+
+# Also check for Multnomah
+multnomah_df <- or_ndc_county_time_series_week %>%
+  filter(county == "Multnomah")
+
+plot_mult_week <- ggplot(multnomah_df, aes(y =n_obs, x = date)) +
+           geom_jitter() + facet_wrap(~day_admit)
+
+print(plot_mult_week)
+
+ggsave("../plot_new/multnomah_ts_week.pdf", plot = plot_mult_week, 
+       width = 12, height = 8, units = "in")
+
+
+plot_smoke_ts_wrf <- ggplot(or_ndc_county_time_series_week, aes(y =wrf_smk_pm, x = date)) +
+           geom_jitter(color="red")
+# print(plot_smoke_ts_wrf)
+
+plot_smoke_ts_krig <- ggplot(or_ndc_county_time_series_week, aes(y =krig_smk_pm, x = date)) +
+           geom_jitter() 
+# print(plot_smoke_ts_krig)
+
+plot_smoke_ts_gwr <- ggplot(or_ndc_county_time_series_week, aes(y =geo_smk_pm, x = date)) +
+           geom_jitter() 
+# print(plot_smoke_ts_gwr)
+
+plot_smk <- ggplot(or_ndc_county_time_series_week, aes(x = date)) +
+  geom_jitter(aes(y =wrf_smk_pm, x = date), color='green', size = 2) + 
+  geom_jitter(aes(y =krig_smk_pm, x = date), color='blue', size = 1) + 
+  geom_jitter(aes(y =wrf_smk_pm, x = date), color="red", size = 1)  +
+  ylab("Smoke PM 2.5") 
+ 
+  
+print(plot_smk)
+
+
+     
+```
 
 
 
