@@ -1,5 +1,5 @@
 ---
-title: "Oregon 2013 Medication for Asthma"
+title: "Oregon 2013 Medication for Asthma Inhalers"
 author: "Jingyang Liu"
 date: "May 17, 2017"
 output: html_document
@@ -15,26 +15,33 @@ library(ggplot2)
 library(htmlTable)
 ```
 
+
 ## Overview
-For this research I have the Oregon All Payer All Claims (APAC) data set in 2013. I want to research on the effects of wildfire smoke on pharmacy health outcome of asthma. NDC (National Drug Code) is the code that the data set offered. The standard NDC I use the link below, which is a ndc list in 2013, which fits my original data set. 
+For this research I have the Oregon All Payer All Claims (APAC) data set in 2013. I want to research on the effects of wildfire smoke on pharmacy outcome of asthma. NDC (National Drug Code) is the code that the data set offered. The standard NDC I use the link below, which is a ndc list in 2013, which fits my original data set. 
 (http://ww2.ncqa.org/hedis-quality-measurement/hedis-measures/hedis-2013/hedis-2013-final-ndc-lists)
 
-The data cleaning and casecrossover study are done with server, the following are done with local R.
+The data cleaning and casecrossover study are huge computation tasks, so they are done with server, the following work is done with local R.
 
 
-## Preparation
-1. Data cleaning
+## Method Description
 
-There are about 77,000,000 claims in total data set. Some have the NDC but another are null or missing. So I choose the claims in Oregon State with ndc, which is 23,330,714 claims. Also, the POS (Place of service code) all show "pharmacy" type.
+In these comparisons, we examine various methods of smoke PM2.5 estimations and associations with health outcomes using a time-stratified case-crossover study design. Pharmacy outcomes for a patient with a primary diagnosis of cardiopulmonary health outcomes and their date of admission (index time) were identified. We then created counterfactual observations for each patient on the same day of the week for the entire wildfire season (May 1st to Sep 30th, 2013). For patients who have a index time before May 1, 2013 or after September 30, 2013, their referent observations before or after these dates will be excluded as I will not be able to assign estimates of PM2.5 to these referent observations.
 
-For ndc, I choose the people who use the beta 2 agonists (one inhaler) for the day's first visit to form the sample. Because the ndc csv file has more information than what I need, I filter the ndc file by SQLite Studio (code and steps not attached) to a file only containing the beta 2 agonists medication. 
+1. Data cleaning for health outcomes
 
-After choosing the claims with beta 2 agonists, the data set is reduced to 232,665. After choosing one day's first visit, the data set is the final data set we research on, containing 24,538 claims.
+There are about 77 million claims in the total data set. Some have the NDC but another are null or missing because people are going for pharmacy or seeing the doctor. So I choose the claims in Oregon State with ndc existing, which is about 23 million claims. Also, the POS (Place of service code) all show "pharmacy" type, comparing to the previous health disease outcomes we limit the "emergency visit" type or "urgent care" type.
 
-2. Smoke model
+For ndc, I choose the people who use the beta 2 agonists (one inhaler) for the day's first visit to form the sample. Because the ndc csv file has more information than what I need, I filter the ndc file by SQLite Studio (code and steps not attached) to a file only containing the beta 2 agonists medication information. 
 
-In this research, we foocus on GWR method (geographically weighted ridge regression). There are also WRF-Chem model (Weather Research and Forecasting with Chemistry) and Krig model. To reduce the occurance error I will compare all three models.
+After choosing the claims with beta 2 agonists, the data set is reduced to 232,665. After choosing people's each day's first visit and limit the wildfire season dates (May 1st, 2013 to September 30th, 2013), the data set is the final data set we research on, containing  only 24,538 claims.
 
+2. Exposure methods for smoke model
+
+In this research, we focus on the GWR method (geographically weighted ridge regression). There are also WRF-Chem model (which substracts WRF-chem from the Weather Research and Forecasting with Chemistry no fire emission). For the WRF-Chem variable with the 'smoke' designator, this is WRF-Chem - WRF-Chem no fire. For Geo-Weighted Regression and Kriging model, with 'smk' designator, I subtracted off the 'Background' estimates of smoke, which I believe are the monthly averages of PM2.5 for a given grid. However, the 'Background' is the mean of total period from May 1st to Sep 30th 2013 so I have to assign the mean for every day. To reduce the occurance error and compare the differences I will analyze all three models.
+
+3. Analytic method
+
+We use the conditional logistic regression model using the survival package in R. Each conditional logistic regression model accounts for the subject, and adjusts for temperature from the WRF-Chem model. The conditional logistic regression model \beta represents the change in risk of an pharmacy event associated with a short-term unit increase in exposure, and can be calculated as an average difference between exposure at the index time and a weighted average of exposure at all times in the referent window. 
 
 ```{r import original data, eval=FALSE, echo=FALSE}
 ### Import whole data set ------------------------------------------------------
@@ -60,12 +67,9 @@ write_path <- paste0('../../../data/data_new/',
 write_csv(oregon_df2, write_path)
 ```
 
-### Choose ndc
-This analysis researches on asthma medication of Oregon All Claims All Payers data set.
 
-I choose the inhalation medicine beta 2 agonists to filter the sample for asthma.
 
-```{r ndc, eval=FALSE, echo=FALSE}
+```{r choose ndc, eval=FALSE, echo=FALSE}
 ### Import NDC data set --------------------------------------------------------
 read_path <- paste0("../../../data/data_new/oregon_ndc.csv")
 oregon_ndc <- read_csv(read_path)
@@ -107,9 +111,11 @@ write_csv(oregon_asthma_df, write_path2)
 
 ```
 
-## Casecrossover study
+## Time-Stratified Case-Crossover (Population-Weighted PM~2.5~ Assigned by Zip Code)
+*referents same day of week within fire season May - September*
+ 
+Because we want the I also make the counterfactual dates for each claim, which means that for each claim, I choose the day the claim shows, to indicate the outcome for this day is "1". Then I make the dates week by week before this date, and after this date in the whole wildfire season, and indicate these dates' outcomes are "0". Then I can use these outcomes for the following model building.
 
-I also make the "false" dates for each claim.
 
 ```{r casecrossover, eval=FALSE, echo=FALSE}
 ### Casecrossover study
@@ -188,10 +194,8 @@ write_csv(outcome_casecross, write_path2)
 
 ```
 
+To get the time stratified data set, I create the lag variables that take smoke values from the previous days for zip codes, join the zipcode level populatoin-weighted pm to the data set, and create age, sex, month and season index.
 
-## Time-Stratified Case-Crossover (referents same day of week within fire season May - September)
-
-** The following analysis are done in local R.**
 
 ```{r time stratified, eval=FALSE, echo=FALSE}
 ### Time stratified ------------------------------------------------------------
@@ -314,11 +318,9 @@ write_csv(outcome_casecross, write_path4)
 ```
 
 
-## Population-Weighted PM~2.5~ Assigned by Zip Code
-
 ### Descriptives
 
-For all of 2013, there were a total of millons of all claims records in the APAC dataset. During the May 1st to September 30th wildfire season in Oregon state, there were 24217 pharmacy visits for the beta 2 agonists with ndc. The number of persons (cases), as well as age-specific and sex-specific strate.
+For all of 2013, there were a total of millons of all claims records in the APAC dataset. During the May 1st to September 30th wildfire season in Oregon state, there were 24217 pharmacy visits for the ndc of beta 2 agonists. The number of cases, as well as age-specific and sex-specific strate are shown below.
 
 
 ```{r descriptive table, echo = F, message = F, warning = F, results='asis'}
@@ -332,7 +334,7 @@ method_list <- c('WRF-Chem Smoke', 'Geo-Weighted Smoke', 'Kriging Smoke')
 asthma_ndc_df <- data.frame(asthma_ndc)
 
 # outcome name
-outcome_name <- "asthma"
+outcome_name <- "Inhalers"
 
 # dataframe for analysis creation
 # bind columns back together 
@@ -507,9 +509,9 @@ wrf_geo_age <- combined_point_est_df %>%
 
 
 tab <- htmlTable(txtRound(wrf_geo_age, digits = 3, 1:3), 
-         caption = "Association between a 10 ug/m^3 in PM2.5 three smoke method and health outcomes",
+         caption = "Association between a 10 ug/m^3 in PM2.5 three smoke method and pharmacy outcomes",
          # row group by outcome
-         rgroup = "Asthma",
+         rgroup = "Asthma Inhalers",
          n.rgroup = c(rep(3, 1)), # 6 rows for each age cat for each outcome
          # column headers
          header = c("Est Method", "Events",
@@ -520,7 +522,7 @@ tab <- htmlTable(txtRound(wrf_geo_age, digits = 3, 1:3),
          padding.rgroup = "&nbsp;&nbsp;",
          css.cell = "padding-left: 0.5em; padding-right: .5em;", # cell space
          align = "llcccc", # column alignment,
-         tfoot="&dagger; Time-stratified: referent periods matched to events on same day of week within May to September fire season."
+         tfoot="&dagger; Referent periods matched to events on same day of week within May to September fire season."
          ) # end table
   
 print(tab)
@@ -613,7 +615,7 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
 
 Following table and figure look at some outcomes stratified by age category. 
 
-For some outcomes, like Age > 65 in WRF-Chem method, the CI is the only insignificant one in the plot.
+For some outcomes, such like Age > 65 in WRF-Chem method, the CI is the only insignificant one in the plot.
 
 
 ```{r time stratified age strata cdc met, warning =F, echo = F, results='asis'} 
@@ -625,8 +627,8 @@ method_list <- c('WRF-Chem Smoke', 'Kriging Smoke', 'Geo-Weighted Smoke')
 asthma_ndc_df <- data.frame(asthma_ndc)
 
 # outcome name
-outcome <- "asthma"
-outcome_name <- "Asthma"
+outcome <- "asthma inhalers"
+outcome_name <- "Asthma inhalers"
 
 # age category list
 age_cat_list <- c(0,1,2)
@@ -736,7 +738,7 @@ wrf_geo_age <- combined_point_est_df %>%
 tab <- htmlTable(txtRound(wrf_geo_age, digits = 3, 1:3), 
          caption = "Association between a 10 ug/m^3 in PM2.5 geo smoke and health outcomes stratified by age",
          # row group by outcome
-         rgroup = "Asthma",
+         rgroup = "Asthma inhalers",
          n.rgroup = c(rep(9, 1)), # 6 rows for each age cat for each outcome
          # column headers
          header = c("Est Method", "Age Group", "Events",
@@ -822,7 +824,7 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
     strip.background = element_rect(colour=NA, fill=NA),
     panel.border = element_rect(fill = NA, color = "black"),
     # facet text size
-    strip.text = element_text(size = 10),
+    strip.text = element_text(size = 10), 
     # axis element
     #axis.text.x = element_blank(),
     #axis.title.x = element_blank(),
@@ -854,8 +856,8 @@ method_list <- c('WRF-Chem Smoke', 'Kriging Smoke', 'Geo-Weighted Smoke')
 asthma_ndc_df <- data.frame(asthma_ndc)
 
 # outcome name
-outcome <- "asthma"
-outcome_name <- "Asthma"
+outcome <- "asthma inhalers"
+outcome_name <- "Asthma inhalers"
 
 # create an empty list to row bind dataframes together
 datalist1 <- list()
@@ -966,9 +968,9 @@ wrf_geo_sex <- combined_point_est_df %>%
 
 
   tab <- htmlTable(txtRound(wrf_geo_sex, digits = 3, 1:3), 
-           caption = "Association between a 10 ug/m^3 in PM2.5 geo smoke and health outcomes stratified by sex",
+           caption = "Association between a 10 ug/m^3 in PM2.5 geo smoke and pharmacy outcomes stratified by sex",
            # row group by outcome
-           rgroup = "Asthma",
+           rgroup = "Asthma inhalers",
            n.rgroup = c(rep(6, 1)), # 2 rows for each sex strata for each outcome
            # column headers
            header = c("Est Method", "Sex Strata", "Events",
@@ -979,7 +981,7 @@ wrf_geo_sex <- combined_point_est_df %>%
            padding.rgroup = "&nbsp;&nbsp;",
            css.cell = "padding-left: 0.5em; padding-right: .5em;", # cell space
            align = "llcccc", # column alignment,
-           tfoot="&dagger; Adjusted for temperature, accounting for subject. Time-stratified: referent periods matched to events on same day of week within July to October fire season."
+           tfoot="&dagger; Time-stratified: referent periods matched to events on same day of week within July to October fire season."
             ) # end table
   
   print(tab)
@@ -1059,17 +1061,16 @@ wrf_geo_sex_plot$upper95 <- as.numeric(wrf_geo_sex_plot$upper95)
 ```
 
 
-## County
+## County-level time series
 
-### Time series
+### Overall pharmacy visit time series
 
-The time series for the number of pharmacy in each day (and separated with different counties).
-The overall time series plot shows a 
+The time series for the number of pharmacy in each day and separated with different counties. For convenience and representativeness, I choose some of the largest counties to show the visit features.
 
-!!! In claim data I make a proportion table of county and zip code because we need to make shapefiles. In this pharmacy I choose a different data set 
+The overall time series plot shows a time series plot.
 
 
-```{r time series, warning=FALSE, message=FALSE}
+```{r time series, warning=FALSE, message=FALSE, echo=FALSE}
 read_path7 <- paste0("../data_new/medication/oregon_asthma_ndc.csv")
 or_ndc_claim <- read_csv(read_path7)
 
@@ -1121,12 +1122,12 @@ or_ndc_county_time_series <- or_ndc_asthma %>%
 # or_ndc_county_time_series[113,]
 # which(or_zip_county$ZIP=="97078")
 
-summary(or_ndc_asthma)
-summary(or_ndc_county_time_series)
-summary(as.factor(or_ndc_county_time_series$county)) # 125 is missing out of 3592 (3.16%)
+# summary(or_ndc_asthma)
+# summary(or_ndc_county_time_series)
+# summary(as.factor(or_ndc_county_time_series$county)) # 125 is missing out of 3592 (3.16%)
 
 # remove NA values
-which(is.na(or_ndc_county_time_series$county)) # 3468-3592
+# which(is.na(or_ndc_county_time_series$county)) # 3468-3592
 or_ndc_county_time_series <- or_ndc_county_time_series[-c(3468:3592),]
 
 # write permanent dataframe
@@ -1140,6 +1141,21 @@ write_csv(or_ndc_county_time_series, write_path5)
 # check2 <- check_missing %>% mutate_each(funs(new = ifelse(is.na(.), 0, .)), 
 #                                         n_obs:wrf_temp)
 
+plot_ts <- ggplot(or_ndc_county_time_series, aes(y =n_obs, x = date)) +
+           geom_jitter()
+
+print(plot_ts)
+# save figure
+ggsave("../plot_new/ndc_ts.pdf", plot = plot_ts, 
+       width = 12, height = 8, units = "in")
+```
+
+### County time series
+
+The dotted time series plot of pharmacy visits by counties shows a large and distinct strata dotted time series in some big counties (such as Multnomah), I guess it may be the difference of visits between weekday and weekend. The lined time series plot also shows fluctuation. So we choose some larger counties (with more visits) to research on the effect of weekend and weekay.
+
+
+```{r, warning=FALSE, message=FALSE,echo=FALSE}
 
 plot_county <- ggplot(or_ndc_county_time_series, aes(y =n_obs, x = date)) +
                geom_jitter() + facet_wrap(~county)
@@ -1157,35 +1173,17 @@ ggsave("../plot_new/ndc_county_ts_line.pdf", plot = plot_county_line,
        width = 12, height = 8, units = "in")
 
 
-plot_ts <- ggplot(or_ndc_county_time_series, aes(y =n_obs, x = date)) +
-           geom_jitter()
-
-print(plot_ts)
-# save figure
-ggsave("../plot_new/ndc_ts.pdf", plot = plot_ts, 
-       width = 12, height = 8, units = "in")
-
-
-
-
-
 ```
 
-Because we could see a large and distinct strata dotted time series in some big counties (such as Multnomah), I hope to find if the weekday and weekend have the different observation numbers/
+### Time series of weekday and weekend in larger counties.
+We check the time series for Multnomah, and it indeed shows more visits of weekdays than that in weekends (except some holidays such like Labor Day, Independent Day, etc.) We may choose the new covariates for weekday and weekend. 
 
-```{r}
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
 or_ndc_county_time_series_week <- or_ndc_county_time_series%>%
   mutate(day_admit = as.factor(weekdays(date)),
          month_admit = month(date)) %>%
   mutate(outcome = 1)
-
-plot_ts_week <- ggplot(or_ndc_county_time_series_week, aes(y =n_obs, x = date)) +
-           geom_jitter() + facet_wrap(~day_admit)
-
-print(plot_ts_week)
-ggsave("../plot_new/ndc_ts_week.pdf", plot = plot_ts_week, 
-       width = 12, height = 8, units = "in")
-
 
 # Also check for Multnomah
 multnomah_df <- or_ndc_county_time_series_week %>%
@@ -1198,7 +1196,12 @@ print(plot_mult_week)
 
 ggsave("../plot_new/multnomah_ts_week.pdf", plot = plot_mult_week, 
        width = 12, height = 8, units = "in")
+```
 
+### Time series of smoke exposure
+The plot shows the times series of smoke PM 2.5 exposure. It seems that at the beginning of August or at the end of July the smoke has a peak. Also during the August the smoke is very high. The green one shows the WRF-Chem method; The bule one shows the Krigging method; And the red one, which we focus on, shows the GWR method.
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
 
 plot_smoke_ts_wrf <- ggplot(or_ndc_county_time_series_week, aes(y =wrf_smk_pm, x = date)) +
            geom_jitter(color="red")
@@ -1213,9 +1216,9 @@ plot_smoke_ts_gwr <- ggplot(or_ndc_county_time_series_week, aes(y =geo_smk_pm, x
 # print(plot_smoke_ts_gwr)
 
 plot_smk <- ggplot(or_ndc_county_time_series_week, aes(x = date)) +
-  geom_jitter(aes(y =wrf_smk_pm, x = date), color='green', size = 2) + 
+  geom_jitter(aes(y =wrf_smk_pm, x = date), color='green', size = 1) + 
   geom_jitter(aes(y =krig_smk_pm, x = date), color='blue', size = 1) + 
-  geom_jitter(aes(y =wrf_smk_pm, x = date), color="red", size = 1)  +
+  geom_jitter(aes(y =geo_smk_pm, x = date), color="red", size = 1)  +
   ylab("Smoke PM 2.5") 
  
   
