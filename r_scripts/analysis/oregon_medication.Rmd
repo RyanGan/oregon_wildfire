@@ -68,14 +68,19 @@ write_csv(oregon_df2, write_path)
 ```
 
 
+```{r import original data, eval=FALSE, echo=FALSE}
+### Import whole data set ------------------------------------------------------
+read_path <- paste0("../../../data/data_original/gan_episodes_of_care.txt")
+start_time <- Sys.time()
+oregon_df <- fread(read_path, sep = "|", showProgress = T) 
+stop_time <-  Sys.time() - start_time 
+# time it took
+stop_time # 7 mins
 
-```{r choose ndc, eval=FALSE, echo=FALSE}
 ### Import NDC data set --------------------------------------------------------
 read_path <- paste0("../../../data/data_new/oregon_ndc.csv")
 oregon_ndc <- read_csv(read_path)
 dim(oregon_ndc) # 23330714 obs
-
-which(oregon_ndc$ndc=="23490502001")
 
 ## Import Asthma NDC table
 read_path2 <- paste0("../../../data/data_new/ndc_2013_beta_2_agonists.csv")
@@ -88,7 +93,171 @@ colnames(asthma_ndc) <- c("ndc_code", "brand_name", "generic_product_name",
 ndc_codes <- as.vector(as.matrix(asthma_ndc$ndc_code))
 
 oregon_asthma <- oregon_ndc %>%
-  filter(ndc %in% ndc_codes) # 232665
+  filter(ndc %in% ndc_codes) # 232665, unique personkey 83787
+
+oregon_asthma_df <- oregon_asthma %>% 
+  group_by(personkey) %>% 
+  arrange(personkey, fromdate, line) %>% 
+  mutate(num_visit = dense_rank(fromdate)) %>%
+  arrange(personkey, num_visit) %>% 
+  select(personkey, clmid, num_visit) %>% 
+  unique() %>% 
+  full_join(oregon_asthma, by = c("personkey", "clmid")) %>% 
+  arrange(personkey, clmid, line, fromdate) %>% 
+  filter(row_number() == 1) %>%
+  # add new transverted from date
+  mutate(dates = as.Date(fromdate, "%m/%d/%Y")) # 83787 (same)
+
+
+oregon_df_ndc <- oregon_df %>%
+  filter(personkey %in% oregon_asthma$personkey) # 8909892
+
+### Import ICD9 code
+icd9_key <- read_excel("../../../data/data_original/CMS32_DESC_LONG_SHORT_DX.xlsx") %>% 
+  # rename the terrible variable names
+  select(dx_code = 1, long_desc = 2, short_desc = 3)
+
+# sort by icd9 code add row variable 
+icd9_key$X <- NULL
+icd9_key <- arrange(icd9_key, dx_code) %>%
+  mutate(n = as.numeric(row.names(icd9_key)))
+
+### asthma
+which(icd9_key$dx_code == '49300') # start of asthma is row 5206
+which(icd9_key$dx_code == '49392') # end of asthma is row 5219
+
+# limit just to asthma code and just the diagnosis column
+icd9_check <- icd9_key %>%
+  filter(n >= 5206 & n <= 5219) 
+icd9_check
+
+asthma_icd9 <- filter(icd9_key, n >= 5206 & n <= 5219) %>%
+  select(dx_code)
+# convert to vector
+asthma_icd9 <- as.vector(as.matrix(asthma_icd9))   
+
+# now can I make a new variable, asthma1, that indicates an asthma claim?
+or_ndc_asthma_df <- oregon_df_ndc %>%
+  filter(dx1 %in% asthma_icd9 |
+         dx2 %in% asthma_icd9 |
+         dx3 %in% asthma_icd9 |
+         dx4 %in% asthma_icd9 |
+         dx5 %in% asthma_icd9 |
+         dx6 %in% asthma_icd9 |
+         dx7 %in% asthma_icd9 |
+         dx8 %in% asthma_icd9 |
+         dx9 %in% asthma_icd9 |
+         dx10 %in% asthma_icd9 |
+         dx11 %in% asthma_icd9 |
+         dx12 %in% asthma_icd9 |
+         dx13 %in% asthma_icd9) # 375451
+
+
+### COPD
+copd_icd9 <- c('490', '4910','4911','49120','49121','49122','4918','4919', '4920',
+               '4928', '4940', '4941', '496') 
+
+# now can I make a new variable, asthma1, that indicates an asthma claim?
+or_ndc_copd_df <- oregon_df_ndc %>%
+  filter(dx1 %in% copd_icd9 |
+         dx2 %in% copd_icd9 |
+         dx3 %in% copd_icd9 |
+         dx4 %in% copd_icd9 |
+         dx5 %in% copd_icd9 |
+         dx6 %in% copd_icd9 |
+         dx7 %in% copd_icd9 |
+         dx8 %in% copd_icd9 |
+         dx9 %in% copd_icd9 |
+         dx10 %in% copd_icd9 |
+         dx11 %in% copd_icd9 |
+         dx12 %in% copd_icd9 |
+         dx13 %in% copd_icd9) # 361738
+
+
+or_ndc_asthma_copd <- oregon_df_ndc %>%
+  filter(dx1 %in% asthma_icd9 |
+         dx2 %in% asthma_icd9 |
+         dx3 %in% asthma_icd9 |
+         dx4 %in% asthma_icd9 |
+         dx5 %in% asthma_icd9 |
+         dx6 %in% asthma_icd9 |
+         dx7 %in% asthma_icd9 |
+         dx8 %in% asthma_icd9 |
+         dx9 %in% asthma_icd9 |
+         dx10 %in% asthma_icd9 |
+         dx11 %in% asthma_icd9 |
+         dx12 %in% asthma_icd9 |
+         dx13 %in% asthma_icd9 |
+         dx1 %in% copd_icd9 |
+         dx2 %in% copd_icd9 |
+         dx3 %in% copd_icd9 |
+         dx4 %in% copd_icd9 |
+         dx5 %in% copd_icd9 |
+         dx6 %in% copd_icd9 |
+         dx7 %in% copd_icd9 |
+         dx8 %in% copd_icd9 |
+         dx9 %in% copd_icd9 |
+         dx10 %in% copd_icd9 |
+         dx11 %in% copd_icd9 |
+         dx12 %in% copd_icd9 | 
+         dx13 %in% copd_icd9) # 722107 
+
+or_ndc_asthma_copd_sum <- or_ndc_asthma_copd %>%
+  mutate(asthma1 = ifelse(dx1 %in% asthma_icd9, 1, 0),
+         asthma2 = ifelse(dx2 %in% asthma_icd9, 1, 0),
+         asthma3 = ifelse(dx3 %in% asthma_icd9, 1, 0),
+         asthma4 = ifelse(dx4 %in% asthma_icd9, 1, 0),
+         asthma5 = ifelse(dx5 %in% asthma_icd9, 1, 0),
+         asthma6 = ifelse(dx6 %in% asthma_icd9, 1, 0),
+         asthma7 = ifelse(dx7 %in% asthma_icd9, 1, 0),
+         asthma8 = ifelse(dx8 %in% asthma_icd9, 1, 0),
+         asthma9 = ifelse(dx9 %in% asthma_icd9, 1, 0),
+         asthma10 = ifelse(dx10 %in% asthma_icd9, 1, 0),
+         asthma11 = ifelse(dx11 %in% asthma_icd9, 1, 0),
+         asthma12 = ifelse(dx12 %in% asthma_icd9, 1, 0),
+         asthma13 = ifelse(dx13 %in% asthma_icd9, 1, 0),
+         # sum up the asthma indicators
+         asthma_sum = (asthma1 + asthma2 + asthma3 + asthma4 + asthma5 + asthma6 + asthma7 + asthma8 + asthma9 + asthma10 + asthma11 + asthma12 + asthma13),
+         asthma_dx = ifelse(asthma_sum>0, asthma_sum, 0)
+         ) %>% # end of mutate asthma
+  mutate(copd1 = ifelse(dx1 %in% copd_icd9, 1, 0),
+         copd2 = ifelse(dx2 %in% copd_icd9, 1, 0),
+         copd3 = ifelse(dx3 %in% copd_icd9, 1, 0),
+         copd4 = ifelse(dx4 %in% copd_icd9, 1, 0),
+         copd5 = ifelse(dx5 %in% copd_icd9, 1, 0),
+         copd6 = ifelse(dx6 %in% copd_icd9, 1, 0),
+         copd7 = ifelse(dx7 %in% copd_icd9, 1, 0),
+         copd8 = ifelse(dx8 %in% copd_icd9, 1, 0),
+         copd9 = ifelse(dx9 %in% copd_icd9, 1, 0),
+         copd10 = ifelse(dx10 %in% copd_icd9, 1, 0),
+         copd11 = ifelse(dx11 %in% copd_icd9, 1, 0),
+         copd12 = ifelse(dx12 %in% copd_icd9, 1, 0),
+         copd13 = ifelse(dx13 %in% copd_icd9, 1, 0),
+         # sum up the pneumonia indicators
+         copd_sum = (copd1 + copd2 + copd3 + copd4 +copd5 + copd6 + copd7 + copd8 + copd9 +copd10 + copd11 + copd12 + copd13),
+         copd_dx = ifelse(copd_sum>0, copd_sum, 0)
+  ) %>% #end of mutate of copd
+  select(-c(73:85), c(88:100))
+
+or_index <- or_ndc_asthma_copd_sum %>%
+  mutate(index = ifelse(asthma_dx > copd_dx, "asthma", 
+                 ifelse(asthma_dx < copd_dx, "copd", 
+                 ifelse(asthma_dx == copd_dx, "both", NA)))) # 56512 unique personkey
+# asthma   both   copd
+# 360631  14152 347324
+
+write_path <- paste0('../../../data/data_new/',
+                     'oregon_index.csv')
+write_csv(or_index, write_path)
+
+
+
+```
+
+
+
+```{r choose ndc, eval=FALSE, echo=FALSE}
+
 
 # limit to the unique personkey different days' first visit
 oregon_asthma_df <- oregon_asthma %>% 
