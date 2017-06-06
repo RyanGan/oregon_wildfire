@@ -67,6 +67,11 @@ write_path <- paste0('../../../data/data_new/',
 write_csv(oregon_df2, write_path)
 ```
 
+### Make category index for beta-2 agonists.
+First I filtered the whole data set with ndc existing and only Oregon state. Then there are about 24 million claims left. Then I filtered the data set with only beta-2-agonists and found about 233 thousand claims (83787 unique person). By using these unique personkey, I found the claims of them in the total data set, which is about 8.9 million claims. This the data set that I use for the category classification.
+
+
+
 
 ```{r import filtered original data, eval=FALSE, echo=FALSE}
 ### Import whole data set ------------------------------------------------------
@@ -140,6 +145,47 @@ or_ndc_no_icd <- oregon_df_ndc %>%
 
 length(or_ndc_no_icd$personkey) # 3656720 claims
 length(unique(or_ndc_no_icd$personkey)) # 83787
+
+
+
+or_no_ndc_no_icd <- oregon_df %>%
+  filter(dx1=="*NULL*" &
+         dx2=="*NULL*" &
+         dx3=="*NULL*" &
+         dx4=="*NULL*" &
+         dx5=="*NULL*" &
+         dx6=="*NULL*" &
+         dx7=="*NULL*" &
+         dx8=="*NULL*" &
+         dx9=="*NULL*" &
+         dx10=="*NULL*" &
+         dx11=="" &
+         dx12=="" &
+         dx13=="") %>%
+  filter(ndc=="" |
+         ndc=="*NULL*") # 1057022 missing in total data set
+         
+
+or_ndc_all_miss <- oregon_df_ndc %>%
+  filter(dx1=="*NULL*" &
+         dx2=="*NULL*" &
+         dx3=="*NULL*" &
+         dx4=="*NULL*" &
+         dx5=="*NULL*" &
+         dx6=="*NULL*" &
+         dx7=="*NULL*" &
+         dx8=="*NULL*" &
+         dx9=="*NULL*" &
+         dx10=="*NULL*" &
+         dx11=="" &
+         dx12=="" &
+         dx13=="") %>%
+  filter(ndc=="" |
+         ndc=="*NULL*") # 20269 missing in total data set
+
+or_ndc_all_miss_id <- or_ndc_asthma_df %>%
+  filter(personkey %in% unique(or_ndc_copd_df$personkey)) %>% # 7279 person
+  select(personkey)
 
 oregon_ndc_dx <- oregon_ndc %>%
     filter(dx1!="*NULL*" |
@@ -291,6 +337,15 @@ other_disease_id <- oregon_df_ndc %>%
 
 id_index <- bind_rows(asthma_copd_both_id, asthma_only_id, copd_only_id, other_disease_id)
 
+## Join the index with beta 2 ndc claims
+oregon_beta_index <- oregon_beta %>%
+  left_join(id_index, by="personkey")
+summary(as.factor(oregon_beta_index$index))
+
+write_path3 <- paste0('../../../data/data_new/',
+                     'oregon_beta_ndc_index.csv')
+write_csv(oregon_beta_index, write_path3) 
+
 
 ## Join with original data and indicator for 4 categories
 oregon_ndc_index <- oregon_df_ndc %>%
@@ -371,6 +426,84 @@ or_other_sample  <- or_other %>%
   filter(personkey == 10289787) 
 
 
+or_asthma_miss <- or_asthma %>%
+  filter(dx1=="*NULL*" &
+         dx2=="*NULL*" &
+         dx3=="*NULL*" &
+         dx4=="*NULL*" &
+         dx5=="*NULL*" &
+         dx6=="*NULL*" &
+         dx7=="*NULL*" &
+         dx8=="*NULL*" &
+         dx9=="*NULL*" &
+         dx10=="*NULL*" &
+         dx11=="" &
+         dx12=="" &
+         dx13=="") %>%
+  filter(ndc=="" |
+         ndc=="*NULL*") # 20269 missing in total data set
+
+or_copd_miss <- or_copd %>%
+  filter(dx1=="*NULL*" &
+         dx2=="*NULL*" &
+         dx3=="*NULL*" &
+         dx4=="*NULL*" &
+         dx5=="*NULL*" &
+         dx6=="*NULL*" &
+         dx7=="*NULL*" &
+         dx8=="*NULL*" &
+         dx9=="*NULL*" &
+         dx10=="*NULL*" &
+         dx11=="" &
+         dx12=="" &
+         dx13=="") %>%
+  filter(ndc=="" |
+         ndc=="*NULL*") # 20269 missing in total data set
+
+
+or_both_miss <- or_both %>%
+  filter(dx1=="*NULL*" &
+         dx2=="*NULL*" &
+         dx3=="*NULL*" &
+         dx4=="*NULL*" &
+         dx5=="*NULL*" &
+         dx6=="*NULL*" &
+         dx7=="*NULL*" &
+         dx8=="*NULL*" &
+         dx9=="*NULL*" &
+         dx10=="*NULL*" &
+         dx11=="" &
+         dx12=="" &
+         dx13=="") %>%
+  filter(ndc=="" |
+         ndc=="*NULL*") # 20269 missing in total data set
+
+
+or_other_miss <- or_other %>%
+  filter(dx1=="*NULL*" &
+         dx2=="*NULL*" &
+         dx3=="*NULL*" &
+         dx4=="*NULL*" &
+         dx5=="*NULL*" &
+         dx6=="*NULL*" &
+         dx7=="*NULL*" &
+         dx8=="*NULL*" &
+         dx9=="*NULL*" &
+         dx10=="*NULL*" &
+         dx11=="" &
+         dx12=="" &
+         dx13=="") %>%
+  filter(ndc=="" |
+         ndc=="*NULL*") # 20269 missing in total data set
+
+dim(or_asthma_miss)
+dim(or_copd_miss)
+dim(or_both_miss)
+dim(or_other_miss)
+
+
+sum(or_ndc_all_miss_id %in% unique(or_other$personkey))
+
 
 write_path <- paste0('../../../data/data_new/',
                      'oregon_asthma_sample.csv')
@@ -387,7 +520,6 @@ write_csv(or_ndc_asthma_copd_sum, write_path2)
 
 
 ```{r choose ndc, eval=FALSE, echo=FALSE}
-
 
 # limit to the unique personkey different days' first visit
 oregon_asthma_df <- oregon_asthma %>% 
@@ -1526,6 +1658,35 @@ print(plot_smk)
 
      
 ```
+
+### NDC claims with index
+
+
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+read_path7 <- paste0("../data_new/medication/oregon_beta_ndc_index.csv")
+or_ndc_index <- read_csv(read_path7)
+
+oregon_beta_df <- or_ndc_index %>% 
+  group_by(personkey) %>% 
+  arrange(personkey, fromdate, line) %>% 
+  mutate(num_visit = dense_rank(fromdate)) %>%
+  arrange(personkey, num_visit) %>% 
+  select(personkey, clmid, num_visit) %>% 
+  unique() %>% 
+  full_join(or_ndc_index, by = c("personkey", "clmid")) %>% 
+  arrange(personkey, clmid, line, fromdate) %>% 
+  filter(row_number() == 1) %>%
+  # add new transverted from date
+  mutate(dates = as.Date(fromdate, "%m/%d/%Y")) %>%
+  filter(dates >= '2013-05-01' & 
+         dates <= '2013-09-30') # 24538
+
+summary(as.factor(oregon_beta_df$index))
+
+
+```
+
 
 
 
