@@ -22,7 +22,7 @@ library(readr)
 
 
 
-```{r data import, include = F, eval = FALSE}
+```{r ER data import, include = F, eval = FALSE}
 
 ### Limit to only ER visits
 ## pos = 23
@@ -55,59 +55,127 @@ for (i in var_list){
 num_person <- data.frame(rbind(var_list, N))
 ```
 
+
+```{r ER and urgent data import, include = F, eval = FALSE}
+
+### Limit to ER visits and urgent care
+## pos = 23 or pos = 20
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+N <- NA
+n <- 1
+
+for (i in var_list){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', i, 'may_to_sep_time_strat_casecross.csv', sep = "_")
+  or_disease <- read_csv(read_path)
+  
+  or_disease <- or_disease %>% 
+    # filter the unknown gender
+    filter(gender!= "U")
+  
+  # Create a permanent case-cross over dataset
+  file_name <- paste('../data_new/casecrossover/ER_Urgent/or', i, 'may_to_sep_time_strat_casecross_both.csv', sep = "_")
+  
+  # write permanent dataset
+  write_csv(or_disease, paste0(file_name))
+  N[n] = length(unique(or_disease$personkey))
+  n = n+1
+}
+
+
+num_person_both <- data.frame(rbind(var_list, N))
+```
+
+```{r urgent data import, include = F, eval = FALSE}
+
+### Limit to ER visits and urgent care
+## pos = 23 or pos = 20
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+N <- NA
+n <- 1
+
+for (i in var_list){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', i, 'may_to_sep_time_strat_casecross.csv', sep = "_")
+  or_disease <- read_csv(read_path)
+  
+  or_disease <- or_disease %>% 
+    filter(pos=="20") %>%
+    # filter the unknown gender
+    filter(gender!= "U")
+  
+  # Create a permanent case-cross over dataset
+  file_name <- paste('../data_new/casecrossover/Urgent/or', i, 'may_to_sep_time_strat_casecross_ur.csv', sep = "_")
+  
+  # write permanent dataset
+  write_csv(or_disease, paste0(file_name))
+  N[n] = length(unique(or_disease$personkey))
+  n = n+1
+}
+
+
+num_person_ur <- data.frame(rbind(var_list, N))
+```
+
+
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 ## Analysis
-path <- paste0("../data_new/casecrossover/ER")
+path <- paste0("../data_new/casecrossover/ER_Urgent")
 
 resp_casecross <- read_csv(paste(path, 
-                                 "or_respiratory_may_to_sep_time_strat_casecross_er.csv", 
+                                 "or_respiratory_may_to_sep_time_strat_casecross_both.csv", 
                                  sep = "/"))
 
 # asthma
 asthma_casecross <- read_csv(paste(path, 
-                                   "or_asthma_may_to_sep_time_strat_casecross_er.csv", 
+                                   "or_asthma_may_to_sep_time_strat_casecross_both.csv", 
                                    sep = "/")) 
 
 # copd 
 copd_casecross <- read_csv(paste(path, 
-                                 "or_copd_may_to_sep_time_strat_casecross_er.csv", 
+                                 "or_copd_may_to_sep_time_strat_casecross_both.csv", 
                                  sep = "/"))
 
 # pneum or bronchitis
 pneum_casecross <- read_csv(paste(path, 
-                                  "or_pneumonia_may_to_sep_time_strat_casecross_er.csv",
+                                  "or_pneumonia_may_to_sep_time_strat_casecross_both.csv",
                                   sep="/"))
  # acute bronchitis
 acute_bronch_casecross <- read_csv(paste(path, 
-                                         "or_acute_bronch_may_to_sep_time_strat_casecross_er.csv",
+                                         "or_acute_bronch_may_to_sep_time_strat_casecross_both.csv",
                                          sep = "/"))
 # cvd
 cvd_casecross <- read_csv(paste(path, 
-                                "or_cvd_may_to_sep_time_strat_casecross_er.csv",
+                                "or_cvd_may_to_sep_time_strat_casecross_both.csv",
                                 sep="/"))
 # arrhythmia
 arrhythmia_casecross <- read_csv(paste(path, 
-                                       "or_arrhythmia_may_to_sep_time_strat_casecross_er.csv",
+                                       "or_arrhythmia_may_to_sep_time_strat_casecross_both.csv",
                                        sep="/"))
 # cerebral vascular
 cereb_vas_casecross <- read_csv(paste(path, 
-                                      "or_cerbrovas_dis_may_to_sep_time_strat_casecross_er.csv",
+                                      "or_cerbrovas_dis_may_to_sep_time_strat_casecross_both.csv",
                                       sep="/"))
 # heart failure
 hf_casecross <- read_csv(paste(path, 
-                               "or_heart_failure_may_to_sep_time_strat_casecross_er.csv", 
+                               "or_heart_failure_may_to_sep_time_strat_casecross_both.csv", 
                                sep="/"))
 # ischemic heart disease
 ihd_casecross <- read_csv(paste(path, 
-                                "or_isch_heart_dis_may_to_sep_time_strat_casecross_er.csv",
+                                "or_isch_heart_dis_may_to_sep_time_strat_casecross_both.csv",
                                 sep="/"))
 # myo infarc
 mi_casecross <- read_csv(paste(path, 
-                               "or_myocardial_infarc_may_to_sep_time_strat_casecross_er.csv", sep="/"))
+                               "or_myocardial_infarc_may_to_sep_time_strat_casecross_both.csv", sep="/"))
 
 # broken arm
 broken_arm_casecross <- read_csv(paste(path, 
-                                       "or_broken_arm_may_to_sep_time_strat_casecross_er.csv",
+                                       "or_broken_arm_may_to_sep_time_strat_casecross_both.csv",
                                        sep="/"))
 
 # read zip pm for counts by zip
@@ -118,7 +186,7 @@ zip_pm <- read_csv(paste0(smoke_path, "zip_pm_to_merge_with_acap.csv"))
 
 ## Methods Description
 
-In these comparisons, we examine various methods of smoke/PM~2.5~ estimations and associations with health outcomes using a time-stratified case-crossover study design. Health outcomes for a patient with a primary diagnosis of cardiopulmonary health outcomes and their date of admission  (index time) were identified. We then created counterfactual observations for each patient for the same day of the week for the entire wildfire season (MAy 1st to Sep 30th, 2013). We further limited our analyses to claims that were coded as emergency or urgent visits to eliminate bias from patients going in for elective/planned procedures. However, we found the filtered population is much larger than the population we chose in Washington, so we choose only the emegency room (hospital) visits. For patients who have a index time closer to May 1, 2013 or closer to September 30, 2013, their referent observations before or after these dates will be excluded as I will not be able to assign estimates of PM~2.5~ to these referent observations. However, this is not a big issue for a time-stratified design as other referent values throughout the time period average out.  
+In these comparisons, we examine various methods of smoke/PM~2.5~ estimations and associations with health outcomes using a time-stratified case-crossover study design. Health outcomes for a patient with a primary diagnosis of cardiopulmonary health outcomes and their date of admission  (index time) were identified. We then created counterfactual observations for each patient for the same day of the week for the entire wildfire season (MAy 1st to Sep 30th, 2013). We further limited our analyses to claims that were coded as emergency or urgent visits to eliminate bias from patients going in for elective/planned procedures. However, we found the filtered population is much larger than the population we chose in Washington, so we choose only the emegency room (hospital) visits and urgent care visits. For patients who have a index time closer to May 1, 2013 or closer to September 30, 2013, their referent observations before or after these dates will be excluded as I will not be able to assign estimates of PM~2.5~ to these referent observations. However, this is not a big issue for a time-stratified design as other referent values throughout the time period average out.  
 
 The **health outcomes** of interest are all respiratory, asthma, COPD, pneumonia, acute bronchitis, cardiovascular disease, heart failure, ischemic heart disease, and myocardial infarction. I also included broken arm, which I hypothesize to not be associated with wildfire smoke exposure and use as a check.
 
@@ -445,7 +513,7 @@ print_plot <- ggplot(combined_point_est_df,
 
 print(print_plot)
 # save figure
-ggsave("../plot_new/fig_only_er.pdf", plot = print_plot, 
+ggsave("../plot_new/fig_both_er_ur.pdf", plot = print_plot, 
        width = 12, height = 8, units = "in")
 ```
 
@@ -979,7 +1047,7 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
 
   print(print_plot)
   # save figure
-  ggsave("../plot_new/age_fig_three.pdf", plot = print_plot, 
+  ggsave("../plot_new/age_fig_three_both.pdf", plot = print_plot, 
        width = 12, height = 8, units = "in")
   
   
@@ -1229,10 +1297,13 @@ wrf_geo_sex_plot$upper95 <- as.numeric(wrf_geo_sex_plot$upper95)
 
   print(print_plot)
   # save figure
-  ggsave("../plot_new/sex_fig_three.pdf", plot = print_plot, 
+  ggsave("../plot_new/sex_fig_three_both.pdf", plot = print_plot, 
        width = 12, height = 8, units = "in")
 
 
 ```
+
+
+
 
 
