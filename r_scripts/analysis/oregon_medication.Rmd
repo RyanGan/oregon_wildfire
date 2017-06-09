@@ -13,6 +13,7 @@ library(readr)
 library(survival)
 library(ggplot2)
 library(htmlTable)
+library(knitr)
 ```
 
 
@@ -441,7 +442,7 @@ or_asthma_miss <- or_asthma %>%
          dx12=="" &
          dx13=="") %>%
   filter(ndc=="" |
-         ndc=="*NULL*") # 20269 missing in total data set
+         ndc=="*NULL*") # 89482 claims missing in asthma data set
 
 or_copd_miss <- or_copd %>%
   filter(dx1=="*NULL*" &
@@ -458,7 +459,7 @@ or_copd_miss <- or_copd %>%
          dx12=="" &
          dx13=="") %>%
   filter(ndc=="" |
-         ndc=="*NULL*") # 20269 missing in total data set
+         ndc=="*NULL*") # 18941 claims missing in copd data set
 
 
 or_both_miss <- or_both %>%
@@ -476,7 +477,7 @@ or_both_miss <- or_both %>%
          dx12=="" &
          dx13=="") %>%
   filter(ndc=="" |
-         ndc=="*NULL*") # 20269 missing in total data set
+         ndc=="*NULL*") # 17963 claims missing in both data set
 
 
 or_other_miss <- or_other %>%
@@ -494,7 +495,26 @@ or_other_miss <- or_other %>%
          dx12=="" &
          dx13=="") %>%
   filter(ndc=="" |
-         ndc=="*NULL*") # 20269 missing in total data set
+         ndc=="*NULL*") # 46971 claims missing in other data set (5848 personkey)
+
+or_other_not_miss <- or_other %>%
+  filter(dx1!="*NULL*" |
+         dx2!="*NULL*" |
+         dx3!="*NULL*" |
+         dx4!="*NULL*" |
+         dx5!="*NULL*" |
+         dx6!="*NULL*" |
+         dx7!="*NULL*" |
+         dx8!="*NULL*" |
+         dx9!="*NULL*" |
+         dx10!="*NULL*" |
+         dx11!="" |
+         dx12!="" |
+         dx13!="" |
+         ndc!="" |
+         ndc!="*NULL*") # 20269 missing in total data set
+
+length(unique(or_other_not_miss$personkey)) # [1] 27275
 
 dim(or_asthma_miss)
 dim(or_copd_miss)
@@ -1035,7 +1055,7 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
 
   print(print_plot)
   # save figure
-  ggsave("../plot_new/ndc_age_fig_three.pdf", plot = print_plot, 
+  ggsave("../plot_new/ndc_overall_three.pdf", plot = print_plot, 
        width = 12, height = 8, units = "in")
   
 ```
@@ -1659,9 +1679,11 @@ print(plot_smk)
      
 ```
 
-### NDC claims with index
 
 
+## NDC claims with index
+
+Check the claims in each category (Asthma, COPD, Both or Other).
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 read_path7 <- paste0("../data_new/medication/oregon_beta_ndc_index.csv")
@@ -1687,6 +1709,808 @@ summary(as.factor(oregon_beta_df$index))
 
 ```
 
+
+### Descriptives
+
+For all of 2013, there were a total of millons of all claims records in the APAC dataset. During the May 1st to September 30th wildfire season in Oregon state, there were 24217 pharmacy visits for the ndc of beta 2 agonists. The number of cases, as well as age-specific and sex-specific strate are shown below.
+
+
+```{r ndc descriptive table, echo = F, message = F, warning = F, results='asis'}
+read_path6 <- paste0("../data_new/medication/oregon_ndc_time_strat_casecrossover.csv")
+beta_ndc <- read_csv(read_path6)
+
+# join personkey with index
+oregon_beta_index_df <- oregon_beta_df %>%
+  select(personkey, index)
+
+beta_ndc_with_index <- beta_ndc %>%
+  left_join(oregon_beta_index_df, by="personkey")
+
+# dataframe to loop through
+beta_ndc_with_index_df <- data.frame(beta_ndc_with_index)
+
+beta_asthma <- beta_ndc_with_index_df %>%
+  filter(index=="asthma")
+
+beta_copd <- beta_ndc_with_index_df %>%
+  filter(index=="copd")
+
+beta_both <- beta_ndc_with_index_df %>%
+  filter(index=="both")
+
+beta_other <- beta_ndc_with_index_df %>%
+  filter(index=="other")
+
+
+df_list <- list(beta_asthma, beta_copd, beta_both, beta_other)
+
+outcome_list <- c("Asthma", "COPD", "Both", "Other")
+
+# create an empty list to row bind dataframes together
+datalist <- list()
+
+# dataframe list
+method_list <- c('WRF-Chem Smoke', 'Geo-Weighted Smoke', 'Kriging Smoke')
+
+# outcome name
+outcome_name <- c("Asthma", "COPD", "Both", "Other")
+
+
+for(i in 1:length(df_list)){
+  # dataframe to loop through
+  df_to_loop <- data.frame(df_list[i])
+  # indication of column
+  outcome <- colnames(df_to_loop[75])
+  # outcome name
+  outcome_name <- outcome_list[i]
+  
+  # dataframe for analysis creation
+  # bind columns back together 
+  df_analysis <- df_to_loop %>%
+    filter(!is.na(wrf_smk_pm_zip)) %>% 
+    # only look at outcomes
+    filter(outcome == 1) %>%
+    # add another row that makes sure there is a person <15 in the dataframe
+    # tricking xtabs to produce a 0 cell for the outcome for age <15
+    add_row(outcome = 0, age_ind = 0)
+  
+  # cross tabs
+  outcome_n <- xtabs(~ outcome, df_analysis)
+  cross_tab_age <- xtabs(~ outcome + age_ind, df_analysis)
+  cross_tab_sex <- xtabs(~ outcome + sex_ind, df_analysis)
+  # empty matrix
+  point_estimates <- matrix(nrow = 1, ncol = 7, byrow = T)
+  
+  colnames(point_estimates) <- c("outcome", "n", "age_15", "age_15_65", 
+                                 "age_65", "female", "male")
+  
+  # fill in the outcome name for the dataframe before the loop
+  point_estimates[, 1] <- outcome_name
+  # fill n
+  point_estimates[, 2] <- outcome_n[2] # second element of the 1 dimension vector
+  # age <15
+  point_estimates[, 3] <- cross_tab_age[2, 1]
+  # age 15 to 65
+  point_estimates[, 4] <- cross_tab_age[2, 2]
+  # age >65
+  point_estimates[, 5] <- cross_tab_age[2, 3]
+  # male == 0
+  point_estimates[, 7] <- cross_tab_sex[1, 1]
+  # female == 1
+  point_estimates[, 6] <- cross_tab_sex[1, 2]
+  
+  
+  # save point estimates as a dataframe
+  point_est_df <- as_data_frame(point_estimates)
+  
+  # combine previous values in dataframe that has all outcome/methods comparisons
+  datalist[[i]] <- point_est_df
+  
+} # end of loop
+
+# combine each outcome dataframe itteration in to a big dataset
+combined_point_est_df <- bind_rows(datalist) %>% 
+  # find proportions/percents for each strata in a row
+  mutate(age_15_pr = as.character(round((as.numeric(age_15)/as.numeric(n))*100,1)),
+         age_15_65_pr = as.character(round((as.numeric(age_15_65)/as.numeric(n))*100,1)),
+         age_65_pr = as.character(round((as.numeric(age_65)/as.numeric(n))*100,1)),
+         female_pr = as.character(round((as.numeric(female)/as.numeric(n))*100,1)),
+         male_pr = as.character(round((as.numeric(male)/as.numeric(n))*100,1))) %>% 
+  select(outcome, n, age_15, age_15_pr, age_15_65, age_15_65_pr, age_65,
+         age_65_pr, female, female_pr, male, male_pr)
+
+#str(combined_point_est_df)
+  
+tab <- htmlTable(txtRound(combined_point_est_df, digits = 1), 
+           caption = "Number of cases for each outcome observed from May 1st to September 30st, 2013",
+           # column headers
+           header = c("Outcome", "Cases n", "Less than 15", "(%)", "15 to 65", "(%)", "Greater than 65",
+                      "(%)", "Female", "(%)", "Male", "(%)"),
+           # column spanner
+           cgroup = c("","Age Category", "Sex"), 
+           n.cgroup = c(2, 6, 4),
+           padding.rgroup = "&nbsp;&nbsp;",
+           css.cell = "padding-left: 0.5em; padding-right: .5em;", # cell space
+           align = "llccccc" # column alignment,
+            ) # end table
+
+print(tab)
+
+```
+
+
+### Overall plot
+
+```{r ndc overall try, warning =F, echo = F, results='asis'}
+df_list <- list(beta_asthma, beta_copd, beta_both, beta_other)
+
+outcome_list <- c("Asthma", "COPD", "Both", "Other")
+
+# create an empty list to row bind dataframes together
+datalist <- list()
+
+# dataframe list
+method_list <- c('WRF-Chem Smoke', 'Kriging Smoke', 'Geo-Weighted Smoke')
+
+# outcome name
+outcome_name <- c("Asthma", "COPD", "Both", "Other")
+
+# data wrangling ----
+# Producing conditional logit model estimates loop 
+for(i in 1:length(df_list)){
+  # dataframe to loop through
+  df_to_loop <- data.frame(df_list[i])
+  # indication of column
+  outcome <- colnames(df_to_loop[75])
+  # outcome name
+  outcome_name <- outcome_list[i]
+  
+  # extract covariates from dataframe
+  covariates_df <- df_to_loop[, c(1:26, 74:84)]
+  
+  # extract pm values and divide by 10 and ordered
+  #which(colnames(df_to_loop)=="global_smk_pm_zip") # code to find column numbers
+  pm_estimates_df <- df_to_loop[, c(87, 92, 91, 93)]/10  # create 10 unit increases
+  
+  # dataframe for analysis creation
+  # bind columns back together 
+  df_analysis <- cbind(covariates_df, pm_estimates_df) %>% 
+    # remove missing pm values
+    filter(!is.na(wrf_smk_pm_zip)) %>% 
+    
+    # join in cdc met data
+    # full_join(daily_zip_met, by = c("ZIPCODE", "date")) %>% 
+    # the following code makes sure that the counterfactual values retained are 
+    # symetric in that number of obs before = number of obs after
+    mutate(obs_diff_admission = (fromdate - date)/7) 
+  # dataframe is already for the entire fire season, so I don't need to subset anymore
+  
+  
+  # empty df for table
+  table_df <- data.frame()
+  
+  # empty matrix
+  point_estimates <- matrix(nrow = 3, ncol = 9, byrow = T)
+  
+  colnames(point_estimates) <- c('outcome', 'pm_method', 'n', 'n_events', 'odds_ratio', 
+                                 'lower95', 'upper95', 'se', 'p_val')
+  
+  # fill in the outcome name for the dataframe before the loop
+  point_estimates[, 1] <- outcome_name
+  
+  # second loop to run a model for each pm estimation method
+  
+  for(j in 38:40){
+    
+    # variable to model 
+    var_name <- colnames(df_analysis[j])
+    
+    # set row number to fill
+    row_n <- j-37
+    
+    # only run the model if the dataframe has observations
+    if(nrow(df_analysis) != 0){
+      # conditional logistic regression model
+      mod <- clogit(outcome ~ df_analysis[[j]] + wrf_temp_zip + strata(personkey), df_analysis)
+      
+      # populate matrix
+      point_estimates[row_n, 2] <- method_list[row_n]
+      point_estimates[row_n, 3] <- mod$n
+      point_estimates[row_n, 4] <- mod$nevent
+      # odds ratio
+      point_estimates[row_n, 5] <- round(exp(summary(mod)$coefficient[1,1]), 3)
+      
+      # 95% lower bound
+      point_estimates[row_n, 6] <- round(exp((summary(mod)$coefficient[1,1]) -                                                                             1.96*(summary(mod)$coefficient[1,3])), 3)
+      # 95% upper bound
+      point_estimates[row_n, 7] <- round(exp((summary(mod)$coefficient[1,1]) +
+                                               1.96*(summary(mod)$coefficient[1,3])), 3)
+      # standard error
+      point_estimates[row_n, 8] <- round(summary(mod)$coefficient[1,3], 4)
+      # p val
+      point_estimates[row_n, 9] <- round(summary(mod)$coefficient[1,5], 4)
+      
+      # save point estimates as a dataframe
+      point_est_df <- as_data_frame(point_estimates)
+      
+      # create else statement that fills matrix with missing so I still have the row
+      # in the final dataframe
+    } else {point_estimates[row_n, 2] <- method_list[row_n]
+    point_estimates[row_n, 3] <- 0
+    point_estimates[row_n, 4] <- 0
+    point_estimates[row_n, c(5:9)] <- 99 } # end 'if else' statement
+  } # end methods loop
+  
+  # combine previous values in dataframe that has all outcome/methods comparisons
+  datalist[[i]] <- point_est_df
+  
+} # end of loop
+
+# combine each outcome dataframe itteration in to a big dataset
+combined_point_est_df <- bind_rows(datalist)
+
+
+# subset columns I want to put in to the table
+table_df <- combined_point_est_df %>% select(2, 3:7) 
+
+
+
+tab <- htmlTable(txtRound(table_df, digits = 3, 1:3), 
+                 caption = "Association between a 10 ug/m^3 in PM2.5 and Health Outcomes",
+                 # row group by outcome
+                 rgroup = outcome_list,
+                 n.rgroup = c(rep(3, 4)), # 4 rows for each method for each outcome
+                 # column headers
+                 header = c("Method", "Obs.", "Events",
+                            "OR&dagger;", "Lower", "Upper"),
+                 # column spanner
+                 cgroup = c("", "95% CI"), 
+                 n.cgroup = c(4, 2),
+                 padding.rgroup = "&nbsp;&nbsp;",
+                 css.cell = "padding-left: 0.5em; padding-right: .5em;", # cell space
+                 align = "llccccc", # column alignment,
+                 tfoot="&dagger; Adjusted for CDC temperature, relatively humidity, wind speed, and precipitation; accounting for subject. Time-stratified: referent periods matched to events on same day of week within July to October fire season."
+) # end table
+
+print(tab)
+
+# ggplot of odds ratios, facet wrapped by outcomes -----
+# convert variables from character to either numeric or factor
+# factor preserves the order of the variable
+combined_point_est_df$outcome <- factor(combined_point_est_df$outcome, 
+                                        levels = unique(combined_point_est_df$outcome))
+
+combined_point_est_df$pm_method <- factor(combined_point_est_df$pm_method, 
+                                          levels = unique(combined_point_est_df$pm_method))
+
+combined_point_est_df$n <- as.numeric(combined_point_est_df$n)
+combined_point_est_df$n_events <- as.numeric(combined_point_est_df$n_events)
+combined_point_est_df$odds_ratio <- as.numeric(combined_point_est_df$odds_ratio)
+combined_point_est_df$lower95 <- as.numeric(combined_point_est_df$lower95)
+combined_point_est_df$upper95 <- as.numeric(combined_point_est_df$upper95)
+combined_point_est_df$se <- as.numeric(combined_point_est_df$se)
+combined_point_est_df$p_val <- as.numeric(combined_point_est_df$p_val)
+
+# subset out global method
+combined_point_est_df <- combined_point_est_df
+
+
+## ggplot
+print_plot <- ggplot(combined_point_est_df, 
+                     aes(x = pm_method, y = odds_ratio, colour = pm_method)) +
+  # custom color 
+  scale_color_manual(name = "Smoke-Estimation Method", 
+                     values = c("red", "blue", "#32115C"),
+                     guide = guide_legend(title.position = "top", title.hjust = 0.5)) +
+  geom_point() + #geom_text(vjust = 0, nudge_x = 0.3) +
+  geom_errorbar(aes(ymin=lower95, ymax=upper95), width = 0.2) +
+  facet_wrap(~outcome, nrow = 3) +
+  geom_hline(yintercept = 1, linetype=2) +
+  #    ggtitle('Association Between PM2.5 \n from Wildfire Smoke on Hospitalizations') +
+  ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
+  #xlab('Smoke Estimation Method') +
+  # plot theme
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # strip element
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.border = element_rect(fill = NA, color = "black"),
+        # facet text size
+        #strip.text = element_text(size = 8),
+        # axis element
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_text(angle = 90),
+        # legend elements
+        legend.position = "bottom")
+#legend.text = element_text(size = 8))
+
+print(print_plot)
+# save figure
+ggsave("../plot_new/fig_ndc_overall_four.pdf", plot = print_plot, 
+       width = 12, height = 8, units = "in")
+
+```
+
+
+
+
+
+
+### Time-Stratified by Age Categories 
+
+Following table and figure look at some outcomes stratified by age category. 
+
+For some outcomes, such like Age > 65 in WRF-Chem method, the CI is the only insignificant one in the plot.
+
+
+```{r ndc time stratified age strata, warning =F, echo = F, results='asis'} 
+df_list <- list(beta_asthma, beta_copd, beta_both, beta_other)
+
+outcome_list <- c("Asthma", "COPD", "Both", "Other")
+
+# create an empty list to row bind dataframes together
+datalist <- list()
+
+# outcome name
+outcome_name <- c("Asthma", "COPD", "Both", "Other")
+
+# age category list
+age_cat_list <- c(0,1,2)
+
+# looking only at wrf chem, kriging, and geo-weighted; taking out 'Global Smoke' method
+method_list <- c('WRF-Chem Smoke', 'Kriging Smoke', 'Geo-Weighted Smoke')
+
+# create an empty list to row bind dataframes together
+datalist1 <- list()
+datalist2 <- list()
+
+for(i in 1:length(df_list)){
+  
+  # dataframe to loop through
+  df_to_loop <- data.frame(df_list[i])
+  # indication of column
+  outcome <- df_list[i]
+  # outcome name
+  outcome_name <- outcome_list[i]
+  
+  covariates_df <- df_to_loop[, c(1:26, 74:84)]
+  
+  # extract pm values and divide by 10 and ordered
+  #which(colnames(df_to_loop)=="global_smk_pm_zip") # code to find column numbers
+  pm_estimates_df <- df_to_loop[, c(87, 92, 91, 93)]/10  # create 10 unit increases
+  
+  # new loop for age categories
+  for(k in 0:2){
+   
+    point_estimates <- matrix(nrow = 3, ncol = 10, byrow = T)
+    
+    colnames(point_estimates) <- c('outcome', 'age_cat', 'pm_method', 'n', 'n_events', 
+                                   'odds_ratio', 'lower95', 'upper95', 'se', 'p_val')    
+    
+    # fill in the outcome namedataframe before method loop
+    point_estimates[, 1] <- outcome_name
+    # repeat the age category 4 times for each pm method
+    point_estimates[, 2] <- k
+    
+    # dataframe for analysis creation
+    # bind columns back together 
+    df_analysis <- cbind(covariates_df, pm_estimates_df) %>% 
+      # remove missing pm values
+      filter(!is.na(wrf_smk_pm_zip)) %>% 
+      # limit to specific age category
+      filter(age_ind == k) %>% 
+      # the following code makes sure that the counterfactual values retained are 
+      # symetric in that number of obs before = number of obs after
+      mutate(obs_diff_admission = (fromdate - date)/7) 
+    
+    for(j in 38:40){
+      
+      # variable to model 
+      var_name <- colnames(df_analysis[j])
+      
+      # set row number to fill
+      row_n <- j-37
+      
+      # only run the model if the dataframe has observations
+      if(nrow(df_analysis) != 0){
+        # conditional logistic regression model
+        mod <- clogit(outcome ~ df_analysis[[j]] + wrf_temp_zip + strata(personkey), df_analysis)
+        
+        # populate matrix
+        point_estimates[row_n, 3] <- method_list[row_n]
+        point_estimates[row_n, 4] <- mod$n
+        point_estimates[row_n, 5] <- mod$nevent
+        # odds ratio
+        point_estimates[row_n, 6] <- round(exp(summary(mod)$coefficient[1,1]), 3)
+        
+        # 95% lower bound
+        point_estimates[row_n, 7] <- round(exp((summary(mod)$coefficient[1,1]) -                                                                             1.96*(summary(mod)$coefficient[1,3])), 3)
+        # 95% upper bound
+        point_estimates[row_n, 8] <- round(exp((summary(mod)$coefficient[1,1]) +
+                                                 1.96*(summary(mod)$coefficient[1,3])), 3)
+        # standard error
+        point_estimates[row_n, 9] <- round(summary(mod)$coefficient[1,3], 4)
+        # p val
+        point_estimates[row_n, 10] <- round(summary(mod)$coefficient[1,5], 4)
+        
+        # create else statement that fills matrix with missing so I still have the row
+        # in the final dataframe
+      } else {point_estimates[row_n, 3] <- method_list[row_n]
+      point_estimates[row_n, 4] <- 0
+      point_estimates[row_n, 5] <- 0
+      point_estimates[row_n, c(6:10)] <- 99 } # end 'if else' statement
+    } # end methods loop
+    
+    # save point estimates as a dataframe
+    point_est_df <- as_data_frame(point_estimates)
+    
+    # combine previous values in dataframe that has all outcome/methods comparisons
+    datalist1[[k+1]] <- point_est_df
+  } # end age category loop
+  
+  # bind rows of age category estimates together
+  age_est_df <- bind_rows(datalist1)
+  
+  # populate second dataframe list
+  datalist2[[i]] <- age_est_df
+  
+} # end of outcome loop
+
+# combine each outcome dataframe itteration in to a big dataset
+combined_point_est_df <- bind_rows(datalist2)
+
+
+wrf_geo_age <- combined_point_est_df %>% 
+  # filter columns to just geo-smk
+  # filter(pm_method == "GWR Smoke" |
+    #      pm_method == "WRF-Chem Smoke") %>% 
+  mutate(age_cat2 = ifelse(age_cat == 0, "Less than 15", 
+                    ifelse(age_cat == 1, "15-65",
+                    ifelse(age_cat == 2, "Greater than 65", NA)))) %>% 
+  # subset columns I want to put in to the table
+  select(3, 11, 5:8) %>% 
+  mutate(odds_ratio = ifelse(odds_ratio == 99, "--", odds_ratio),
+         lower95 = ifelse(lower95 == 99, "--", lower95),
+         upper95 = ifelse(upper95 == 99, "--", upper95))
+
+
+tab <- htmlTable(txtRound(wrf_geo_age, digits = 3, 1:3), 
+         caption = "Association between a 10 ug/m^3 in PM2.5 geo smoke and health outcomes stratified by age",
+         # row group by outcome
+         rgroup = "Asthma inhalers",
+         n.rgroup = c(rep(9, 1)), # 6 rows for each age cat for each outcome
+         # column headers
+         header = c("Est Method", "Age Group", "Events",
+                    "OR&dagger;", "Lower", "Upper"),
+         # column spanner
+         cgroup = c("", "95% CI"), 
+         n.cgroup = c(4, 2),
+         padding.rgroup = "&nbsp;&nbsp;",
+         css.cell = "padding-left: 0.5em; padding-right: .5em;", # cell space
+         align = "llcccc", # column alignment,
+         tfoot="&dagger; Time-stratified: referent periods matched to events on same day of week within May to September fire season."
+         ) # end table
+  
+print(tab)
+  
+combined_point_est_df_new <- combined_point_est_df %>%
+  mutate(n_events_new = ifelse(as.numeric(n_events)>=100, n_events,
+                        ifelse(as.numeric(n_events)<100, "0", NA))) %>%
+  select(-n_events) %>%
+  rename(n_events = n_events_new)
+
+
+# ggplot of odds ratios, facet wrapped by outcomes -----
+# convert variables from character to either numeric or factor
+# factor preserves the order of the variable
+wrf_geo_age_plot <- combined_point_est_df_new %>% 
+  # filter columns to just geo-smk
+ #  filter(pm_method == "GWR Smoke" | pm_method == "WRF-Chem Smoke") %>% 
+  # do not plot results with less than 15 events, create missing vals
+  # in mutate
+  mutate(odds_ratio = ifelse(as.numeric(n_events) < 15, 
+                             99, odds_ratio),
+         lower95 = ifelse(as.numeric(n_events) < 15, 
+                             99, lower95),
+         upper95 = ifelse(as.numeric(n_events) < 15, 
+                             99, upper95),
+         age_cat2 = ifelse(age_cat == 0, "<15", 
+                    ifelse(age_cat == 1, "15-65",
+                    ifelse(age_cat == 2, ">65", NA)))) %>% 
+  # subset columns I want to put in to the table
+  select(1, 3, 11, 10, 5:7) %>% 
+  mutate(odds_ratio = ifelse(odds_ratio == 99, NA, odds_ratio),
+         lower95 = ifelse(lower95 == 99, NA, lower95),
+         upper95 = ifelse(upper95 == 99, NA, upper95))
+
+# change characters to numeric and factor  
+wrf_geo_age_plot$outcome <- factor(wrf_geo_age_plot$outcome,
+                              levels = unique(wrf_geo_age_plot$outcome))
+
+wrf_geo_age_plot$pm_method <- factor(wrf_geo_age_plot$pm_method,
+                                levels = unique(wrf_geo_age_plot$pm_method))
+
+wrf_geo_age_plot$age_cat2 <- factor(wrf_geo_age_plot$age_cat2,
+                                levels = unique(wrf_geo_age_plot$age_cat2))
+
+wrf_geo_age_plot$n_events <- as.numeric(wrf_geo_age_plot$n_events)
+wrf_geo_age_plot$odds_ratio <- as.numeric(wrf_geo_age_plot$odds_ratio)
+wrf_geo_age_plot$lower95 <- as.numeric(wrf_geo_age_plot$lower95)
+wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
+
+
+## ggplot 
+  print_plot <- ggplot(wrf_geo_age_plot,
+    aes(x = age_cat2, y = odds_ratio, color = pm_method), na.rm = T) +
+    geom_point(position = position_dodge(width = 0.5), na.rm = T) + 
+    geom_errorbar(aes(ymin=lower95, ymax=upper95), 
+                  position = position_dodge(width = 0.5), width = 0.2, na.rm =T) +
+    # custom color 
+    scale_color_manual(name = "Smoke-Estimation Method", 
+                       values = c("red",  "blue", "#32115C"),
+                       guide = guide_legend(title.position = "top", title.hjust = 0.5)) +
+    facet_wrap(~outcome, nrow = 3, scales = "free") +
+    geom_hline(yintercept = 1, linetype=2) +
+    #ggtitle('Association Between PM2.5 from \n Wildfire Smoke on Hospitalizations') +
+    ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
+    #ylim(0, 2) +
+    xlab('Age Category ') +
+    # plot theme
+    theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # strip element
+    strip.background = element_rect(colour=NA, fill=NA),
+    panel.border = element_rect(fill = NA, color = "black"),
+    # facet text size
+    strip.text = element_text(size = 10), 
+    # axis element
+    #axis.text.x = element_blank(),
+    #axis.title.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_text(angle = 90),
+    # legend elements
+    legend.position = "bottom")
+    #legend.text = element_text(size = 8))
+
+
+  print(print_plot)
+  # save figure
+  ggsave("../plot_new/ndc_age_fig_four.pdf", plot = print_plot, 
+       width = 12, height = 8, units = "in")
+  
+```
+
+
+### Seasonal Time-Stratified by Sex
+
+Association with smoke PM~2.5~ and health outcomes stratified by sex. 
+
+All the CI do not include 1, which means the use of asthma medication (beta 2 agonists) increases about 5% when smoke increase 10 units. So the risk for getting asthma will increase about 5% ~ 8% when the smoke PM2.5 increase 10 units.
+
+```{r ndc sex strata, warning = F, echo = F, results='asis'} 
+df_list <- list(beta_asthma, beta_copd, beta_both, beta_other)
+
+outcome_list <- c("Asthma", "COPD", "Both", "Other")
+
+# outcome name
+outcome_name <- c("Asthma", "COPD", "Both", "Other")
+
+# sex category list
+sex_strata_list <- c(0,1)
+
+datalist1 <- list()
+datalist2 <- list()
+
+# data wrangling ----
+# Producing conditional logit model estimates loop 
+for(i in 1:length(df_list)){
+  
+  # dataframe to loop through
+  df_to_loop <- data.frame(df_list[i])
+  # indication of column
+  outcome <- df_list[i]
+  # outcome name
+  outcome_name <- outcome_list[i]
+  
+  covariates_df <- df_to_loop[, c(1:26, 74:84)]
+  
+  # extract pm values and divide by 10 and ordered
+  #which(colnames(df_to_loop)=="global_smk_pm_zip") # code to find column numbers
+  pm_estimates_df <- df_to_loop[, c(87, 92, 91, 93)]/10  # create 10 unit increases
+  
+  # new loop for sex categories
+  for(k in 0:1){
+    
+    # empty matrix (12 x 10 matrix)
+    point_estimates <- matrix(nrow = 3, ncol = 10, byrow = T)
+    
+    colnames(point_estimates) <- c('outcome', 'sex', 'pm_method', 'n', 'n_events', 
+                                   'odds_ratio', 'lower95', 'upper95', 'se', 'p_val')
+    
+    # fill in the outcome namedataframe before method loop
+    point_estimates[, 1] <- outcome_name
+    # repeat the sex category 4 times for each pm method
+    point_estimates[, 2] <- k
+    
+    
+    # dataframe for analysis creation
+    # bind columns back together 
+    df_analysis <- cbind(covariates_df, pm_estimates_df) %>% 
+      # remove missing pm values
+      filter(!is.na(wrf_smk_pm_zip)) %>% 
+      # limit to specific sex category
+      filter(sex_ind == k) %>% 
+      # the following code makes sure that the counterfactual values retained are 
+      # symetric in that number of obs before = number of obs after
+      mutate(obs_diff_admission = (fromdate - date)/7) 
+    # dataframe is already for the entire fire season, so I don't need to subset anymore
+    
+    for(j in 38:40){
+      
+      # variable to model 
+      var_name <- colnames(df_analysis[j])
+      
+      # set row number to fill
+      row_n <- j-37
+      
+      # only run the model if the dataframe has observations
+      if(nrow(df_analysis) != 0){
+        # conditional logistic regression model
+        mod <- clogit(outcome ~ df_analysis[[j]] + wrf_temp_zip + strata(personkey), df_analysis)
+        
+        # populate matrix
+        point_estimates[row_n, 3] <- method_list[row_n]
+        point_estimates[row_n, 4] <- mod$n
+        point_estimates[row_n, 5] <- mod$nevent
+        # odds ratio
+        point_estimates[row_n, 6] <- round(exp(summary(mod)$coefficient[1,1]), 3)
+        
+        # 95% lower bound
+        point_estimates[row_n, 7] <- round(exp((summary(mod)$coefficient[1,1]) -
+                                                 1.96*(summary(mod)$coefficient[1,3])), 3)
+        # 95% upper bound
+        point_estimates[row_n, 8] <- round(exp((summary(mod)$coefficient[1,1]) +
+                                                 1.96*(summary(mod)$coefficient[1,3])), 3)
+        # standard error
+        point_estimates[row_n, 9] <- round(summary(mod)$coefficient[1,3], 4)
+        # p val
+        point_estimates[row_n, 10] <- round(summary(mod)$coefficient[1,5], 4)
+        
+        # create else statement that fills matrix with missing so I still have the row
+        # in the final dataframe
+      } else {point_estimates[row_n, 3] <- method_list[row_n]
+      point_estimates[row_n, 4] <- 0
+      point_estimates[row_n, 5] <- 0
+      point_estimates[row_n, c(6:10)] <- 99 } # end 'if else' statement
+    } # end methods loop
+    
+    # save point estimates as a dataframe
+    point_est_df <- as_data_frame(point_estimates)
+    
+    # combine previous values in dataframe that has all outcome/methods comparisons
+    datalist1[[k+1]] <- point_est_df
+  } # end sex category loop
+  
+  # bind rows of sex category estimates together
+  sex_est_df <- bind_rows(datalist1)
+  
+  # populate second dataframe list
+  datalist2[[i]] <- sex_est_df
+  
+} # end of outcome loop
+
+# combine each outcome dataframe itteration in to a big dataset
+combined_point_est_df <- bind_rows(datalist2)
+
+
+wrf_geo_sex <- combined_point_est_df %>% 
+  # filter columns to just geo-smk
+  # filter(pm_method == "GWR Smoke" | pm_method == "WRF-Chem Smoke") %>% 
+  mutate(sex_cat = ifelse(sex == 0, "Male", 
+               ifelse(sex == 1, "Female", NA))) %>% 
+  # subset columns I want to put in to the table
+  select(3, 11, 5:8)%>% 
+  mutate(odds_ratio = ifelse(odds_ratio == 99, "--", odds_ratio),
+         lower95 = ifelse(lower95 == 99, "--", lower95),
+         upper95 = ifelse(upper95 == 99, "--", upper95))
+
+
+  tab <- htmlTable(txtRound(wrf_geo_sex, digits = 3, 1:3), 
+           caption = "Association between a 10 ug/m^3 in PM2.5 geo smoke and pharmacy outcomes stratified by sex",
+           # row group by outcome
+           rgroup = "Asthma inhalers",
+           n.rgroup = c(rep(6, 1)), # 2 rows for each sex strata for each outcome
+           # column headers
+           header = c("Est Method", "Sex Strata", "Events",
+                      "OR&dagger;", "Lower", "Upper"),
+           # column spanner
+           cgroup = c("", "95% CI"), 
+           n.cgroup = c(4, 2),
+           padding.rgroup = "&nbsp;&nbsp;",
+           css.cell = "padding-left: 0.5em; padding-right: .5em;", # cell space
+           align = "llcccc", # column alignment,
+           tfoot="&dagger; Time-stratified: referent periods matched to events on same day of week within July to October fire season."
+            ) # end table
+  
+  print(tab)
+ 
+# ggplot of odds ratios, facet wrapped by outcomes -----
+# convert variables from character to either numeric or factor
+# factor preserves the order of the variable
+wrf_geo_sex_plot <- combined_point_est_df %>% 
+  # filter columns to just geo-smk
+ #  filter(pm_method == "GWR Smoke" | 
+   #       pm_method == "WRF-Chem Smoke") %>% 
+  mutate(sex_cat = ifelse(sex == 0, "Male", 
+               ifelse(sex == 1, "Female", NA))) %>%
+  # subset columns I want to put in to the table
+  select(1, 3, 11, 5:8) %>% 
+  mutate(odds_ratio = ifelse(odds_ratio == 99, NA, odds_ratio),
+         lower95 = ifelse(lower95 == 99, NA, lower95),
+         upper95 = ifelse(upper95 == 99, NA, upper95))  
+
+# change characters to numeric and factor  
+wrf_geo_sex_plot$outcome <- factor(wrf_geo_sex_plot$outcome,
+                              levels = unique(wrf_geo_sex_plot$outcome))
+
+wrf_geo_sex_plot$pm_method <- factor(wrf_geo_sex_plot$pm_method,
+                                levels = unique(wrf_geo_sex_plot$pm_method))
+
+wrf_geo_sex_plot$sex_cat <- factor(wrf_geo_sex_plot$sex_cat,
+                                levels = unique(wrf_geo_sex_plot$sex_cat))
+
+wrf_geo_sex_plot$n_events <- as.numeric(wrf_geo_sex_plot$n_events)
+wrf_geo_sex_plot$odds_ratio <- as.numeric(wrf_geo_sex_plot$odds_ratio)
+wrf_geo_sex_plot$lower95 <- as.numeric(wrf_geo_sex_plot$lower95)
+wrf_geo_sex_plot$upper95 <- as.numeric(wrf_geo_sex_plot$upper95)
+
+
+## ggplot
+  print_plot <- ggplot(wrf_geo_sex_plot,
+    aes(x = sex_cat, y = odds_ratio, color = pm_method), na.rm = T) +
+    geom_point(position = position_dodge(width = 0.5), na.rm = T) + 
+    geom_errorbar(aes(ymin=lower95, ymax=upper95), 
+                  position = position_dodge(width = 0.5), width = 0.2, na.rm =T) +
+    # custom color 
+    scale_color_manual(name = "Smoke-Estimation Method", 
+                       values = c("red", "blue", "#32115C"),
+                       guide = guide_legend(title.position = "top", title.hjust = 0.5)) +
+    facet_wrap(~outcome, nrow = 3, scales = "free") +
+    geom_hline(yintercept = 1, linetype=2) +
+    #ggtitle('Association Between PM2.5 from \n Wildfire Smoke on Hospitalizations') +
+    ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
+    #ylim(0, 2) +
+    xlab('Sex') +
+    # plot theme
+    theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # strip element
+    strip.background = element_rect(colour=NA, fill=NA),
+    panel.border = element_rect(fill = NA, color = "black"),
+    # facet text size
+    strip.text = element_text(size = 10),
+    # axis element
+    #axis.text.x = element_blank(),
+    #axis.title.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_text(angle = 90),
+    # legend elements
+    legend.position = "bottom")
+    #legend.text = element_text(size = 8))
+
+
+  print(print_plot)
+  # save figure
+  ggsave("../plot_new/ndc_sex_fig_four.pdf", plot = print_plot, 
+       width = 12, height = 8, units = "in")
+
+
+```
 
 
 
