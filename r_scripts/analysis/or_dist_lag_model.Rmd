@@ -555,9 +555,9 @@ for(i in 1:length(df_list)){
   # bind columns back together 
   df_analysis <- cbind(covariates_df, pm_estimates_df) %>%
     # remove missing pm values
-    filter(!is.na(wrf_smk_pm_lag1_zip)) %>% 
-    filter(!is.na(krig_pm_lag1_zip)) %>% 
-    filter(!is.na(geo_wt_pm_lag1_zip)) %>% 
+    filter(!is.na(wrf_smk_pm_lag2_zip)) %>% 
+    filter(!is.na(krig_pm_lag2_zip)) %>% 
+    filter(!is.na(geo_wt_pm_lag2_zip)) %>% 
     
     # join in cdc met data
     # full_join(daily_zip_met, by = c("ZIPCODE", "date")) %>% 
@@ -721,7 +721,7 @@ print_plot <- ggplot(combined_point_est_df,
 
 print(print_plot)
 # save figure
-ggsave("../plot_lag/fig_lag1.pdf", plot = print_plot, 
+ggsave("../plot_lag/fig_lag2.pdf", plot = print_plot, 
        width = 12, height = 8, units = "in")
 
 
@@ -1799,7 +1799,6 @@ ggsave("../plot_lag/fig_lag1.pdf", plot = print_plot,
 ```
 
 
-### Medication Distributed Lag
 
 
 
