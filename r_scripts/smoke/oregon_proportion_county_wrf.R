@@ -140,12 +140,15 @@ county_wrf_proportion[36, 306:307]
 # 0.7923660 0.2285243 
 
 county_wrf_prop_df <- data.frame(county_wrf_proportion)
+
+county_wrf_prop_df <- county_wrf_prop_df %>%
+  mutate(county = rownames(county_wrf_prop_df)) %>%
+  select(county, 1:1575)
+
 # file_name <- paste('./data_new/county_data/or_county_wrf_prop.csv') # previous file
 
-file_name <- paste('./data_new/county_data/or_county_wrf_prop_new.csv') # new shapefile
+file_name <- paste('C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire_new/data_new/county_data/or_county_wrf_prop_new.csv') # new shapefile
 write_csv(county_wrf_prop_df, file_name)
-
-
 
 
 
