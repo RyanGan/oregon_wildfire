@@ -15,7 +15,7 @@ library(readr)
 setwd("C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire_new/")
 
 ### First step: join the zipcode of health data with county
-read_path <- paste0('./data_new/update/or_zip_county_prop.csv')
+read_path <- paste0('./data_new/update/or_zip_county_prop_new.csv')
 or_zip_county <- read_csv(read_path)
 
 or_zip_county <- or_zip_county%>%
@@ -49,8 +49,8 @@ total_time # Time difference of 1.073113 mins
 grid_dir <- paste0('./shapefile/oregon_new_grid/oregon_new_grid.shp')
 smoke_grid <- readOGR(dsn = grid_dir, layer = 'oregon_new_grid') 
 
-county_dir <- paste0('./shapefile/cb_2013_us_county_500k/cb_2013_us_county_500k.shp')
-us_county_2013 <- readOGR(dsn = county_dir, layer = 'cb_2013_us_county_500k')
+county_dir <- paste0('./shapefile/tl_2013_us_county/tl_2013_us_county.shp')
+us_county_2013 <- readOGR(dsn = county_dir, layer = 'tl_2013_us_county')
 or_county_2013 <- us_county_2013[us_county_2013$STATEFP =="41",]
 
 nad83 <- '+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0'
@@ -140,7 +140,9 @@ county_wrf_proportion[36, 306:307]
 # 0.7923660 0.2285243 
 
 county_wrf_prop_df <- data.frame(county_wrf_proportion)
-file_name <- paste('./data_new/county_data/or_county_wrf_prop.csv')
+# file_name <- paste('./data_new/county_data/or_county_wrf_prop.csv') # previous file
+
+file_name <- paste('./data_new/county_data/or_county_wrf_prop_new.csv') # new shapefile
 write_csv(county_wrf_prop_df, file_name)
 
 
