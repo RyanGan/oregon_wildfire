@@ -15,7 +15,7 @@ library(readr)
 setwd("C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire_new/")
 
 ### First step: join the zipcode of health data with county
-read_path <- paste0('./data_new/update/or_zip_county_prop_new.csv')
+read_path <- paste0('./data_new/county_data/or_zip_county_prop_new.csv')
 or_zip_county <- read_csv(read_path)
 
 or_zip_county <- or_zip_county%>%
