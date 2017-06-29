@@ -39,7 +39,7 @@ summary(population_grid)
 
 
 # Import the file that contains the proportion of each grid that overlaps a county
-county_grid_path <- paste0('../../data_new/county_data/or_county_wrf_prop.csv')
+county_grid_path <- paste0('../../data_new/county_data/or_county_wrf_prop_new.csv')
 county_grid_proportion <- read_csv(county_grid_path)
 
 
@@ -134,7 +134,7 @@ df_name <- c('wrf_f', 'wrf_nf', 'wrf_smk_pm', 'geo_wt', 'krig', 'background',
 
 
 # zip and wrf grid overlap matrix ----------------------------------------------
-county_grid_to_matrix <- county_grid_proportion[ , 1:1575]
+county_grid_to_matrix <- county_grid_proportion[ , 2:1576]
 county_grid_matrix <- matrix(as.numeric(unlist(county_grid_to_matrix)), 
                              nrow=nrow(county_grid_to_matrix))
 dim(county_grid_matrix) # (dimension of matrix 36 x 1575)
@@ -171,13 +171,13 @@ grid_population_vector <- as.vector(pop_grid_matrix)
 tail(grid_population_vector)
 
 # output county column from county_grid_proportion for naming purposes later
-county <- county_grid_proportion[,1]
-head(county)
+# county <- county_grid_proportion[,1]
+# head(county)
 
 
 # output zipcode column from zip_grid_proportion for naming purposes later
 # From last proportion calculation code ----------------------------------------
-read_path <- paste0('../../data_new/update/or_zip_county_prop.csv')
+read_path <- paste0('../../data_new/county_data/or_zip_county_prop_new.csv')
 or_county <- read_csv(read_path)
 
 county <- sort(unique(or_county$county_name))
@@ -354,7 +354,7 @@ df_check
 
 # Write permanent dataframe ----------------------------------------------------
 
-write_path <- paste0('../../data_new/county_data/or_county_pop_wt_pm.csv')
+write_path <- paste0('../../data_new/county_data/or_county_pop_wt_pm_new.csv')
 write_csv(or_county_pm_pop_wt_2013_w_fips, write_path)
 
 
