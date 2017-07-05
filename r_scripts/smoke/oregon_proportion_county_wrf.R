@@ -15,36 +15,30 @@ library(readr)
 setwd("C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire_new/")
 
 ### First step: join the zipcode of health data with county
-read_path <- paste0('./data_new/county_data/or_zip_county_prop_new.csv')
-or_zip_county <- read_csv(read_path)
-
-or_zip_county <- or_zip_county%>%
-  select(zip, county_name)
 
 colnames(or_zip_county) <- c("ZIP", "county")
 
-var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
-              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
-              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+read_path <- paste0('./instructions/oregon_zip_county.csv')
+or_zip_county <- read_csv(read_path)
 
-start <- Sys.time()
-for (i in var_list){
-  read_path2 <- paste('./data_new/update/or', i, 'may_to_sep_casecross.csv', sep='_')
-  or_disease <- read_csv(read_path2)
-  
-  or_disease <- or_disease %>% 
-    left_join(or_zip_county, by = c("ZIP"))
- 
-    
-  # Create a permanent case-cross over dataset
-  file_name <- paste('oregon', i, 'may_to_sep_casecross_county.csv', sep = '_')
-  
-  # write permanent dataset
-  write_csv(or_disease, paste0("./data_new/county", file_name))
-  
-}
-total_time <- Sys.time() - start
-total_time # Time difference of 1.073113 mins
+# or_zip_county$county_name[which(or_zip_county$county_name=="Hood.River")] <- "Hood River"
+
+or_zip_county <- or_zip_county %>%
+  select(zip, county_name) %>%
+  rename(county = county_name) %>%
+  rename(ZIP = zip) %>%
+  select(ZIP, county) 
+
+county_new <- c("Washington", "Douglas", "Lane", "Deschutes")
+
+zip_new <- data.frame(c(97003, 97471, 97475, 97703))
+colnames(zip_new) <- "ZIP"
+
+zip_new <- zip_new %>%
+  mutate(county = county_new)
+
+or_zip_county_new <- or_zip_county %>%
+  bind_rows(zip_new) # 488 zip codes
 
 grid_dir <- paste0('./shapefile/oregon_new_grid/oregon_new_grid.shp')
 smoke_grid <- readOGR(dsn = grid_dir, layer = 'oregon_new_grid') 
@@ -90,8 +84,6 @@ prop_307_int # 22.85% of grid is covered by zip
 
 ### Calculate all the proportion of WRF Grid and each county -------------------
 or_county_name <- sort(unique(or_zip_county$county))
-which(or_county_name=="Hood.River") #14
-or_county_name[14] <- "Hood River"
 length(or_county_name)
 wrf_grid_name <- as.character(smoke_grid@data$WRFGRID_ID)
 length(wrf_grid_name)
@@ -147,7 +139,7 @@ county_wrf_prop_df <- county_wrf_prop_df %>%
 
 # file_name <- paste('./data_new/county_data/or_county_wrf_prop.csv') # previous file
 
-file_name <- paste('C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire_new/data_new/county_data/or_county_wrf_prop_new.csv') # new shapefile
+file_name <- paste('C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire_new/data_new/county_data/or_county_wrf_prop.csv') # new shapefile
 write_csv(county_wrf_prop_df, file_name)
 
 
