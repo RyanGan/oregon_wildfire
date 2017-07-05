@@ -39,7 +39,7 @@ summary(population_grid)
 
 
 # Import the file that contains the proportion of each grid that overlaps a county
-county_grid_path <- paste0('../../data_new/county_data/or_county_wrf_prop_new.csv')
+county_grid_path <- paste0('../../data_new/county_data/or_county_wrf_prop.csv')
 county_grid_proportion <- read_csv(county_grid_path)
 
 
@@ -177,10 +177,7 @@ tail(grid_population_vector)
 
 # output zipcode column from zip_grid_proportion for naming purposes later
 # From last proportion calculation code ----------------------------------------
-read_path <- paste0('../../data_new/county_data/or_zip_county_prop_new.csv')
-or_county <- read_csv(read_path)
-
-county <- sort(unique(or_county$county_name))
+county <- county_grid_proportion$county
 head(county)
 
 
@@ -334,9 +331,6 @@ oregon_fips <- read_csv('../../instructions/oregon_FIPS.csv')
 # factor(oregon_fips$county)
 oregon_fips$county <- gsub(" County", "", as.character(factor(oregon_fips$county)))
 
-which(oregon_fips$county=="Hood River")
-oregon_fips$county[14] <- "Hood.River"
-
 oregon_fips <- oregon_fips %>%
   mutate(st_county_fips = with(oregon_fips, paste0(st_code, fips)))
 
@@ -354,7 +348,7 @@ df_check
 
 # Write permanent dataframe ----------------------------------------------------
 
-write_path <- paste0('../../data_new/county_data/or_county_pop_wt_pm_new.csv')
+write_path <- paste0('../../data_new/county_data/or_county_pop_wt_pm.csv')
 write_csv(or_county_pm_pop_wt_2013_w_fips, write_path)
 
 
