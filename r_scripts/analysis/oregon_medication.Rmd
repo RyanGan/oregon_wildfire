@@ -1977,7 +1977,7 @@ p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
 p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
 p <- p + geom_line(aes(x=lag), linetype=2, size=2)
 p <- p + theme_bw()
-# p
+p
 
 DLestimate<- data.frame(estimate=B%*%coef(fit)[dlparms])
 
@@ -2467,9 +2467,7 @@ ggplot(dist_lag_df, aes(x=lag, y=rel_risk)) +
 
 ## Distributed Lag -- Casecrossover Analysis
 
-### Lag 
-
-### 1. For Overall Plot
+### 1. For Overall Plot (Unconstrained lag model)
 
 ```{r overall lags, warning =F, echo = F, results='asis'} 
 # dataframe list
@@ -2676,10 +2674,113 @@ wrf_geo_lag_plot$upper95 <- as.numeric(wrf_geo_lag_plot$upper95)
   
 ```
 
-### 2. For Age Category
+### 2. Distributed lag for casecrossover
+
+```{r DLM for casecrossover, echo = FALSE, message=FALSE, warning=FALSE}
+read_path8 <- paste0("../data_new/county_data/zip_to_county_new.csv")
+or_zip_to_county <- read_csv(read_path8)
+
+read_path9 <- paste0("../data_new/county_data/or_census_pop_est_county.csv")
+or_pop <- read_csv(read_path9)
+
+or_pop <- or_pop %>%
+  rename(county = GEO_display_label, pop = respop72013) %>%
+  select(county, pop) 
+or_pop$county <- gsub(" County, Oregon", "", as.character(factor(or_pop$county)))
+
+inhaler_ndc_lag_df <- inhaler_ndc_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) %>%
+  filter(!is.na(geo_smk_pm10_lag7_zip))
+
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-05-27")] <- "weekend"
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-07-04")] <- "weekend"
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-09-02")] <- "weekend"                           
+
+  
+which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_zip") # 159
+which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_lag1_zip") # 160
+which(colnames(inhaler_ndc_lag_df)=="wrf_temp_zip") # 93
+which(colnames(inhaler_ndc_lag_df)=="wrf_temp_lag1_zip") # 150
+
+inhaler_geo_lag <- inhaler_ndc_lag_df %>%
+  select(159, 160:166) # GWR-method
+  
+inhaler_temp_lag <- inhaler_ndc_lag_df %>%
+  select(93, 150:156) # GWR-method
+
+lag_max <- 7
+n1 <- length(inhaler_geo_lag[,1])
+n2 <- length(inhaler_temp_lag[,1])
+
+inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
+inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
+
+B <- ns(0:lag_max, df =3, intercept=TRUE) # or 3?
+
+# the nrow B should equal ncol(pm)
+dim(B)
+
+inhaler_geo_lag_B <- inhaler_geo_lag%*%B
+inhaler_temp_lag_B <- inhaler_temp_lag%*%B
+
+fit <- clogit(outcome ~ inhaler_geo_lag_B + inhaler_temp_lag_B + strata(personkey), 
+              inhaler_ndc_lag_df)
+
+coef(fit)
+summary(fit)
+AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+DLestimate
+
+DLestimate$lag <- 0:lag_max
+p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
+p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
+p <- p + geom_line(aes(x=lag), linetype=2, size=2)
+p <- p + theme_bw()
+p
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+cumulative_CI
 
 
-
-### 3. For Sex Category
+```
 
 
