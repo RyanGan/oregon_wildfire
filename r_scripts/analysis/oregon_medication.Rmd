@@ -1814,7 +1814,7 @@ ggsave("../plot_new/ndc_county_rate_health_smk.pdf", plot = plot_county_health_s
 2. Fixed-Poisson
 3. Mixed-Poisson
 
-```{r regression model q, message=FALSE, echo=FALSE}
+```{r regression model q, message=FALSE, echo=FALSE, eval=FALSE, warning=FALSE}
 # create empty dataframe
 rr_df <- data.frame(matrix(nrow = 3, ncol = 5))
 colnames(rr_df) <- c("method", "outcome", "rel_risk", "lower_95", "upper_95")
@@ -1890,7 +1890,6 @@ ggsave("../plot_new/ndc_rr_geo.pdf", plot = plot_rr,
 ```
 
 
-
 ## Distributed Lag Model
 
 ### Lag 1
@@ -1898,7 +1897,7 @@ ggsave("../plot_new/ndc_rr_geo.pdf", plot = plot_rr,
 Remove the missing values for GWR smoke. 
 But I use GWR smoke of zip for the case crossover study.
 
-```{r DLM, echo = FALSE, message=FALSE, warning=FALSE}
+```{r DLM, echo = FALSE, message=FALSE, warning=FALSE, eval=FALSE}
 read_path8 <- paste0("../data_new/county_data/zip_to_county_new.csv")
 or_zip_to_county <- read_csv(read_path8)
 
@@ -2055,7 +2054,7 @@ p
 
 ### Find the smallest of AIC with df from 3 to 6
 
-```{r, message=FALSE, echo=FALSE}
+```{r, message=FALSE, echo=FALSE, eval=FALSE}
 # create fit matrix
 fit_mat <- matrix(NA, nrow=4, ncol=6)
 colnames(fit_mat) <- c("outcome", "exposure", "fit_mix", "df", "aic", "fit_fix")
@@ -2111,7 +2110,7 @@ knitr::kable(lag_spline_best_fit, caption = paste0("Distributed lag spline",
 
 ### Compare fixed and mixed models of df 3 and 4
 
-```{r compare mixed and fixed, message=FALSE, echo=FALSE}
+```{r compare mixed and fixed, message=FALSE, echo=FALSE, eval=FALSE}
 
 ## degree of 3 or 4, mixed or fixed
 degree_freedom <- 3
@@ -2640,7 +2639,7 @@ wrf_geo_lag_plot$upper95 <- as.numeric(wrf_geo_lag_plot$upper95)
                   position = position_dodge(width = 0.5), width = 0.2, na.rm =T) +
     # custom color 
     scale_color_manual(name = "Geo-smk Lag", 
-                       values = c("red", "orange", "yellow", "green", "blue", "#32115C", "purple"),
+                       values = rep(c("black"), 7),
                        guide = guide_legend(title.position = "top", title.hjust = 0.5)) +
     facet_wrap(~outcome, nrow = 7, scales = "free") +
     geom_hline(yintercept = 1, linetype=2) +
@@ -2705,8 +2704,7 @@ inhaler_ndc_lag_df <- inhaler_ndc_df %>%
          geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
          geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
          geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
-         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) %>%
-  filter(!is.na(geo_smk_pm10_lag7_zip))
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
 
 inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-05-27")] <- "weekend"
 inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-07-04")] <- "weekend"
@@ -2731,7 +2729,7 @@ n2 <- length(inhaler_temp_lag[,1])
 inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
 inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
 
-B <- ns(0:lag_max, df =3, intercept=TRUE) # or 3?
+B <- ns(0:lag_max, df =3, intercept=TRUE) 
 
 # the nrow B should equal ncol(pm)
 dim(B)
@@ -2784,3 +2782,267 @@ cumulative_CI
 ```
 
 
+```{r DLM for casecrossover temp, echo = FALSE, message=FALSE, warning=FALSE}
+read_path8 <- paste0("../data_new/county_data/zip_to_county_new.csv")
+or_zip_to_county <- read_csv(read_path8)
+
+read_path9 <- paste0("../data_new/county_data/or_census_pop_est_county.csv")
+or_pop <- read_csv(read_path9)
+
+or_pop <- or_pop %>%
+  rename(county = GEO_display_label, pop = respop72013) %>%
+  select(county, pop) 
+or_pop$county <- gsub(" County, Oregon", "", as.character(factor(or_pop$county)))
+
+inhaler_ndc_lag_df <- inhaler_ndc_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-05-27")] <- "weekend"
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-07-04")] <- "weekend"
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-09-02")] <- "weekend"                           
+
+  
+which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_zip") # 159
+which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_lag1_zip") # 160
+which(colnames(inhaler_ndc_lag_df)=="wrf_temp_zip") # 93
+which(colnames(inhaler_ndc_lag_df)=="wrf_temp_lag1_zip") # 150
+
+inhaler_geo_lag <- inhaler_ndc_lag_df %>%
+  select(159, 160:166) # GWR-method
+  
+inhaler_temp_lag <- inhaler_ndc_lag_df %>%
+  select(93, 150:156) # GWR-method
+
+lag_max <- 7
+n1 <- length(inhaler_geo_lag[,1])
+n2 <- length(inhaler_temp_lag[,1])
+
+inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
+inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
+
+B <- ns(0:lag_max, df =3, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+dim(B)
+
+inhaler_geo_lag_B <- inhaler_geo_lag%*%B
+inhaler_temp_lag_B <- inhaler_temp_lag%*%B
+
+fit <- clogit(outcome ~  inhaler_temp_lag_B + strata(personkey), 
+              inhaler_ndc_lag_df)
+
+coef(fit)
+summary(fit)
+AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3)
+DLestimate<- data.frame(estimate=B%*%coef(fit)[dlparms]) 
+DLvar <- B%*%vcov(fit)[dlparms,dlparms]%*%t(B)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+DLestimate
+
+DLestimate$lag <- 0:lag_max
+p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
+p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
+p <- p + geom_line(aes(x=lag), linetype=2, size=2)
+p <- p + theme_bw()
+p
+
+DLestimate<- data.frame(estimate=B%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+cumulative_CI
+
+
+```
+
+### 3. Unconstrained lag for time series
+
+```{r unconstrained ts lag, message=FALSE, echo=FALSE}
+or_ndc_county_ts_df <- or_ndc_county_ts %>%
+  select(1:4, pop, rate_per_100k, day, geo_smk_pm_county,
+         geo_smk_pm_lag1_county:geo_smk_pm_lag7_county, wrf_temp_county,
+         wrf_temp_lag1_county:wrf_temp_lag7_county) %>%
+  mutate(geo_smk_pm10_county = geo_smk_pm_county/10,
+         geo_smk_pm10_lag1_county =geo_smk_pm_lag1_county/10,
+         geo_smk_pm10_lag2_county =geo_smk_pm_lag2_county/10,
+         geo_smk_pm10_lag3_county =geo_smk_pm_lag3_county/10,
+         geo_smk_pm10_lag4_county =geo_smk_pm_lag4_county/10,
+         geo_smk_pm10_lag5_county =geo_smk_pm_lag5_county/10,
+         geo_smk_pm10_lag6_county =geo_smk_pm_lag6_county/10,
+         geo_smk_pm10_lag7_county =geo_smk_pm_lag7_county/10) 
+  # filter(!is.na(geo_smk_pm10_lag7_zip))
+
+# create empty dataframe
+rr_df <- data.frame(matrix(nrow = 7, ncol = 5))
+colnames(rr_df) <- c("method", "lag", "rel_risk", "lower_95", "upper_95")
+
+# vector of outcomes
+outcome_list <- "n_obs"
+
+# methods
+rr_df[,1] <- c("Mixed-Poisson")
+
+# populate outcome column
+rr_df[,2] <- c("Lag 1", "Lag 2", "Lag 3", "Lag 4", "Lag 5", "Lag 6", "Lag 7")
+
+# which(colnames(or_ndc_county_ts_df)=="geo_smk_pm10_lag1_county") #25
+# which(colnames(or_ndc_county_ts_df)=="wrf_temp_lag1_county") #17
+
+for (i in 1:7){
+  
+  geo <- i + 24
+  tem <- i +14
+  
+## mixed
+smk_est_mp <- tidy(glmer(as.formula(paste0(outcome_list, 
+    "~ or_ndc_county_ts_df[[geo]] + or_ndc_county_ts_df[[tem]] + (1|county) + day + offset(log(pop))")), 
+    or_ndc_county_ts_df, family="poisson"))[2, ]
+
+rr_mp <- c(round(exp(smk_est_mp[1,2]),5),
+         round(exp(smk_est_mp[1,2]-1.96*smk_est_mp[1,3]),5),
+         round(exp(smk_est_mp[1,2]+1.96*smk_est_mp[1,3]),5))
+
+rr_df[i,3:5] <- rr_mp
+}
+rr_df
+
+plot_rr <- ggplot(rr_df, aes(x=lag, y = rel_risk)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=lower_95, ymax=upper_95), width = 0.2) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "red") +
+  theme(
+   panel.background = element_rect(fill = 'white', colour = 'black'),
+   panel.grid.major = element_blank(),
+   panel.grid.minor = element_blank(),
+   axis.text.x = element_text(angle = 90, vjust = .75)) +
+  ylab("Relative Risk") +
+  xlab("Outcome") +
+  ggtitle("Relative Risk for a 10ug/m^3 increase PM2.5 estimated via GWR Smoke")
+
+print(plot_rr)
+
+ggsave("../plot_new/ndc_rr_geo_lag.pdf", plot = plot_rr, 
+       width = 12, height = 8, units = "in")
+
+```
+
+### 4. Distributed lag for time series
+
+```{r DLM ts, echo = FALSE, message=FALSE, warning=FALSE, eval=FALSE}
+
+which(colnames(or_ndc_county_ts_df)=="wrf_temp_lag1_county") # 17
+which(colnames(or_ndc_county_ts_df)=="geo_smk_pm10_lag1_county") # 25
+
+geo_ts_lag <- or_ndc_county_ts_df %>%
+  select(24:31) # GWR-method
+tem_ts_lag <- or_ndc_county_ts_df %>%
+  select(16:23) # temp
+
+lag_max <- 7
+
+geo_ts_lag <- as.matrix(geo_ts_lag)
+tem_ts_lag <- as.matrix(tem_ts_lag)
+
+B <- ns(0:lag_max, df =3, intercept=TRUE) # or 3?
+
+# the nrow B should equal ncol(pm)
+dim(B)
+dim(geo_ts_lag)
+dim(tem_ts_lag)
+
+geo_ts_lag_B <- geo_ts_lag%*%B 
+
+tem_ts_lag_B <- tem_ts_lag%*%B
+
+## mixed model
+mod <-glmer(outcome ~  geo_ts_lag_B + tem_ts_lag_B + day + (1|county) + offset(log(pop)),   
+            or_ndc_county_ts_df, family="poisson", control = glmerControl(optimizer = "bobyqa"))
+
+summary(mod)
+# check AIC
+AIC(mod)
+# output distributed lag beta parameters
+dlparms <- mod@beta[2:4]
+# estimate distributed lag values for each day
+dl_estimates <- data.frame(estimate = B %*% dlparms)
+
+# covariance matrix for knots (need to convert to matrix object)
+cov_mat <- as.matrix(vcov(mod)[2:4,2:4]) 
+
+# estimate variance of splines
+dl_var <- B%*%cov_mat%*%t(B)
+
+# calculate standard error for each lag value
+dl_estimates$stderr <- sqrt(diag(dl_var))
+
+# calculate lower and upper bounds
+dl_estimates$lower_bound <- dl_estimates$estimate+dl_estimates$stderr*qt(1-0.975,
+  df=df.residual(mod))  
+dl_estimates$upper_bound <- dl_estimates$estimate+dl_estimates$stderr*qt(0.975,
+  df=df.residual(mod))  
+
+
+# estimate relative risk and 95%CI from beta
+inhaler_dl_rr <- dl_estimates %>% 
+  mutate(estimate = exp(estimate),
+         lower_bound = exp(lower_bound),
+         upper_bound = exp(upper_bound),
+         lag = 0:7)
+
+# estimate cumulative effect
+cumulative <- sum(dl_estimates$estimate)
+cumulative
+
+# estimate cumulative effect stnd error
+cumulative_se <- sqrt(sum(dl_var))
+cumulative_se
+
+# estimate cumulative CI
+cumulative_ci <- cumulative+cumulative_se*qt(c(1-0.975,0.975), 
+                                             df=df.residual(mod))
+cumulative_ci
+
+exp(cumulative)
+exp(cumulative_ci)
+
+# plot 
+p <- ggplot(inhaler_dl_rr, aes(x=lag, y=estimate, 
+                              ymin=lower_bound, ymax=upper_bound)) +
+  geom_ribbon(alpha = 0.5) +
+  geom_line(size=2)
+
+p
+```
