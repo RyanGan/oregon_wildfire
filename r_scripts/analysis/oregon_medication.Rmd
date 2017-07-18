@@ -1,5 +1,5 @@
 ---
-title: "Oregon 2013 Medication for Asthma Inhalers"
+title: "Oregon 2013 Medication for Beta-2 agonists"
 author: "Jingyang Liu"
 date: "May 17, 2017"
 output: html_document
@@ -17,7 +17,7 @@ library(lme4)
 library(maps)
 library(lubridate) # date
 
-# two-stage distributed lag model libraries
+# distributed lag model libraries
 library(dlnm)
 library(mvmeta)
 library(splines)
@@ -27,12 +27,12 @@ library(splines)
 
 ## Overview
 
-We had previously shown GWR to be a good estimate of wildfire smoke concentrations, and showed associations with respiratory outcomes (including asthma) in Washington state. We want to replicate results for Oregon and also look at beta2 agonist pharmacy fills.
+We had previously shown GWR to be a good estimate of wildfire smoke concentrations, and showed associations with respiratory outcomes (including asthma) in Washington state. We want to replicate results for Oregon and also look at beta-2 agonist pharmacy fills.
 
-For this research I have the Oregon All Payer All Claims (APAC) data set in 2013. I want to research on the effects of wildfire smoke on beta-2 agonist pharmacy fill, a medication primarily used as a rescue medication for persons with asthma or COPD. NDC (National Drug Code) is the variable in the data set that the data set offered. The standard NDC I use the link below, which is a ndc list in 2013, which fits my original data set. 
+For this research I have the Oregon All Payer All Claims (APAC) data set in 2013. I want to research on the effects of wildfire GWR smoke on beta-2 agonist pharmacy fill, a medication primarily used as a rescue medication for persons with asthma or COPD. NDC (National Drug Code) is the variable in the data set that the data set offered. The standard NDC I use the link below, which is a ndc list in 2013 and fits my original data set. 
 (http://ww2.ncqa.org/hedis-quality-measurement/hedis-measures/hedis-2013/hedis-2013-final-ndc-lists)
 
-The data cleaning and creation of the casecross-over dataframes are huge computation tasks, so they are done with server, the following work is done with local R.
+The data cleaning and creation of the casecross-over dataframes are huge computation tasks, so they are done with server, the following work is done with local R. We analyze the case crossover results with overall, age strarified and sex stratified categories for the pharmacy fills, and then we also analyze with the distributed lag method, and check with time series analysis.
 
 
 ## Method Description
@@ -1003,6 +1003,7 @@ write_csv(or_ndc_county_ts, write_path5)
 2. Make county population variable (to calculate rate)
 3. Make weekend/weekday variables
 
+
 ```{r time series, warning=FALSE, message=FALSE, echo=FALSE}
 read_path5 <- paste0("../data_new/medication/or_ndc_county_time_series.csv")
 or_ndc_county_ts <- read_csv(read_path5)
@@ -1034,12 +1035,12 @@ ggsave("../plot_new/ndc_county_rate_ts.pdf", plot = plot_county,
 ggsave("../plot_new/ndc_county_rate_ts_line.pdf", plot = plot_county_line, 
        width = 12, height = 8, units = "in")
 
-plot_smk_ts <- ggplot(or_ndc_county_ts, aes(y =geo_smk_pm10, x = date)) +
-           geom_jitter() +
-           ylab("GWR smoke concentration (10ug/m^3)") +
-           xlab("Year 2013")
+# plot_smk_ts <- ggplot(or_ndc_county_ts, aes(y =geo_smk_pm10, x = date)) +
+#           geom_jitter() +
+#           ylab("GWR smoke concentration (10ug/m^3)") +
+#           xlab("Year 2013")
 
-print(plot_smk_ts)
+# print(plot_smk_ts)
 
 ### check if the time series has the association with get smoke
 a <- glm(rate_per_100k ~ geo_smk_pm10, data = or_ndc_county_ts, family = "poisson")
@@ -1080,77 +1081,71 @@ ggsave("../plot_new/ndc_rate_health_smk.pdf", plot = plot_health_smk,
 
 ### map of smoke days
 
-```{r}
-meta_ts <- read_csv("../data/meta_timeseries.csv") %>% 
-  # creating 10 unit increase var of geo smoke and day of week
-  mutate(geo_smk10 = geo_smk_pm/10,
-         day = weekdays(date)) %>% 
-  # create smoke and lag variables
-  mutate(smoke0 = ifelse(geo_smk_pm > 0, 1, 0),
-         smoke5 = ifelse(geo_smk_pm > 5, 1, 0),
-         smoke10 = ifelse(geo_smk_pm > 10, 1, 0),
-         smoke15 = ifelse(geo_smk_pm > 15, 1, 0), 
+```{r smoke days and map, warning=FALSE, message=FALSE, echo=FALSE}
+or_ts <- or_ndc_county_ts %>% 
+  mutate(smoke0 = ifelse(geo_smk_pm_county > 0, 1, 0),
+         smoke5 = ifelse(geo_smk_pm_county > 5, 1, 0),
+         smoke10 = ifelse(geo_smk_pm_county > 10, 1, 0),
+         smoke15 = ifelse(geo_smk_pm_county > 15, 1, 0), 
          # lag variable
-         geo_smk_lag1 = lag(geo_smk10, 1, order_by = county),
-         geo_smk_lag2 = lag(geo_smk10, 2, order_by = county),
-         geo_smk_lag3 = lag(geo_smk10, 3, order_by = county),
-         geo_smk_lag4 = lag(geo_smk10, 4, order_by = county),
-         geo_smk_lag5 = lag(geo_smk10, 5, order_by = county),
-         geo_smk_lag6 = lag(geo_smk10, 6, order_by = county),
-         geo_smk_lag7 = lag(geo_smk10, 7, order_by = county)) %>% 
+         geo_smk_lag1 = lag(geo_smk_pm10, 1, order_by = county),
+         geo_smk_lag2 = lag(geo_smk_pm10, 2, order_by = county),
+         geo_smk_lag3 = lag(geo_smk_pm10, 3, order_by = county),
+         geo_smk_lag4 = lag(geo_smk_pm10, 4, order_by = county),
+         geo_smk_lag5 = lag(geo_smk_pm10, 5, order_by = county),
+         geo_smk_lag6 = lag(geo_smk_pm10, 6, order_by = county),
+         geo_smk_lag7 = lag(geo_smk_pm10, 7, order_by = county)) %>% 
   ungroup()
 
 # smoke wave days (at least 2 consecutive days in the 98th percentile of PM)
-quantile(meta_ts$geo_wt_pm, probs = c(0.95,0.98,0.99, 0.999))
+# quantile(or_ts$geo_wt_pm_county, probs = c(0.95,0.98,0.99, 0.999))
 # following Coco's smoke wave day, the 98th percentile for PM2.5 concentrations
-# would be >26.9
+# would be >16.3
 
-smoke_wave <- meta_ts %>% 
-  select(county, date, geo_wt_pm) %>% 
-  mutate(high_pm_day = ifelse(geo_wt_pm > 26.9, 1, 0)) %>% 
+smoke_wave <- or_ts %>% 
+  select(county, date, geo_wt_pm_county) %>% 
+  mutate(high_pm_day = ifelse(geo_wt_pm_county > 16.33, 1, 0)) %>% 
   group_by(county) %>% 
   # identify consecutive days
   mutate(smoke_wave = ifelse(lag(high_pm_day, 
     order_by = county)==1 & high_pm_day ==1, 1, 0)) %>% 
-  select(-high_pm_day, -geo_wt_pm)
+  select(-high_pm_day, -geo_wt_pm_county)
 
 # merge in smokewave day
-meta_ts <- meta_ts %>% 
+or_ts <- or_ts %>% 
   right_join(smoke_wave, by = c("county", "date"))
 
 # count of state outcome timeseries
-state_outcome_rate <- meta_ts %>% 
+state_outcome_rate <- or_ts %>% 
   group_by(date) %>% 
   # remove columns I don't want to calculate
-  select(-fips, -county) %>% 
-  # add up outcomes in each county
-  summarise_each(funs(sum), population, n_obs:broken_arm_n) %>% 
-  mutate_each(funs((./population*100000)), n_obs:broken_arm_n) 
+  select(-fips, -county) 
+ 
 
 # average of environmental measures, joined with outcomes
-state_smoke <- meta_ts %>% 
-  group_by(state, date) %>% 
+state_smoke <- or_ts %>% 
+  group_by(date) %>% 
   select(-fips, -county) %>% 
-  summarise_each(funs(mean, median, min, max), wrf_pm:wrf_temp) %>% 
-  full_join(state_outcome_rate, by = c("date"))
+  summarise_each(funs(mean, median, min, max), wrf_pm_county:wrf_temp_county) # %>% 
+  # full_join(state_outcome_rate, by = c("date"))
 
 
 
 
 
-# only 150 smoke wave days
-xtabs(~smoke_wave,  meta_ts)
+# only 55 smoke wave days
+# xtabs(~smoke_wave,  or_ts)
 # if we compare to our geo smoke > 10, we'd add 362 extra days
-xtabs(~smoke_wave + smoke10, meta_ts)
+# xtabs(~smoke_wave + smoke10, or_ts)
 # if we used smoke >15 we'd add 164 extra days 
-xtabs(~smoke_wave + smoke15, meta_ts)
+# xtabs(~smoke_wave + smoke15, or_ts)
 
 
 
 
 # small multiples dataset
 or_smk <- or_ts %>% 
-  select(county, date, wrf_smk_pm, krig_smk_pm, geo_smk_pm) %>% 
+  select(county, date, wrf_smk_pm_county, krig_smk_pm_county, geo_smk_pm_county) %>% 
   gather(key = smk_method, value = pm, -date, -county)
   
   
@@ -1170,7 +1165,7 @@ or_smk_plot
 
 # data wrangle ----
 #first step is to summarise the counts of smoke days in each county 
-or_smk_count <- meta_ts %>% 
+or_smk_count <- or_ts %>% 
   group_by(county) %>% 
   # summing up smoke days
   summarise(smk_wave_n = sum(smoke_wave), smk_day0 = sum(smoke0), 
@@ -1239,7 +1234,7 @@ inhaler_ndc <- read_csv(read_path6)
 inhaler_ndc_df <- data.frame(inhaler_ndc)
 
 # outcome name
-outcome_name <- "beta-2 agonist"
+outcome_name <- "Beta - 2 agonist"
 
 # dataframe for analysis creation
 # bind columns back together 
@@ -1313,16 +1308,18 @@ print(tab)
 
 ### Overall plot with GWR method
 
+The overall plot shows that when smoke concentration increases 10ug/m^3, the risk to get beta-2 agonist fill will increase about 7.5% significantly.
+
 ```{r overall, warning =F, echo = F, results='asis'} 
 # dataframe list
 
-method_list <- c('WRF-Chem Smoke', 'Kriging Smoke', 'Geo-Weighted Smoke')
+method_list <- c('Geo-Weighted Smoke')
 
 # dataframe to loop through
 inhaler_ndc_df <- data.frame(inhaler_ndc)
 
 # outcome name
-outcome <- "Beta-2 agonists"
+outcome <- "Beta - 2 agonists"
 outcome_name <- "Beta-2 agonists"
 
 # data wrangling ----
@@ -1333,12 +1330,12 @@ covariates_df <- inhaler_ndc_df[, c(1:26, 74:84)]
   
 # extract pm values and divide by 10 and ordered
 #which(colnames(df_to_loop)=="global_smk_pm_zip") # code to find column numbers
-pm_estimates_df <- inhaler_ndc_df[, c(87, 92, 91, 93)]/10  # create 10 unit increases
+pm_estimates_df <- inhaler_ndc_df[, c(91, 93)]/10  # create 10 unit increases
 
 # new loop for age categories
 
 # empty matrix (12 x 10 matrix)
-point_estimates <- matrix(nrow = 3, ncol = 9, byrow = T)
+point_estimates <- matrix(nrow = 1, ncol = 9, byrow = T)
     
 colnames(point_estimates) <- c('outcome', 'pm_method', 'n', 'n_events', 
                                    'odds_ratio', 'lower95', 'upper95', 'se', 'p_val')    
@@ -1350,23 +1347,20 @@ point_estimates[, 1] <- outcome_name
 # bind columns back together 
 df_analysis <- cbind(covariates_df, pm_estimates_df) %>% 
   # remove missing pm values
-  filter(!is.na(wrf_smk_pm_zip)) %>% 
+  filter(!is.na(geo_smk_pm_zip)) %>% 
   # the following code makes sure that the counterfactual values retained are 
   # symetric in that number of obs before = number of obs after
   mutate(obs_diff_admission = (fromdate - date)/7) 
   # dataframe is already for the entire fire season, so I don't need to subset anymore
   
 # second loop to run a model for each pm estimation method
-for(j in 38:40){
+j <- 38
 
-  # variable to model 
-  var_name <- colnames(df_analysis[j])
+# set row number to fill
+row_n <- j-37
       
-  # set row number to fill
-  row_n <- j-37
-      
-  # only run the model if the dataframe has observations
-  if(nrow(df_analysis) != 0){
+# only run the model if the dataframe has observations
+if(nrow(df_analysis) != 0){
   # conditional logistic regression model
   mod <- clogit(outcome ~ df_analysis[[j]] + wrf_temp_zip + strata(personkey), df_analysis)
       
@@ -1389,21 +1383,15 @@ for(j in 38:40){
       
   # create else statement that fills matrix with missing so I still have the row
   # in the final dataframe
-  } else {point_estimates[row_n, 2] <- method_list[row_n]
+  } else {point_estimates[row_n, 2] <- method_list
           point_estimates[row_n, 3] <- 0
           point_estimates[row_n, 4] <- 0
           point_estimates[row_n, c(5:9)] <- 99 } # end 'if else' statement
-  } # end methods loop
   
 # save point estimates as a dataframe
 combined_point_est_df <- as_data_frame(point_estimates)
 
-
-
 wrf_geo_age <- combined_point_est_df %>% 
-  # filter columns to just geo-smk
-  # filter(pm_method == "GWR Smoke" |
-    #      pm_method == "WRF-Chem Smoke") %>% 
   # subset columns I want to put in to the table
   select(2, 4:7) %>% 
   mutate(odds_ratio = ifelse(odds_ratio == 99, "--", odds_ratio),
@@ -1414,8 +1402,8 @@ wrf_geo_age <- combined_point_est_df %>%
 tab <- htmlTable(txtRound(wrf_geo_age, digits = 3, 1:3), 
          caption = "Association between a 10 ug/m^3 in PM2.5 three smoke method and pharmacy outcomes",
          # row group by outcome
-         rgroup = "Asthma Inhalers",
-         n.rgroup = c(rep(3, 1)), # 6 rows for each age cat for each outcome
+         rgroup = "Beta - 2 agonist",
+         n.rgroup = c(rep(1, 1)), # 6 rows for each age cat for each outcome
          # column headers
          header = c("Est Method", "Events",
                     "OR&dagger;", "Lower", "Upper"),
@@ -1524,14 +1512,14 @@ The plot shows that overall, the risk of pharmacy fills of beta-2 agonist will i
 ```{r time stratified age strata cdc met, warning =F, echo = F, results='asis'} 
 # dataframe list
 
-method_list <- c('WRF-Chem Smoke', 'Kriging Smoke', 'Geo-Weighted Smoke')
+method_list <- c('Geo-Weighted Smoke')
 
 # dataframe to loop through
 inhaler_ndc_df <- data.frame(inhaler_ndc)
 
 # outcome name
-outcome <- "asthma inhalers"
-outcome_name <- "Asthma inhalers"
+outcome <- "Beta - 2 agonists"
+outcome_name <- "Beta - 2 agonists"
 
 # age category list
 age_cat_list <- c(0,1,2)
@@ -1548,12 +1536,12 @@ covariates_df <- inhaler_ndc_df[, c(1:26, 74:84)]
   
 # extract pm values and divide by 10 and ordered
 #which(colnames(df_to_loop)=="global_smk_pm_zip") # code to find column numbers
-pm_estimates_df <- inhaler_ndc_df[, c(87, 92, 91, 93)]/10  # create 10 unit increases
+pm_estimates_df <- inhaler_ndc_df[, c(91, 93)]/10  # create 10 unit increases
 
 # new loop for age categories
 for(k in 0:2){
   # empty matrix (12 x 10 matrix)
-  point_estimates <- matrix(nrow = 3, ncol = 10, byrow = T)
+  point_estimates <- matrix(nrow = 1, ncol = 10, byrow = T)
     
   colnames(point_estimates) <- c('outcome', 'age_cat', 'pm_method', 'n', 'n_events', 
                                    'odds_ratio', 'lower95', 'upper95', 'se', 'p_val')    
@@ -1567,7 +1555,7 @@ for(k in 0:2){
   # bind columns back together 
   df_analysis <- cbind(covariates_df, pm_estimates_df) %>% 
     # remove missing pm values
-    filter(!is.na(wrf_smk_pm_zip)) %>% 
+    filter(!is.na(geo_smk_pm_zip)) %>% 
     # limit to specific age category
     filter(age_ind == k) %>% 
     # the following code makes sure that the counterfactual values retained are 
@@ -1575,8 +1563,7 @@ for(k in 0:2){
     mutate(obs_diff_admission = (fromdate - date)/7) 
     # dataframe is already for the entire fire season, so I don't need to subset anymore
   
-  # second loop to run a model for each pm estimation method
-  for(j in 38:40){
+ j <- 38
 
     # variable to model 
     var_name <- colnames(df_analysis[j])
@@ -1612,7 +1599,7 @@ for(k in 0:2){
             point_estimates[row_n, 4] <- 0
             point_estimates[row_n, 5] <- 0
             point_estimates[row_n, c(6:10)] <- 99 } # end 'if else' statement
-    } # end methods loop
+     # end methods loop
   
   # save point estimates as a dataframe
   point_est_df <- as_data_frame(point_estimates)
@@ -1641,8 +1628,8 @@ wrf_geo_age <- combined_point_est_df %>%
 tab <- htmlTable(txtRound(wrf_geo_age, digits = 3, 1:3), 
          caption = "Association between a 10 ug/m^3 in PM2.5 geo smoke and health outcomes stratified by age",
          # row group by outcome
-         rgroup = "Asthma inhalers",
-         n.rgroup = c(rep(9, 1)), # 6 rows for each age cat for each outcome
+         rgroup = "Beta - 2 agonists",
+         n.rgroup = c(rep(3, 1)), # 6 rows for each age cat for each outcome
          # column headers
          header = c("Est Method", "Age Group", "Events",
                     "OR&dagger;", "Lower", "Upper"),
@@ -1740,7 +1727,7 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
 
   print(print_plot)
   # save figure
-  ggsave("../plot_new/ndc_age_fig_three.pdf", plot = print_plot, 
+  ggsave("../plot_new/ndc_age_fig_gwr.pdf", plot = print_plot, 
        width = 12, height = 8, units = "in")
   
 ```
@@ -1748,21 +1735,21 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
 
 ### Seasonal Time-Stratified by Sex
 
-Association with smoke PM~2.5~ and health outcomes stratified by sex. 
+The association with smoke PM~2.5~ and health outcomes stratified by sex is shown below. 
 
 All the CI do not include 1, which means the pharmacy filling (beta 2 agonists) increases about 5% when smoke increase 10 units. So the risk for getting asthma will increase about 5% ~ 8% when the smoke PM2.5 increase 10 units. Also, the risk for female is much higher than that for male.
 
-These results show that there may be effect modification by sex, where females might be more likely to fill a beta-2 agonist on the same day it's really smoky for the GWR estimates.
+These results show that there might be effect modification by sex, where females might be more likely to fill a beta-2 agonist on the same day it's really smoky for the GWR estimates.
 
 ```{r sex strata cdc met adj, warning = F, echo = F, results='asis'} 
-method_list <- c('WRF-Chem Smoke', 'Kriging Smoke', 'Geo-Weighted Smoke')
+method_list <- c('Geo-Weighted Smoke')
 
 # dataframe to loop through
 inhaler_ndc_df <- data.frame(inhaler_ndc)
 
 # outcome name
-outcome <- "asthma inhalers"
-outcome_name <- "Asthma inhalers"
+outcome <- "Beta - 2 agonists"
+outcome_name <- "Beta - 2 agonists"
 
 # create an empty list to row bind dataframes together
 datalist1 <- list()
@@ -1778,14 +1765,14 @@ covariates_df <- inhaler_ndc_df[, c(1:26, 74:84)]
   
 # extract pm values and divide by 10 and ordered
 #which(colnames(df_to_loop)=="global_smk_pm_zip") # code to find column numbers
-pm_estimates_df <- inhaler_ndc_df[, c(87, 92, 91, 93)]/10  # create 10 unit increases
+pm_estimates_df <- inhaler_ndc_df[, c(91, 93)]/10  # create 10 unit increases
 
 
 # new loop for sex categories
 for(k in 0:1){
  
   # empty matrix (12 x 10 matrix)
-  point_estimates <- matrix(nrow = 3, ncol = 10, byrow = T)
+  point_estimates <- matrix(nrow = 1, ncol = 10, byrow = T)
     
   colnames(point_estimates) <- c('outcome', 'sex', 'pm_method', 'n', 'n_events', 
                                    'odds_ratio', 'lower95', 'upper95', 'se', 'p_val')
@@ -1800,7 +1787,7 @@ for(k in 0:1){
   # bind columns back together 
   df_analysis <- cbind(covariates_df, pm_estimates_df) %>% 
     # remove missing pm values
-    filter(!is.na(wrf_smk_pm_zip)) %>% 
+    filter(!is.na(geo_smk_pm_zip)) %>% 
     # limit to specific sex category
     filter(sex_ind == k) %>% 
     # the following code makes sure that the counterfactual values retained are 
@@ -1808,9 +1795,7 @@ for(k in 0:1){
     mutate(obs_diff_admission = (fromdate - date)/7) 
     # dataframe is already for the entire fire season, so I don't need to subset anymore
   
-  # second loop to run a model for each pm estimation method
-  for(j in 38:40){
-
+  j <- 38
     # variable to model 
     var_name <- colnames(df_analysis[j])
       
@@ -1846,7 +1831,7 @@ for(k in 0:1){
             point_estimates[row_n, 4] <- 0
             point_estimates[row_n, 5] <- 0
             point_estimates[row_n, c(6:10)] <- 99 } # end 'if else' statement
-    } # end methods loop
+    # end methods loop
   
   # save point estimates as a dataframe
   point_est_df <- as_data_frame(point_estimates)
@@ -1875,8 +1860,8 @@ wrf_geo_sex <- combined_point_est_df %>%
   tab <- htmlTable(txtRound(wrf_geo_sex, digits = 3, 1:3), 
            caption = "Association between a 10 ug/m^3 in PM2.5 geo smoke and pharmacy outcomes stratified by sex",
            # row group by outcome
-           rgroup = "Asthma inhalers",
-           n.rgroup = c(rep(6, 1)), # 2 rows for each sex strata for each outcome
+           rgroup = "Beta - 2 agonists",
+           n.rgroup = c(rep(2, 1)), # 2 rows for each sex strata for each outcome
            # column headers
            header = c("Est Method", "Sex Strata", "Events",
                       "OR&dagger;", "Lower", "Upper"),
@@ -1959,7 +1944,7 @@ wrf_geo_sex_plot$upper95 <- as.numeric(wrf_geo_sex_plot$upper95)
 
   print(print_plot)
   # save figure
-  ggsave("../plot_new/ndc_sex_fig_three.pdf", plot = print_plot, 
+  ggsave("../plot_new/ndc_sex_fig_gwr.pdf", plot = print_plot, 
        width = 12, height = 8, units = "in")
 
 
@@ -1970,7 +1955,7 @@ wrf_geo_sex_plot$upper95 <- as.numeric(wrf_geo_sex_plot$upper95)
 
 ## 3. Distributed Lag Model
 
-Remove the missing values for GWR smoke. But I only use GWR smoke of zip for the case crossover study.
+Although the casecrossover study shows a significant association of getting beta-2 agonist pharmacy fills and smoke concentration, we still wonder the association of the pharmacy fills with some lag days. For medication analysis, people could get the pharmacy fills one or some days later than the day they find they have the disease. Then we make 0 (the original day) to 7 lags (one week) to see association of pharmacy fills with different lagged days.
 
 ### Find the smallest of AIC with df from 3 to 6
 
@@ -2033,7 +2018,7 @@ fit_mat <- matrix(NA, nrow=4, ncol=5)
 colnames(fit_mat) <- c("outcome", "exposure", "fit", "df", "aic")
 
 # fill outcome name in first column
-fit_mat[,1] <- "inhalers"
+fit_mat[,1] <- "Beta - 2 agonists"
 # fill in exposure (geo smoke)
 fit_mat[,2] <- "geo_smk10"
 # fit type
@@ -2066,20 +2051,22 @@ fit_mat[,3] <- "ns"
 # now that we have a range of df/knots, I want to filter to the minimum aic
 # for each outcome and print out that value in a table
 
-fit_mat
+kable(fit_mat, caption="Distributed lag spline of 3-6 degree of freedom fit by AIC")
 
 lag_spline_best_fit <- as_tibble(fit_mat) %>%  
   slice(which.min(aic)) # df of 3 has the smallest AIC
 
 # kable
-knitr::kable(lag_spline_best_fit, caption = paste0("Distributed lag spline",
-  "degree of freedom best fit by AIC for mixed model approach"))
+knitr::kable(lag_spline_best_fit, caption = paste0("Distributed lag spline ",
+  "degree of freedom best fit by AIC"))
 ```
 
 
 ### Distributed lag 0-7 for casecrossover
 
-```{r DLM for casecrossover, echo = FALSE, message=FALSE, warning=FALSE}
+When choosing the df of 5, the plot shows that the same day of fill with smoke exposure has the highest significant association. But other lags shows that pharmacy fills with lagged days do not has the significant association with smoke. And the association tends to decrease as lag goes.
+
+```{r DLM for casecrossover df 5, echo = FALSE, message=FALSE, warning=FALSE}
 inhaler_geo_lag <- inhaler_ndc_lag_df %>%
   select(159, 160:166) # GWR-method
   
@@ -2096,7 +2083,7 @@ inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
 B <- ns(0:lag_max, df =5, intercept=TRUE) 
 
 # the nrow B should equal ncol(pm)
-dim(B)
+# dim(B)
 
 inhaler_geo_lag_B <- inhaler_geo_lag%*%B
 inhaler_temp_lag_B <- inhaler_temp_lag%*%B
@@ -2104,9 +2091,9 @@ inhaler_temp_lag_B <- inhaler_temp_lag%*%B
 fit <- clogit(outcome ~ inhaler_geo_lag_B + inhaler_temp_lag_B + strata(personkey), 
               inhaler_ndc_lag_df)
 
-coef(fit)
-summary(fit)
-AIC(fit)
+# coef(fit)
+# summary(fit)
+# AIC(fit)
 
 D <- cbind(B,B)
 
@@ -2122,7 +2109,7 @@ DLestimate$estimate <- exp(DLestimate$estimate)
 DLestimate$lower <- exp(DLestimate$lower)
 DLestimate$upper <- exp(DLestimate$upper)
 
-DLestimate
+# DLestimate
 
 DLestimate$lag <- 0:lag_max
 p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
@@ -2134,13 +2121,19 @@ p
 DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
 
 cumulative <- sum(DLestimate$estimate)
-cumulative
+# cumulative
 
 cumulative_se <- sqrt(sum(DLvar))
-cumulative_se
+# cumulative_se
 
 cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
-cumulative_CI
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
 
 
 ```
@@ -2256,6 +2249,81 @@ cumulative_CI
 
 
 ### Distributed lag -7 to 0 for casecrossover
+
+Then we make the reversed lag to check with the same df of 5. The plot shows the same result as previous analysis. 
+
+```{r DLM for casecrossover lag -7 to 0 df 5, echo = FALSE, message=FALSE, warning=FALSE}
+inhaler_geo_lag <- inhaler_ndc_lag_df %>%
+  select(166:160, 159) # GWR-method
+  
+inhaler_temp_lag <- inhaler_ndc_lag_df %>%
+  select(156:150, 93) # GWR-method
+
+lag_max <- 0
+n1 <- length(inhaler_geo_lag[,1])
+n2 <- length(inhaler_temp_lag[,1])
+
+inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
+inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
+
+B <- ns(-7:0, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+inhaler_geo_lag_B <- inhaler_geo_lag%*%B
+inhaler_temp_lag_B <- inhaler_temp_lag%*%B
+
+fit <- clogit(outcome ~ inhaler_geo_lag_B + inhaler_temp_lag_B + strata(personkey), 
+              inhaler_ndc_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- -7:0
+p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
+p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
+p <- p + geom_line(aes(x=lag), linetype=2, size=2)
+p <- p + theme_bw()
+p
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag -7 to 0 spline estimates, se and CI"))
+
+
+```
+
+
 
 ```{r time stratified zip for casecrossover lag -7 to 0 prepare, echo=FALSE, eval=FALSE}
 ### Time stratified ------------------------------------------------------------
@@ -2410,7 +2478,7 @@ write_csv(outcome_casecross, write_path4)
 
 ```
 
-```{r time stratified county for ts lag -7 to 0 prepare, echo=FALSE, include=FALSE}
+```{r time stratified county for ts lag -7 to 0 prepare, echo=FALSE, include=FALSE, eval=FALSE}
 read_path7 <- paste0("../data_new/medication/oregon_asthma_ndc.csv")
 or_ndc_claim <- read_csv(read_path7)
 
@@ -2629,7 +2697,7 @@ write_csv(or_ndc_county_ts, write_path5)
 ```
 
 
-```{r time stratified zip for casecrossover lag -7 to 0 df, echo=FALSE, include=FALSE}
+```{r time stratified zip for casecrossover lag -7 to 0 df, echo=FALSE, include=FALSE, eval=FALSE}
 read_path10 <- paste0("../data_new/medication/oregon_ndc_time_strat_casecrossover_zip_lag15.csv")
 inhaler_ndc_lag15 <- read_csv(read_path10)
 # asthma_ndc <- fread(read_path6, showProgress = T) # faster, but seems error in overall plot analysis
@@ -2676,7 +2744,7 @@ fit_mat <- matrix(NA, nrow=4, ncol=5)
 colnames(fit_mat) <- c("outcome", "exposure", "fit", "df", "aic")
 
 # fill outcome name in first column
-fit_mat[,1] <- "inhalers"
+fit_mat[,1] <- "Beta - 2 agonists"
 # fill in exposure (geo smoke)
 fit_mat[,2] <- "geo_smk10"
 # fit type
@@ -2719,71 +2787,7 @@ knitr::kable(lag_spline_best_fit, caption = paste0("Distributed lag spline",
 
 ```
 
-```{r DLM for casecrossover lag -7 to 0, echo = FALSE, message=FALSE, warning=FALSE}
-inhaler_geo_lag <- inhaler_ndc_lag_15_df %>%
-  select(177:171, 178) # GWR-method
-  
-inhaler_temp_lag <- inhaler_ndc_lag_15_df %>%
-  select(170:164, 93) # temp
 
-lag_max <- 0
-n1 <- length(inhaler_geo_lag[,1])
-n2 <- length(inhaler_temp_lag[,1])
-
-inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
-inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
-
-B <- ns(-7:lag_max, df =5, intercept=TRUE) 
-
-# the nrow B should equal ncol(pm)
-dim(B)
-
-inhaler_geo_lag_B <- inhaler_geo_lag%*%B
-inhaler_temp_lag_B <- inhaler_temp_lag%*%B
-
-fit <- clogit(outcome ~ inhaler_geo_lag_B + inhaler_temp_lag_B + strata(personkey), 
-              inhaler_ndc_lag_15_df)
-
-coef(fit)
-summary(fit)
-AIC(fit)
-
-D <- cbind(B,B)
-
-# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
-dlparms <- c(1,2,3,4,5,6,7,8,9,10)
-DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
-DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
-DLestimate$SE <- sqrt(diag(DLvar))
-DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
-DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
-
-DLestimate$estimate <- exp(DLestimate$estimate)
-DLestimate$lower <- exp(DLestimate$lower)
-DLestimate$upper <- exp(DLestimate$upper)
-
-DLestimate
-
-DLestimate$lag <- -7:lag_max
-p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
-p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
-p <- p + geom_line(aes(x=lag), linetype=2, size=2)
-p <- p + theme_bw()
-p
-
-DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
-
-cumulative <- sum(DLestimate$estimate)
-cumulative
-
-cumulative_se <- sqrt(sum(DLvar))
-cumulative_se
-
-cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
-cumulative_CI
-
-
-```
 
 
 
@@ -2803,7 +2807,7 @@ inhaler_ndc <- data.frame(inhaler_ndc)
 #  filter(!is.na(geo_smk_pm_lag1_zip))
 
 # outcome name
-outcome <- "Asthma Inhalers"
+outcome <- "Beta - 2 agonists"
 
 # data wrangling ----
 # Producing conditional logit model estimates loop 
@@ -2812,8 +2816,8 @@ outcome <- "Asthma Inhalers"
 covariates_df <- inhaler_ndc[, c(1:26, 74:79)] # 94:156 is lag
   
 # extract pm values and divide by 10 and ordered
-which(colnames(inhaler_ndc)=="geo_smk_pm_lag1_zip") # 136
-which(colnames(inhaler_ndc)=="wrf_temp_lag1_zip") # 150
+# which(colnames(inhaler_ndc)=="geo_smk_pm_lag1_zip") # 136
+# which(colnames(inhaler_ndc)=="wrf_temp_lag1_zip") # 150
 pm_estimates_df <- inhaler_ndc[, 136:142]/10  # create 10 unit increases
 temp_estimates_df <- inhaler_ndc[, 150:156]  # temperature
 
@@ -2899,7 +2903,7 @@ wrf_geo_lag <- combined_point_est_df %>%
 tab <- htmlTable(txtRound(wrf_geo_lag, digits = 3, 1:3), 
          caption = "Association between a 10 ug/m^3 in PM2.5 three smoke method and pharmacy outcomes",
          # row group by outcome
-         rgroup = "Asthma Inhalers",
+         rgroup = "Beta - 2 agonists",
          n.rgroup = c(rep(1, 1)), # 6 rows for each age cat for each outcome
          # column headers
          header = c("Lag", "Events",
@@ -3046,7 +3050,8 @@ rr_mp <- c(round(exp(smk_est_mp[1,2]),5),
 
 rr_df[i,3:5] <- rr_mp
 }
-rr_df
+
+kable(rr_df, caption = "Unconstrained lag for time series")
 
 plot_rr <- ggplot(rr_df, aes(x=lag, y = rel_risk)) +
   geom_point() +
@@ -3068,7 +3073,9 @@ ggsave("../plot_new/ndc_rr_geo_lag.pdf", plot = plot_rr,
 
 ```
 
-### 3. Distributed lag check for time series
+### 3. Distributed lag check for time series 
+
+(not shown)
 
 ```{r DLM ts, echo = FALSE, message=FALSE, warning=FALSE, eval=FALSE}
 which(colnames(or_ndc_county_ts_df)=="wrf_temp_lag1_county") # 17
@@ -3239,6 +3246,9 @@ p
 ```
 
 ### 4. Distributed lag -7 to 0 for time series
+
+(not shown)
+
 ```{r DLM for casecrossover lag -7 to 0 temp, echo = FALSE, message=FALSE, warning=FALSE, eval = FALSE}
 
 inhaler_temp_lag <- inhaler_ndc_lag_15_df %>%
