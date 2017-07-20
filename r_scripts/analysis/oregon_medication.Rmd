@@ -1011,7 +1011,8 @@ or_ndc_county_ts <- read_csv(read_path5)
 plot_ts <- ggplot(or_ndc_county_ts, aes(y =rate_per_100k, x = date)) +
            geom_jitter() +
            ylab("Rate of 100k of Beta2 agonist fills") +
-           xlab("Year 2013")
+           xlab("Year 2013") +
+           ggtitle("Oregon: 2013 Fire Season Pharmacy Fills")
 
 print(plot_ts)
 
@@ -1022,7 +1023,8 @@ ggsave("../plot_new/ndc_rate_ts.pdf", plot = plot_ts,
 
 plot_county <- ggplot(or_ndc_county_ts, aes(y =rate_per_100k, x = date)) +
                geom_jitter() + facet_wrap(~county) +
-               ylab("Rate of 100k of Beta2 agonist fills")
+               ylab("Rate of 100k of Beta2 agonist fills") +
+               ggtitle("Oregon: 2013 Fire Season Pharmacy Fills by County")
 
 plot_county_line <- ggplot(or_ndc_county_ts, aes(y =rate_per_100k, x = date)) +
                     facet_wrap(~county) + geom_line()
@@ -1055,6 +1057,7 @@ plot_health_smk <- ggplot(or_ndc_county_ts, aes(x = geo_smk_pm10, y = log(rate_p
   # facet_wrap(~county, scale  = "free") +
   ylab("Log Beta 2 agonists Rate per 100,000 Persons") +
   xlab("GWR Smoke PM2.5 per 10ug/m^3") +
+  ggtitle("Regression of Pharmacy Fills on GWR Smoke Concentration") +
   theme_bw()  
 
 # unnecessary
@@ -1154,7 +1157,7 @@ or_smk_plot <- ggplot(or_smk, aes(x = date, y = pm)) +
   facet_wrap(~county) +
   ggtitle("Oregon: 2013 Fire Season Smoke PM2.5") +
   ylab("Smoke PM2.5 ug/m^3") +
-  xlab("Year: 2013") +
+  xlab("Year 2013") +
   theme_bw()
 
 or_smk_plot
@@ -1473,7 +1476,7 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
     #ggtitle('Association Between PM2.5 from \n Wildfire Smoke on Hospitalizations') +
     ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
     #ylim(0, 2) +
-    xlab('Smoke Estimation Method') +
+    xlab('Overall') +
     # plot theme
     theme(panel.background = element_rect(fill = 'white', colour = 'black'),
     panel.grid.major = element_blank(),
@@ -2115,7 +2118,7 @@ DLestimate$lag <- 0:lag_max
 p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
 p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
 p <- p + geom_line(aes(x=lag), linetype=2, size=2)
-p <- p + theme_bw()
+p <- p + theme_bw() + xlab("lagged days of events") + ylab("Odds Ratio for 10ug/m^3 Increase in PM2.5")
 p
 
 DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
@@ -2301,7 +2304,7 @@ DLestimate$lag <- -7:0
 p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
 p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
 p <- p + geom_line(aes(x=lag), linetype=2, size=2)
-p <- p + theme_bw()
+p <- p + theme_bw() + xlab("lagged days of events") + ylab("Odds Ratio for 10ug/m^3 Increase in PM2.5")
 p
 
 DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
@@ -3062,7 +3065,7 @@ plot_rr <- ggplot(rr_df, aes(x=lag, y = rel_risk)) +
    panel.grid.major = element_blank(),
    panel.grid.minor = element_blank(),
    axis.text.x = element_text(angle = 90, vjust = .75)) +
-  ylab("Relative Risk") +
+  ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
   xlab("Outcome") +
   ggtitle("Relative Risk for a 10ug/m^3 increase PM2.5 estimated via GWR Smoke")
 
