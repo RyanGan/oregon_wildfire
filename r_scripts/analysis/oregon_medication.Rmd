@@ -1338,6 +1338,21 @@ names(centroids) <- c('long', 'lat')                 # Appropriate Header
 
 rownames(centroids) <- gsub("(^|[[:space:]])([[:alpha:]])", "\\1\\U\\2", rownames(centroids), perl=TRUE)
 
+centroids[4,] <- centroids[4,] + c(0, 0.02) # Clatsop
+centroids[5,] <- centroids[5,] + c(0.1, 0) # Columbia
+centroids[29,] <- centroids[29,] + c(-0.1, -0.03) # Tillamook
+centroids[34,] <- centroids[34,] + c(-0.12, -0.02) # Washington
+centroids[26,] <- centroids[26,] + c(0, 0.03) # Multnomah
+centroids[11,] <- centroids[11,] + c(-0.05, -0.12) # Gilliam
+centroids[24,] <- centroids[24,] + c(-0.2, 0) # Marion
+centroids[33,] <- centroids[33,] + c(0, -0.1) # Wasco
+centroids[28,] <- centroids[28,] + c(0, 0.1) # Sherman
+centroids[36,] <- centroids[36,] + c(-0.05, -0.08) # Yamhill
+centroids[8,] <- centroids[8,] + c(0.08, -0.2) # Yamhill
+centroids[17,] <- centroids[17,] + c(-0.05, 0.08) # Yamhill
+centroids[29,] <- centroids[29,] + c(-0.01, -0.1) # Sherman
+
+
 # smoke days where GWR smoke > 15
 smoke_map <- ggplot(or_smk_df, aes(x=long, y=lat, group=group)) +
   # fill with number of smoke days
@@ -1376,7 +1391,6 @@ smoke_map1 <- ggplot(or_smk_df, aes(x=long, y=lat, group=group)) +
     panel.grid.minor = element_blank(),
     strip.background = element_rect(colour=NA, fill=NA)) +
   geom_text(data = centroids, aes(long, lat, label = rownames(centroids), group=NULL), size = 2)
-smoke_map
 
 smoke_map1
 
@@ -1404,7 +1418,7 @@ outcome_name <- "Beta - 2 agonist"
 # dataframe for analysis creation
 # bind columns back together 
 df_analysis <- inhaler_ndc_df %>%
-  filter(!is.na(wrf_smk_pm_zip)) %>% 
+  filter(!is.na(geo_smk_pm_zip)) %>% 
   # only look at outcomes
   filter(outcome == 1) %>%
   # add another row that makes sure there is a person <15 in the dataframe
@@ -1470,11 +1484,126 @@ print(tab)
 
 ```
 
-### Outcomes
+### Outcomes of four kinds
 
-```{r category, echo = F, message = F, warning = F, results='asis', eval=FALSE}
-read_path <- paste0("../data_new/medication/oregon_beta_ndc_index_full.csv")
-inhaler_ndc <- read_csv(read_path)
+```{r category, echo = F, message = F, warning = F, results='asis'}
+read_path <- paste0("../data_new/medication/oregon_beta_ndc_index.csv")
+inhaler_index <- read_csv(read_path)
+
+# dataframe to loop through
+inhaler_index_df <- data.frame(inhaler_index) %>%
+  select(personkey, index)
+
+cate <- inhaler_index_df %>%
+  filter(personkey %in% inhaler_ndc$personkey) %>%
+  unique()
+
+inhaler_ndc_index_df <- inhaler_ndc_df %>%
+  left_join(cate, by="personkey")
+
+asthma_df <- inhaler_ndc_index_df %>%
+  filter(index=="asthma")
+
+copd_df <- inhaler_ndc_index_df %>%
+  filter(index=="copd")
+
+both_df <- inhaler_ndc_index_df %>%
+  filter(index=="both")
+
+other_df <- inhaler_ndc_index_df %>%
+  filter(index=="other")
+
+df_list <- list(asthma_df, copd_df, both_df, other_df)
+
+outcome_list <- c('Asthma', 'COPD', 'Both', 'Other')
+
+method_list <- c('Geo-Weighted Smoke')
+
+# create an empty list to row bind dataframes together
+datalist <- list()
+
+# set list and do cross tabs to find values
+# Producing conditional logit model estimates loop 
+for(i in 1:length(df_list)){
+
+# dataframe to loop through
+  df_to_loop <- data.frame(df_list[i])
+  # indication of column
+  outcome <- colnames(df_to_loop[76])
+  # outcome name
+  outcome_name <- outcome_list[i]
+
+  # dataframe for analysis creation
+  # bind columns back together 
+  df_analysis <- df_to_loop %>%
+    filter(!is.na(wrf_smk_pm_zip)) %>% 
+    # only look at outcomes
+    filter(outcome == 1) %>%
+    # add another row that makes sure there is a person <15 in the dataframe
+    # tricking xtabs to produce a 0 cell for the outcome for age <15
+    add_row(outcome = 0, age_ind = 0)
+  
+  # cross tabs
+  outcome_n <- xtabs(~ outcome, df_analysis)
+  cross_tab_age <- xtabs(~ outcome + age_ind, df_analysis)
+  cross_tab_sex <- xtabs(~ outcome + sex_ind, df_analysis)
+  # empty matrix
+  point_estimates <- matrix(nrow = 1, ncol = 7, byrow = T)
+  
+  colnames(point_estimates) <- c("outcome", "n", "age_15", "age_15_65", 
+                                 "age_65", "female", "male")
+  
+  # fill in the outcome name for the dataframe before the loop
+  point_estimates[, 1] <- outcome_name
+  # fill n
+  point_estimates[, 2] <- outcome_n[2] # second element of the 1 dimension vector
+  # age <15
+  point_estimates[, 3] <- cross_tab_age[2, 1]
+  # age 15 to 65
+  point_estimates[, 4] <- cross_tab_age[2, 2]
+  # age >65
+  point_estimates[, 5] <- cross_tab_age[2, 3]
+  # male == 0
+  point_estimates[, 7] <- cross_tab_sex[1, 1]
+  # female == 1
+  point_estimates[, 6] <- cross_tab_sex[1, 2]
+
+
+  # save point estimates as a dataframe
+  point_est_df <- as_data_frame(point_estimates)
+  
+  # combine previous values in dataframe that has all outcome/methods comparisons
+  datalist[[i]] <- point_est_df
+
+} # end of loop
+
+# combine each outcome dataframe itteration in to a big dataset
+combined_point_est_df <- bind_rows(datalist) %>% 
+  # find proportions/percents for each strata in a row
+  mutate(age_15_pr = as.character(round((as.numeric(age_15)/as.numeric(n))*100,1)),
+         age_15_65_pr = as.character(round((as.numeric(age_15_65)/as.numeric(n))*100,1)),
+         age_65_pr = as.character(round((as.numeric(age_65)/as.numeric(n))*100,1)),
+         female_pr = as.character(round((as.numeric(female)/as.numeric(n))*100,1)),
+         male_pr = as.character(round((as.numeric(male)/as.numeric(n))*100,1))) %>% 
+  select(outcome, n, age_15, age_15_pr, age_15_65, age_15_65_pr, age_65,
+         age_65_pr, female, female_pr, male, male_pr)
+
+#str(combined_point_est_df)
+  
+tab <- htmlTable(txtRound(combined_point_est_df, digits = 1), 
+           caption = "Number of cases for each outcome observed from May 1st to September 30st, 2013",
+           # column headers
+           header = c("Outcome", "Cases n", "Less than 15", "(%)", "15 to 65", "(%)", "Greater than 65",
+                      "(%)", "Female", "(%)", "Male", "(%)"),
+           # column spanner
+           cgroup = c("","Age Category", "Sex"), 
+           n.cgroup = c(2, 6, 4),
+           padding.rgroup = "&nbsp;&nbsp;",
+           css.cell = "padding-left: 0.5em; padding-right: .5em;", # cell space
+           align = "llccccc" # column alignment,
+            ) # end table
+
+print(tab)
 
 
 
@@ -1675,7 +1804,190 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
   
 ```
 
+The plot shows that four different categories 
 
+```{r category plot, warning =F, echo = F, results='asis'}
+df_list <- list(asthma_df, copd_df, both_df, other_df)
+
+outcome_list <- c('Asthma', 'COPD', 'Both', 'Other')
+
+method_list <- c('Geo-Weighted Smoke')
+
+# create an empty list to row bind dataframes together
+datalist <- list()
+
+# data wrangling ----
+# Producing conditional logit model estimates loop 
+for(i in 1:length(df_list)){
+
+  # dataframe to loop through
+  df_to_loop <- data.frame(df_list[i])
+  # indication of column
+  outcome <- colnames(df_to_loop[75])
+  # outcome name
+  outcome_name <- outcome_list[i]
+  
+  covariates_df <- df_to_loop[, c(1:26, 74:84)]
+
+  # extract pm values and divide by 10 and ordered
+  #which(colnames(df_to_loop)=="global_smk_pm_zip") # code to find column numbers
+  pm_estimates_df <- df_to_loop[, c(91, 93)]/10  # create 10 unit increases
+
+  # dataframe for analysis creation
+  # bind columns back together 
+  df_analysis <- cbind(covariates_df, pm_estimates_df) %>% 
+    # remove missing pm values
+    filter(!is.na(geo_smk_pm_zip)) %>% 
+    
+    # join in cdc met data
+    # full_join(daily_zip_met, by = c("ZIPCODE", "date")) %>% 
+    # the following code makes sure that the counterfactual values retained are 
+    # symetric in that number of obs before = number of obs after
+    mutate(obs_diff_admission = (fromdate - date)/7) 
+  # dataframe is already for the entire fire season, so I don't need to subset anymore
+  
+  
+  # empty df for table
+  table_df <- data.frame()
+  
+  # empty matrix
+  point_estimates <- matrix(nrow = 1, ncol = 9, byrow = T)
+  
+  colnames(point_estimates) <- c('outcome', 'pm_method', 'n', 'n_events', 'odds_ratio', 
+                                 'lower95', 'upper95', 'se', 'p_val')
+  
+  # fill in the outcome name for the dataframe before the loop
+  point_estimates[, 1] <- outcome_name
+
+
+# set row number to fill
+row_n <- 1
+      
+# only run the model if the dataframe has observations
+if(nrow(df_analysis) != 0){
+  # conditional logistic regression model
+  mod <- clogit(outcome ~ df_analysis[[38]] + wrf_temp_zip + strata(personkey), df_analysis)
+      
+      # populate matrix
+    point_estimates[row_n, 2] <- method_list[row_n]
+    point_estimates[row_n, 3] <- mod$n
+    point_estimates[row_n, 4] <- mod$nevent
+    # odds ratio
+    point_estimates[row_n, 5] <- round(exp(summary(mod)$coefficient[1,1]), 3)
+    
+    # 95% lower bound
+    point_estimates[row_n, 6] <- round(exp((summary(mod)$coefficient[1,1]) -
+                                             1.96*(summary(mod)$coefficient[1,3])), 3)
+    # 95% upper bound
+    point_estimates[row_n, 7] <- round(exp((summary(mod)$coefficient[1,1]) +
+                                             1.96*(summary(mod)$coefficient[1,3])), 3)
+    # standard error
+    point_estimates[row_n, 8] <- round(summary(mod)$coefficient[1,3], 4)
+    # p val
+    point_estimates[row_n, 9] <- round(summary(mod)$coefficient[1,5], 4)
+    
+    # save point estimates as a dataframe
+    point_est_df <- as_data_frame(point_estimates)      
+  # create else statement that fills matrix with missing so I still have the row
+  # in the final dataframe
+  } else {point_estimates[row_n, 2] <- method_list
+          point_estimates[row_n, 3] <- 0
+          point_estimates[row_n, 4] <- 0
+          point_estimates[row_n, c(5:9)] <- 99 } # end 'if else' statement
+  
+  
+  # combine previous values in dataframe that has all outcome/methods comparisons
+  datalist[[i]] <- point_est_df
+  
+} # end of loop
+
+# combine each outcome dataframe itteration in to a big dataset
+combined_point_est_df <- bind_rows(datalist)
+
+
+# subset columns I want to put in to the table
+table_df <- combined_point_est_df %>% select(2, 3:7) 
+
+
+
+tab <- htmlTable(txtRound(table_df, digits = 3, 1:3), 
+                 caption = "Association between a 10 ug/m^3 in PM2.5 and Health Outcomes",
+                 # row group by outcome
+                 rgroup = outcome_list,
+                 n.rgroup = c(rep(1, 4)), # 4 rows for each method for each outcome
+                 # column headers
+                 header = c("Method", "Obs.", "Events",
+                            "OR&dagger;", "Lower", "Upper"),
+                 # column spanner
+                 cgroup = c("", "95% CI"), 
+                 n.cgroup = c(4, 2),
+                 padding.rgroup = "&nbsp;&nbsp;",
+                 css.cell = "padding-left: 0.5em; padding-right: .5em;", # cell space
+                 align = "llccccc", # column alignment,
+                 tfoot="&dagger; Adjusted for CDC temperature, relatively humidity, wind speed, and precipitation; accounting for subject. Time-stratified: referent periods matched to events on same day of week within July to October fire season."
+) # end table
+
+print(tab)
+
+# ggplot of odds ratios, facet wrapped by outcomes -----
+# convert variables from character to either numeric or factor
+# factor preserves the order of the variable
+combined_point_est_df$outcome <- factor(combined_point_est_df$outcome, 
+                                        levels = unique(combined_point_est_df$outcome))
+
+combined_point_est_df$pm_method <- factor(combined_point_est_df$pm_method, 
+                                          levels = unique(combined_point_est_df$pm_method))
+
+combined_point_est_df$n <- as.numeric(combined_point_est_df$n)
+combined_point_est_df$n_events <- as.numeric(combined_point_est_df$n_events)
+combined_point_est_df$odds_ratio <- as.numeric(combined_point_est_df$odds_ratio)
+combined_point_est_df$lower95 <- as.numeric(combined_point_est_df$lower95)
+combined_point_est_df$upper95 <- as.numeric(combined_point_est_df$upper95)
+combined_point_est_df$se <- as.numeric(combined_point_est_df$se)
+combined_point_est_df$p_val <- as.numeric(combined_point_est_df$p_val)
+
+# subset out global method
+combined_point_est_df <- combined_point_est_df
+
+
+## ggplot
+print_plot <- ggplot(combined_point_est_df, 
+                     aes(x = pm_method, y = odds_ratio, colour = pm_method)) +
+  # custom color 
+  scale_color_manual(name = "Smoke-Estimation Method", 
+                     values = c("red", "blue", "#32115C"),
+                     guide = guide_legend(title.position = "top", title.hjust = 0.5)) +
+  geom_point() + #geom_text(vjust = 0, nudge_x = 0.3) +
+  geom_errorbar(aes(ymin=lower95, ymax=upper95), width = 0.2) +
+  facet_wrap(~outcome, nrow = 3) +
+  geom_hline(yintercept = 1, linetype=2) +
+  #    ggtitle('Association Between PM2.5 \n from Wildfire Smoke on Hospitalizations') +
+  ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
+  #xlab('Smoke Estimation Method') +
+  # plot theme
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # strip element
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.border = element_rect(fill = NA, color = "black"),
+        # facet text size
+        #strip.text = element_text(size = 8),
+        # axis element
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_text(angle = 90),
+        # legend elements
+        legend.position = "bottom")
+#legend.text = element_text(size = 8))
+
+print(print_plot)
+# save figure
+# ggsave("../plot_new/fig_both_er_ur.pdf", plot = print_plot, 
+#        width = 12, height = 8, units = "in")
+
+```
 
 
 
@@ -1683,11 +1995,13 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
 
 Although the casecrossover study shows a significant association of getting beta-2 agonist pharmacy fills and smoke concentration, we still wonder the association of the pharmacy fills with some lag days. For medication analysis, people could get the pharmacy fills one or some days later than the day they find they have the disease. Then we make 0 (the original day) to 7 lags (one week) to see association of pharmacy fills with different lagged days.
 
-### Find the smallest of AIC with df from 3 to 6
 
-Choose df = 5 because it has the least AIC.
 
-```{r, message=FALSE, echo=FALSE, warning=FALSE}
+### Distributed lag 0-7 for casecrossover
+
+When choosing the df of 5, the plot shows that the same day of fill with smoke exposure has the highest significant association. But other lags shows that pharmacy fills with lagged days do not has the significant association with smoke. And the association tends to decrease as lag goes.
+
+```{r input, echo = FALSE, message=FALSE, warning=FALSE}
 read_path8 <- paste0("../data_new/county_data/zip_to_county_new.csv")
 or_zip_to_county <- read_csv(read_path8)
 
@@ -1720,77 +2034,9 @@ inhaler_ndc_lag_df <- inhaler_ndc_df %>%
 
 inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-05-27")] <- "weekend"
 inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-07-04")] <- "weekend"
-inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-09-02")] <- "weekend"                           
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-09-02")] <- "weekend"
 
-  
-# which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_zip") # 159
-# which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_lag1_zip") # 160
-# which(colnames(inhaler_ndc_lag_df)=="wrf_temp_zip") # 93
-# which(colnames(inhaler_ndc_lag_df)=="wrf_temp_lag1_zip") # 150
-
-inhaler_geo_lag <- inhaler_ndc_lag_df %>%
-  select(159, 160:166) # GWR-method
-  
-inhaler_temp_lag <- inhaler_ndc_lag_df %>%
-  select(93, 150:156) # GWR-method
-
-
-inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
-inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
-
-
-# create fit matrix
-fit_mat <- matrix(NA, nrow=4, ncol=5)
-colnames(fit_mat) <- c("outcome", "exposure", "fit", "df", "aic")
-
-# fill outcome name in first column
-fit_mat[,1] <- "Beta - 2 agonists"
-# fill in exposure (geo smoke)
-fit_mat[,2] <- "geo_smk10"
-# fit type
-fit_mat[,3] <- "ns"
-  
-# 2 df will not work for a spline, going from 3 to 6 df
-  for(h in 3:6){ # start loop for df
-
-    # fitting a natural spline for lag with 5 knots?
-    fit_mat[h-2, 4] <- degree_freedom <- h
-
-    # define basis b using natural spline function
-    B <- ns(0:7, df = degree_freedom, intercept = T)
-    
-    # multiply lagged pm matrix by basis
-    inhaler_geo_lag_B <- inhaler_geo_lag%*%B
-    inhaler_temp_lag_B <- inhaler_temp_lag%*%B
-
-    fit <- clogit(outcome ~ inhaler_geo_lag_B + inhaler_temp_lag_B + strata(personkey), 
-              inhaler_ndc_lag_df)
-
-    AIC(fit)
-    
-    # fill AIC
-    fit_mat[h-2,5] <- round(AIC(fit),5)
-
-    } # end model fit loop
-  
-
-# now that we have a range of df/knots, I want to filter to the minimum aic
-# for each outcome and print out that value in a table
-
-kable(fit_mat, caption="Distributed lag spline of 3-6 degree of freedom fit by AIC")
-
-lag_spline_best_fit <- as_tibble(fit_mat) %>%  
-  slice(which.min(aic)) # df of 3 has the smallest AIC
-
-# kable
-knitr::kable(lag_spline_best_fit, caption = paste0("Distributed lag spline ",
-  "degree of freedom best fit by AIC"))
 ```
-
-
-### Distributed lag 0-7 for casecrossover
-
-When choosing the df of 5, the plot shows that the same day of fill with smoke exposure has the highest significant association. But other lags shows that pharmacy fills with lagged days do not has the significant association with smoke. And the association tends to decrease as lag goes.
 
 ```{r DLM for casecrossover df 5, echo = FALSE, message=FALSE, warning=FALSE}
 inhaler_geo_lag <- inhaler_ndc_lag_df %>%
@@ -1970,6 +2216,131 @@ cumulative_CI
 
 
 ```
+
+```{r input category, echo = FALSE, message=FALSE, warning=FALSE}
+df_list <- list(asthma_df, copd_df, both_df, other_df)
+
+outcome_list <- c('Asthma', 'COPD', 'Both', 'Other')
+
+method_list <- c('Geo-Weighted Smoke')
+
+# create an empty list to row bind dataframes together
+datalist_dml <- list()
+
+# set list and do cross tabs to find values
+# Producing conditional logit model estimates loop 
+for(i in 1:length(df_list)){
+
+# datalist_dml[[i]] <- data.frame(df_list[i]) %>%
+  asthma_dml <- asthma_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+asthma_dml$day[which(asthma_dml$date=="2013-05-27")] <- "weekend"
+asthma_dml$day[which(asthma_dml$date=="2013-07-04")] <- "weekend"
+asthma_dml$day[which(asthma_dml$date=="2013-09-02")] <- "weekend"
+
+
+datalist_dml[[i]]$day[which(datalist_dml[[i]]$date=="2013-05-27")] <- "weekend"
+datalist_dml[[i]]$day[which(datalist_dml[[i]]$date=="2013-07-04")] <- "weekend"
+datalist_dml[[i]]$day[which(datalist_dml[[i]]$date=="2013-09-02")] <- "weekend"
+}
+
+for(i in 1:4){
+  i <- 1
+
+  inhaler_geo_lag <- asthma_dml %>%
+  select(159, 160:166) # GWR-method
+  
+inhaler_temp_lag <- asthma_dml %>%
+  select(93, 150:156) # GWR-method
+
+dml_df <- datalist_dml[[i]]
+
+lag_max <- 7
+n1 <- length(inhaler_geo_lag[,1])
+n2 <- length(inhaler_temp_lag[,1])
+
+inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
+inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+inhaler_geo_lag_B <- inhaler_geo_lag%*%B
+inhaler_temp_lag_B <- inhaler_temp_lag%*%B
+
+fit <- clogit(outcome ~ inhaler_geo_lag_B + inhaler_temp_lag_B + strata(personkey), 
+              asthma_dml)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
+p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
+p <- p + geom_line(aes(x=lag), linetype=2, size=2)
+p <- p + theme_bw() + xlab("lagged days of events") + ylab("Odds Ratio for 10ug/m^3 Increase in PM2.5")
+p
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
+}
+
+
+
+```
+
+
+
 
 
 
@@ -2972,6 +3343,75 @@ wrf_geo_sex_plot$upper95 <- as.numeric(wrf_geo_sex_plot$upper95)
 ```
 
 
+### Find the smallest of AIC with df from 3 to 6 (10)
+
+Choose df = 5 because it has the least AIC.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE}
+                           
+# which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_zip") # 159
+# which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_lag1_zip") # 160
+# which(colnames(inhaler_ndc_lag_df)=="wrf_temp_zip") # 93
+# which(colnames(inhaler_ndc_lag_df)=="wrf_temp_lag1_zip") # 150
+
+inhaler_geo_lag <- inhaler_ndc_lag_df %>%
+  select(159, 160:166) # GWR-method
+  
+inhaler_temp_lag <- inhaler_ndc_lag_df %>%
+  select(93, 150:156) # GWR-method
+
+
+inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
+inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
+
+
+# create fit matrix
+fit_mat <- matrix(NA, nrow=4, ncol=5)
+colnames(fit_mat) <- c("outcome", "exposure", "fit", "df", "aic")
+
+# fill outcome name in first column
+fit_mat[,1] <- "Beta - 2 agonists"
+# fill in exposure (geo smoke)
+fit_mat[,2] <- "geo_smk10"
+# fit type
+fit_mat[,3] <- "ns"
+  
+# 2 df will not work for a spline, going from 3 to 6 df
+  for(h in 3:6){ # start loop for df
+
+    # fitting a natural spline for lag with 5 knots?
+    fit_mat[h-2, 4] <- degree_freedom <- h
+
+    # define basis b using natural spline function
+    B <- ns(0:7, df = degree_freedom, intercept = T)
+    
+    # multiply lagged pm matrix by basis
+    inhaler_geo_lag_B <- inhaler_geo_lag%*%B
+    inhaler_temp_lag_B <- inhaler_temp_lag%*%B
+
+    fit <- clogit(outcome ~ inhaler_geo_lag_B + inhaler_temp_lag_B + strata(personkey), 
+              inhaler_ndc_lag_df)
+
+    AIC(fit)
+    
+    # fill AIC
+    fit_mat[h-2,5] <- round(AIC(fit),5)
+
+    } # end model fit loop
+  
+
+# now that we have a range of df/knots, I want to filter to the minimum aic
+# for each outcome and print out that value in a table
+
+kable(fit_mat, caption="Distributed lag spline of 3-6 degree of freedom fit by AIC")
+
+lag_spline_best_fit <- as_tibble(fit_mat) %>%  
+  slice(which.min(aic)) # df of 3 has the smallest AIC
+
+# kable
+knitr::kable(lag_spline_best_fit, caption = paste0("Distributed lag spline ",
+  "degree of freedom best fit by AIC"))
+```
 
 
 
