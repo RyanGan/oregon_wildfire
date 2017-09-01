@@ -1,5 +1,5 @@
 ---
-title: "The GWR Smoke's effect on Oregon 2013 Medication of Beta-2 agonists"
+title: "The GWR wildfire smoke's association with 2013 Oregon medication of short acting beta agonists"
 author: "Jingyang Liu"
 date: "May 17, 2017"
 output: html_document
@@ -18,6 +18,7 @@ library(maps)
 library(lubridate) # date
 library(ggrepel)
 library(sp)
+library(cowplot)
 
 # distributed lag model libraries
 library(dlnm)
@@ -34,12 +35,15 @@ library(readr)
 
 
 
-## Overview (1, 2)
+## Overview 
 
 
-1. Intro: We found an association with wildfire smoke and respiratory outcomes in Washington state 2012 using a novel estimate of smoke concentration, geo-graphically weighted ridge regression (GWR). We want to know if smoke impacts other health outcomes, specifically respiratory rescue medications (beta 2 agonists) (abbreviate to SABA)
+**1. Introduction: **
+We found an association with wildfire smoke and respiratory outcomes in Washington state 2012 using a novel estimate of smoke concentration, geo-graphically weighted ridge regression (GWR). We want to know if smoke impacts other health outcomes, specifically respiratory rescue medications (beta 2 agonists) (abbreviate to SABA)
 
-2. Research question: We evaluated the association between smoke concentrations using the GWR method and SABA refills in Oregon state during the 2013 wildfire season.
+
+**2. Research question: **
+We evaluated the association between smoke concentrations using the GWR method and SABA refills in Oregon state during the 2013 wildfire season.
 
 
 We had previously shown GWR to be a good estimate of wildfire smoke concentrations, and showed associations with respiratory outcomes (including asthma) in Washington state. We want to replicate results for Oregon and also look at beta-2 agonist pharmacy fills.
@@ -50,10 +54,9 @@ For this research I have the Oregon All Payer All Claims (APAC) data set in 2013
 The data cleaning and creation of the casecross-over dataframes are huge computation tasks, so they are done with server, the following work is done with local R. We analyze the case crossover results with overall, age strarified and sex stratified categories for the pharmacy fills, and then we also analyze with the distributed lag method, and check with time series analysis.
 
 
-## Method Description (3)
 
-
-3.Methods: use case-crossover for all health outcome figures and results. Make sure smoke is assigned via zipcode. For the descriptive of smoke, I think the county-level for now. We may move to zip.
+**3.Methods: **
+use case-crossover for all health outcome figures and results. Make sure smoke is assigned via zipcode. For the descriptive of smoke, I think the county-level for now. We may move to zip.
 
 
 In these comparisons, we examine GWR method of smoke PM2.5 estimations and associations with health outcomes using a time-stratified case-crossover study design. Pharmacy outcomes for a patient with a primary diagnosis of all pharmacy records from the state, and it just so happens we also have APAC data for people that were billed for a cardiopulmonary event that we can link to the pharmacy claim, and their date of admission (index time) were identified. We then created counterfactual observations for each patient on the same day of the week for the entire wildfire season (May 1st to Sep 30th, 2013). For patients who have a index time before May 1, 2013 or after September 30, 2013, their referent observations before or after these dates will be excluded as I will not be able to assign estimates of PM2.5 to these referent observations.
@@ -1282,7 +1285,7 @@ or_smk_plot <- ggplot(or_smk, aes(x = date, y = pm)) +
    # theme(axis.text.x=element_blank()) +
   theme(panel.background = element_rect(fill = 'white', colour = 'white')) +
   theme(strip.background = element_rect(colour = "white", fill = "white"))+
-  ylab(expression(paste("GWR Smoke PM"[2.5], " Concentration, µg/m^3" ))) +
+  ylab(expression(paste("GWR Smoke PM"[2.5], " Concentration, Âµg/m^3" ))) +
   xlab("May 1st to Sep 30th in 2013") +
   theme(axis.line.x = element_line(color="black"),
         axis.line.y = element_line(color="black"))+
@@ -1366,7 +1369,7 @@ smoke_map <- ggplot(or_smk_df, aes(x=long, y=lat, group=group)) +
        strip.text.x = element_blank()) +
   xlab("Longitude") +
   ylab("Latitude") +
-  ggtitle("Oregon: Counties Affected by Smoke PM2.5 > 10µg/m^3") +
+  ggtitle("Oregon: Counties Affected by Smoke PM2.5 > 10Âµg/m^3") +
   theme(panel.background = element_rect(fill = 'white', colour = 'black'),
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
@@ -1385,7 +1388,7 @@ smoke_map1 <- ggplot(or_smk_df, aes(x=long, y=lat, group=group)) +
        strip.text.x = element_blank()) +
   xlab("Longitude") +
   ylab("Latitude") +
-  ggtitle("Oregon: Counties Affected by Smoke PM2.5 > 10µg/m^3") +
+  ggtitle("Oregon: Counties Affected by Smoke PM2.5 > 10Âµg/m^3") +
   theme(panel.background = element_rect(fill = 'white', colour = 'black'),
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
@@ -1775,7 +1778,7 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
     facet_wrap(~outcome, nrow = 3, scales = "free") +
     geom_hline(yintercept = 1, linetype=2) +
     #ggtitle('Association Between PM2.5 from \n Wildfire Smoke on Hospitalizations') +
-    ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
+    ylab(expression(paste("Odds Ratio for 10ÃÂµg/m"^3, " Increase in PM"[2.5]))) +
     #ylim(0, 2) +
     xlab('Overall') +
     # plot theme
@@ -1962,7 +1965,7 @@ print_plot <- ggplot(combined_point_est_df,
   facet_wrap(~outcome, nrow = 3) +
   geom_hline(yintercept = 1, linetype=2) +
   #    ggtitle('Association Between PM2.5 \n from Wildfire Smoke on Hospitalizations') +
-  ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
+  ylab(expression(paste("Odds Ratio for 10ÃÂµg/m"^3, " Increase in PM"[2.5]))) +
   #xlab('Smoke Estimation Method') +
   # plot theme
   theme(panel.background = element_rect(fill = 'white', colour = 'black'),
@@ -2111,125 +2114,18 @@ knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and
 ```
 
 
-```{r DLM for casecrossover temp, echo = FALSE, message=FALSE, warning=FALSE, eval=FALSE}
-read_path8 <- paste0("../data_new/county_data/zip_to_county_new.csv")
-or_zip_to_county <- read_csv(read_path8)
-
-read_path9 <- paste0("../data_new/county_data/or_census_pop_est_county.csv")
-or_pop <- read_csv(read_path9)
-
-or_pop <- or_pop %>%
-  rename(county = GEO_display_label, pop = respop72013) %>%
-  select(county, pop) 
-or_pop$county <- gsub(" County, Oregon", "", as.character(factor(or_pop$county)))
-
-inhaler_ndc_lag_df <- inhaler_ndc_df %>%
-  left_join(or_zip_to_county, by = "ZIPCODE") %>%
-  left_join(or_pop, by = "county") %>%
-  mutate(day = ifelse(weekdays(date) == "Monday" |
-                      weekdays(date) == "Tuesday" |
-                      weekdays(date) == "Wednesday"|
-                      weekdays(date) == "Thursday"|
-                      weekdays(date) == "Friday", "weekday",
-               ifelse(weekdays(date) == "Saturday" |
-                      weekdays(date) == "Sunday", "weekend", NA))) %>%
-  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
-         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
-         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
-         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
-         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
-         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
-         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
-         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
-
-inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-05-27")] <- "weekend"
-inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-07-04")] <- "weekend"
-inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-09-02")] <- "weekend"                           
-
-  
-which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_zip") # 159
-which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_lag1_zip") # 160
-which(colnames(inhaler_ndc_lag_df)=="wrf_temp_zip") # 93
-which(colnames(inhaler_ndc_lag_df)=="wrf_temp_lag1_zip") # 150
-
-inhaler_geo_lag <- inhaler_ndc_lag_df %>%
-  select(159, 160:166) # GWR-method
-  
-inhaler_temp_lag <- inhaler_ndc_lag_df %>%
-  select(93, 150:156) # GWR-method
-
-lag_max <- 7
-n1 <- length(inhaler_geo_lag[,1])
-n2 <- length(inhaler_temp_lag[,1])
-
-inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
-inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
-
-B <- ns(0:lag_max, df =3, intercept=TRUE) 
-
-# the nrow B should equal ncol(pm)
-dim(B)
-
-inhaler_geo_lag_B <- inhaler_geo_lag%*%B
-inhaler_temp_lag_B <- inhaler_temp_lag%*%B
-
-fit <- clogit(outcome ~  inhaler_temp_lag_B + strata(personkey), 
-              inhaler_ndc_lag_df)
-
-coef(fit)
-summary(fit)
-AIC(fit)
-
-D <- cbind(B,B)
-
-# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
-dlparms <- c(1,2,3)
-DLestimate<- data.frame(estimate=B%*%coef(fit)[dlparms]) 
-DLvar <- B%*%vcov(fit)[dlparms,dlparms]%*%t(B)
-DLestimate$SE <- sqrt(diag(DLvar))
-DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
-DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
-
-DLestimate$estimate <- exp(DLestimate$estimate)
-DLestimate$lower <- exp(DLestimate$lower)
-DLestimate$upper <- exp(DLestimate$upper)
-
-DLestimate
-
-DLestimate$lag <- 0:lag_max
-p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
-p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
-p <- p + geom_line(aes(x=lag), linetype=2, size=2)
-p <- p + theme_bw()
-p
-
-DLestimate<- data.frame(estimate=B%*%coef(fit)[dlparms])
-
-cumulative <- sum(DLestimate$estimate)
-cumulative
-
-cumulative_se <- sqrt(sum(DLvar))
-cumulative_se
-
-cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
-cumulative_CI
-
-
-```
 
 
 
-```{r DLM for disease, }
+```{r DLM for disease respiratory, echo = FALSE, message=FALSE, warning=FALSE}
 
 # set variable list
 var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
               'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
               'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
 
-start <- Sys.time()
-for(j in var_list) { # begin first loop of variable names (outcomes)
-  
-  j <- "broken_arm"
+  j <- c('respiratory')
+ 
   # standard for statement without parallel computing
   #for(j in 1:length(var_list)){
   read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
@@ -2260,11 +2156,10 @@ or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
 or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
 or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
 
-which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
-which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
-which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
-which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
-
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
 
 or_disease_geo_lag <- or_disease_lag_df %>%
   select(174, 175:181) # GWR-method
@@ -2285,9 +2180,9 @@ B <- ns(0:lag_max, df =5, intercept=TRUE)
 # dim(B)
 
 or_disease_geo_lag_B <- or_disease_geo_lag%*%B
-or_disease_geo_lag_B <- or_disease_temp_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
 
-fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_geo_lag_B + strata(personkey), 
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
               or_disease_lag_df)
 
 # coef(fit)
@@ -2311,11 +2206,14 @@ DLestimate$upper <- exp(DLestimate$upper)
 # DLestimate
 
 DLestimate$lag <- 0:lag_max
-p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
-p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
-p <- p + geom_line(aes(x=lag), linetype=2, size=2)
-p <- p + theme_bw() + xlab("lagged days of events") + ylab("Odds Ratio for 10ug/m^3 Increase in PM2.5")
-p
+p1 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("Respiratory") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
 
 DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
 
@@ -2333,14 +2231,1303 @@ colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95%
 
 knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
 
-}
+
+```
+
+```{r DLM for disease asthma, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('asthma')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+DLestimate$lag <- 0:lag_max
+
+p2 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("Asthma") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
 
 
 ```
 
+```{r DLM for disease pneumonia, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('pneumonia')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+p3 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("Pneumonia") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
 
 
+```
 
+```{r DLM for disease acute_bronch, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('acute_bronch')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+
+p4 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("Acute bronch") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
+
+```
+
+```{r DLM for disease copd, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('copd')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+p5 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("COPD") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
+
+```
+
+```{r DLM for disease cvd, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('cvd')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+p6 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("cvd") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
+
+```
+
+```{r DLM for disease isch_heart_dis, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('isch_heart_dis')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+p7 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("Isch heart disease") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
+
+```
+
+```{r DLM for disease arrhythmia, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('arrhythmia')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+p8 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("Odds Ratio for 10ug/m^3 Increase in PM2.5") +
+  ggtitle("Arrhythmia") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
+
+```
+
+```{r DLM for disease heart_failure, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('heart_failure')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+p9 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("Heart failure") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
+
+```
+
+```{r DLM for disease cerbrovas_dis, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('cerbrovas_dis')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+p10 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("Cerbrovas disease") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
+
+```
+
+```{r DLM for disease myocardial_infarc, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('myocardial_infarc')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+p11 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("Myocardial infarc") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
+
+```
+
+```{r DLM for disease broken_arm, echo = FALSE, message=FALSE, warning=FALSE}
+
+# set variable list
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
+
+  j <- c('broken_arm')
+ 
+  # standard for statement without parallel computing
+  #for(j in 1:length(var_list)){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+n1 <- length(or_disease_geo_lag[,1])
+n2 <- length(or_disease_temp_lag[,1])
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+B <- ns(0:lag_max, df =5, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+# dim(B)
+
+or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+# coef(fit)
+# summary(fit)
+# AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3,4,5,6,7,8,9,10)
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms]) 
+DLvar <- D%*%vcov(fit)[dlparms,dlparms]%*%t(D)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+# DLestimate
+
+DLestimate$lag <- 0:lag_max
+p12 <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper)) + 
+  geom_ribbon(alpha=.5) + geom_line(size=2) + 
+  geom_line(aes(x=lag), linetype=2, size=2) + 
+  theme_bw() + 
+  xlab("lagged days of events") + 
+  ylab("OR for 10ug/m^3 Increase") +
+  ggtitle("Broden arm") +
+  geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+DLestimate<- data.frame(estimate=D%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+# cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+# cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+# cumulative_CI
+
+cum <- cbind(cumulative, cumulative_se, cumulative_CI[1], cumulative_CI[2])
+colnames(cum) <- c("Cumulative Est", "Cumulative SE", "Lower 95% CI", "Upper 95% CI")
+
+knitr::kable(cum, caption = paste0("Distributed lag 0-7 spline estimates, se and CI"))
+
+
+```
+
+```{r}
+plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, ncol=4)
+
+```
 
 
 
@@ -2549,7 +3736,7 @@ wrf_geo_age_plot$upper95 <- as.numeric(wrf_geo_age_plot$upper95)
     facet_wrap(~outcome, nrow = 3, scales = "free") +
     geom_hline(yintercept = 1, linetype=2) +
     #ggtitle('Association Between PM2.5 from \n Wildfire Smoke on Hospitalizations') +
-    ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
+    ylab(expression(paste("Odds Ratio for 10ÃÂµg/m"^3, " Increase in PM"[2.5]))) +
     #ylim(0, 2) +
     xlab('Age Category ') +
     # plot theme
@@ -2766,7 +3953,7 @@ wrf_geo_sex_plot$upper95 <- as.numeric(wrf_geo_sex_plot$upper95)
     facet_wrap(~outcome, nrow = 3, scales = "free") +
     geom_hline(yintercept = 1, linetype=2) +
     #ggtitle('Association Between PM2.5 from \n Wildfire Smoke on Hospitalizations') +
-    ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
+    ylab(expression(paste("Odds Ratio for 10ÃÂµg/m"^3, " Increase in PM"[2.5]))) +
     #ylim(0, 2) +
     xlab('Sex') +
     # plot theme
@@ -2871,6 +4058,113 @@ knitr::kable(lag_spline_best_fit, caption = paste0("Distributed lag spline ",
 ### Distributed lag -7 to 0 for casecrossover
 
 Then we make the reversed lag to check with the same df of 5. The plot shows the same result as previous analysis. 
+
+```{r DLM for casecrossover temp, echo = FALSE, message=FALSE, warning=FALSE, eval=FALSE}
+read_path8 <- paste0("../data_new/county_data/zip_to_county_new.csv")
+or_zip_to_county <- read_csv(read_path8)
+
+read_path9 <- paste0("../data_new/county_data/or_census_pop_est_county.csv")
+or_pop <- read_csv(read_path9)
+
+or_pop <- or_pop %>%
+  rename(county = GEO_display_label, pop = respop72013) %>%
+  select(county, pop) 
+or_pop$county <- gsub(" County, Oregon", "", as.character(factor(or_pop$county)))
+
+inhaler_ndc_lag_df <- inhaler_ndc_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-05-27")] <- "weekend"
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-07-04")] <- "weekend"
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-09-02")] <- "weekend"                           
+
+  
+which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_zip") # 159
+which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_lag1_zip") # 160
+which(colnames(inhaler_ndc_lag_df)=="wrf_temp_zip") # 93
+which(colnames(inhaler_ndc_lag_df)=="wrf_temp_lag1_zip") # 150
+
+inhaler_geo_lag <- inhaler_ndc_lag_df %>%
+  select(159, 160:166) # GWR-method
+  
+inhaler_temp_lag <- inhaler_ndc_lag_df %>%
+  select(93, 150:156) # GWR-method
+
+lag_max <- 7
+n1 <- length(inhaler_geo_lag[,1])
+n2 <- length(inhaler_temp_lag[,1])
+
+inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
+inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
+
+B <- ns(0:lag_max, df =3, intercept=TRUE) 
+
+# the nrow B should equal ncol(pm)
+dim(B)
+
+inhaler_geo_lag_B <- inhaler_geo_lag%*%B
+inhaler_temp_lag_B <- inhaler_temp_lag%*%B
+
+fit <- clogit(outcome ~  inhaler_temp_lag_B + strata(personkey), 
+              inhaler_ndc_lag_df)
+
+coef(fit)
+summary(fit)
+AIC(fit)
+
+D <- cbind(B,B)
+
+# dlparms <- grep("inhaler_geo_lag", names(coef(fit)))
+dlparms <- c(1,2,3)
+DLestimate<- data.frame(estimate=B%*%coef(fit)[dlparms]) 
+DLvar <- B%*%vcov(fit)[dlparms,dlparms]%*%t(B)
+DLestimate$SE <- sqrt(diag(DLvar))
+DLestimate$lower <- DLestimate$estimate - DLestimate$SE * 1.96
+DLestimate$upper <- DLestimate$estimate + DLestimate$SE * 1.96
+
+DLestimate$estimate <- exp(DLestimate$estimate)
+DLestimate$lower <- exp(DLestimate$lower)
+DLestimate$upper <- exp(DLestimate$upper)
+
+DLestimate
+
+DLestimate$lag <- 0:lag_max
+p <- ggplot(DLestimate, aes(x=lag, y=estimate, ymin=lower, ymax=upper))
+p <- p + geom_ribbon(alpha=.5) + geom_line(size=2)
+p <- p + geom_line(aes(x=lag), linetype=2, size=2)
+p <- p + theme_bw()
+p
+
+DLestimate<- data.frame(estimate=B%*%coef(fit)[dlparms])
+
+cumulative <- sum(DLestimate$estimate)
+cumulative
+
+cumulative_se <- sqrt(sum(DLvar))
+cumulative_se
+
+cumulative_CI <- cumulative + cumulative_se * c(-1.96, 1.96)
+cumulative_CI
+
+
+```
+
 
 ```{r DLM for casecrossover lag -7 to 0 df 5, echo = FALSE, message=FALSE, warning=FALSE}
 inhaler_geo_lag <- inhaler_ndc_lag_df %>%
@@ -3590,7 +4884,7 @@ wrf_geo_lag_plot$upper95 <- as.numeric(wrf_geo_lag_plot$upper95)
     facet_wrap(~outcome, nrow = 7, scales = "free") +
     geom_hline(yintercept = 1, linetype=2) +
     #ggtitle('Association Between PM2.5 from \n Wildfire Smoke on Hospitalizations') +
-    ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
+    ylab(expression(paste("Odds Ratio for 10ÃÂµg/m"^3, " Increase in PM"[2.5]))) +
     #ylim(0, 2) +
     xlab('Smoke Estimation Method') +
     # plot theme
@@ -3680,7 +4974,7 @@ plot_rr <- ggplot(rr_df, aes(x=lag, y = rel_risk)) +
    panel.grid.major = element_blank(),
    panel.grid.minor = element_blank(),
    axis.text.x = element_text(angle = 90, vjust = .75)) +
-  ylab(expression(paste("Odds Ratio for 10Âµg/m"^3, " Increase in PM"[2.5]))) +
+  ylab(expression(paste("Odds Ratio for 10ÃÂµg/m"^3, " Increase in PM"[2.5]))) +
   xlab("Outcome") +
   ggtitle("Relative Risk for a 10ug/m^3 increase PM2.5 estimated via GWR Smoke")
 
@@ -3695,7 +4989,20 @@ ggsave("../plot_new/ndc_rr_geo_lag.pdf", plot = plot_rr,
 
 (not shown)
 
-```{r DLM ts, echo = FALSE, message=FALSE, warning=FALSE, eval=FALSE}
+```{r DLM ts, echo = FALSE, message=FALSE, warning=FALSE, echo=FALSE}
+or_ndc_county_ts_df <- or_ndc_county_ts %>%
+  select(1:4, pop, rate_per_100k, day, geo_smk_pm_county,
+         geo_smk_pm_lag1_county:geo_smk_pm_lag7_county, wrf_temp_county,
+         wrf_temp_lag1_county:wrf_temp_lag7_county) %>%
+  mutate(geo_smk_pm10_county = geo_smk_pm_county/10,
+         geo_smk_pm10_lag1_county =geo_smk_pm_lag1_county/10,
+         geo_smk_pm10_lag2_county =geo_smk_pm_lag2_county/10,
+         geo_smk_pm10_lag3_county =geo_smk_pm_lag3_county/10,
+         geo_smk_pm10_lag4_county =geo_smk_pm_lag4_county/10,
+         geo_smk_pm10_lag5_county =geo_smk_pm_lag5_county/10,
+         geo_smk_pm10_lag6_county =geo_smk_pm_lag6_county/10,
+         geo_smk_pm10_lag7_county =geo_smk_pm_lag7_county/10) 
+
 which(colnames(or_ndc_county_ts_df)=="wrf_temp_lag1_county") # 17
 which(colnames(or_ndc_county_ts_df)=="geo_smk_pm10_lag1_county") # 25
 
