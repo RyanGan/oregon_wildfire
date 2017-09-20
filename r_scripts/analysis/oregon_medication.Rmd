@@ -39,35 +39,33 @@ library(readr)
 
 
 **1. Introduction: **
-We found an association with wildfire smoke and respiratory outcomes in Washington state 2012 using a novel estimate of smoke concentration, geo-graphically weighted ridge regression (GWR). We want to know if smoke impacts other health outcomes, specifically respiratory rescue medications (beta 2 agonists) (abbreviate to SABA)
+We already found an association with wildfire smoke and respiratory outcomes in Washington state in 2012 wildfire season using a novel estimate of smoke concentration, geo-graphically weighted ridge regression (GWR). We want to know if smoke impacts other health outcomes, specifically respiratory rescue medications (beta 2 agonists) (abbreviate to SABA)
+
+For this research we have the Oregon All Payer All Claims (APAC) data set in 2013. We want to research on the effects of wildfire smoke on beta-2 agonist pharmacy fill, a medication primarily used as a rescue medication for persons with asthma or COPD. NDC (National Drug Code) is the variable in the data set that the data set offered. The standard NDC I use is shown in the link below, which is a ndc list in 2013 and fits the original data set after checking. 
+(http://ww2.ncqa.org/hedis-quality-measurement/hedis-measures/hedis-2013/hedis-2013-final-ndc-lists)
+
 
 
 **2. Research question: **
 We evaluated the association between smoke concentrations using the GWR method and SABA refills in Oregon state during the 2013 wildfire season.
 
-
 We had previously shown GWR to be a good estimate of wildfire smoke concentrations, and showed associations with respiratory outcomes (including asthma) in Washington state. We want to replicate results for Oregon and also look at beta-2 agonist pharmacy fills.
-
-For this research I have the Oregon All Payer All Claims (APAC) data set in 2013. I want to research on the effects of wildfire GWR smoke on beta-2 agonist pharmacy fill, a medication primarily used as a rescue medication for persons with asthma or COPD. NDC (National Drug Code) is the variable in the data set that the data set offered. The standard NDC I use the link below, which is a ndc list in 2013 and fits my original data set. 
-(http://ww2.ncqa.org/hedis-quality-measurement/hedis-measures/hedis-2013/hedis-2013-final-ndc-lists)
-
-The data cleaning and creation of the casecross-over dataframes are huge computation tasks, so they are done with server, the following work is done with local R. We analyze the case crossover results with overall, age strarified and sex stratified categories for the pharmacy fills, and then we also analyze with the distributed lag method, and check with time series analysis.
 
 
 
 **3.Methods: **
-use case-crossover for all health outcome figures and results. Make sure smoke is assigned via zipcode. For the descriptive of smoke, I think the county-level for now. We may move to zip.
 
+The data cleaning and creation of the casecross-over dataframes are huge computation tasks, so they are done with server, the following work is done with local R. We analyze the case crossover results with overall pharmacy fills, and analyze the results with age strarified and sex stratified categories for the pharmacy fills in supplement. We also analyze with the distributed lag method, and check with time series analysis.
 
-In these comparisons, we examine GWR method of smoke PM2.5 estimations and associations with health outcomes using a time-stratified case-crossover study design. Pharmacy outcomes for a patient with a primary diagnosis of all pharmacy records from the state, and it just so happens we also have APAC data for people that were billed for a cardiopulmonary event that we can link to the pharmacy claim, and their date of admission (index time) were identified. We then created counterfactual observations for each patient on the same day of the week for the entire wildfire season (May 1st to Sep 30th, 2013). For patients who have a index time before May 1, 2013 or after September 30, 2013, their referent observations before or after these dates will be excluded as I will not be able to assign estimates of PM2.5 to these referent observations.
+In these comparisons, we examine GWR method of smoke PM2.5 estimations and associations with medication outcomes using a time-stratified case-crossover study design. Pharmacy outcomes for a patient with a primary diagnosis of all pharmacy records from Oregon state are recorded, and we also have APAC data for people that were billed for a cardiopulmonary event that we can link to the pharmacy claims, in which their dates of admission (index time) are also identified. We then created counterfactual observations for each patient on the same day of the week during the entire wildfire season (May 1st to Sep 30th, 2013). For patients who have a index time before May 1, 2013 or after September 30, 2013, their referent observations before or after these dates will be excluded because we are not able to assign estimates of PM2.5 to these observations.
 
 1. Data cleaning for health outcomes
 
-There are about 77 million claims in the total data set, of which 23 million are pharmacy records denoted by the NDC variable. So I choose the claims in Oregon State with ndc existing, which is about 23 million claims. Also, the POS (Place of service code) all show "pharmacy" type, comparing to the previous health disease outcomes we limit the "emergency visit" type or "urgent care" type.
+There are about 77 million claims in the total data set, of which 23 million are pharmacy records denoted by the NDC variable. So we choose the claims in Oregon State with ndc existing, which is about 23 million claims. Also, the POS (Place of service code) all show "pharmacy" type, comparing to the previous health disease outcomes we limit the "emergency visit" type and the "urgent care" type.
 
-For ndc, I choose the people the person was billed for filling a beta2 agonist prescription, which we use as a proxy for use to form the sample. Because the ndc csv file has more information than what I need, I filter the ndc file by SQLite Studio (code and steps not attached) to a file only containing the beta 2 agonists medication information. 
+For ndc, we choose the people who were billed for filling a beta2 agonist prescription, which we use as a proxy for use to form the sample. Because the ndc csv file has more information than what we need, we filter the ndc file by SQLite Studio (code and steps not attached) to a file only containing the beta 2 agonists medication information. 
 
-After choosing the claims with beta 2 agonists, the data set is reduced to 232,665 observations. After first recorded pharmacy fill and limit the wildfire season dates (May 1st, 2013 to September 30th, 2013), the data set is the final data set used for analysis and contained 24,538 beta2 agonist records.
+After choosing the claims with beta 2 agonists, the data set is reduced to 232,665 observations. After first recorded pharmacy fill and limit the wildfire season dates (May 1st, 2013 to September 30th, 2013), the data set is the final data set for analysis, which contains 24,538 beta2 agonist records.
 
 ```{r import filtered original data and make index, eval=FALSE, echo=FALSE}
 ### Import whole data set ------------------------------------------------------
@@ -562,11 +560,11 @@ write_csv(oregon_asthma_df, write_path2)
 
 2. Exposure methods for smoke model
 
-For our research question, we focus on the GWR method (geographically weighted ridge regression). For Geo-Weighted Regression model, with 'smk' designator, I subtracted off the 'Background' estimates of smoke, which I believe are the monthly averages of PM2.5 for a given grid. However, the 'Background' is the mean of total period from May 1st to Sep 30th 2013 so I have to assign the mean for every day. 
+For our research question, we focus on the GWR method (geographically weighted ridge regression). For Geo-Weighted Regression model, with 'smk' designator, we subtracted off the 'Background' estimates of smoke, which are the monthly averages of PM2.5 for a given grid. However, the 'Background' is the mean of total period from May 1st to Sep 30th 2013 so we have to assign the mean smoke estimates for every day. 
 
 3. Analytic method
 
-We use the conditional logistic regression model using the survival package in R. Each conditional logistic regression model accounts for the subject, and adjusts for temperature from the WRF-Chem model. The conditional logistic regression model \beta represents the change in risk of an pharmacy event associated with a short-term unit increase in exposure, and can be calculated as an average difference between exposure at the index time and a weighted average of exposure at all times in the referent window. 
+To analyze the result, we use the conditional logistic regression model using the survival package in R. Each conditional logistic regression model accounts for the subject, and adjusts for temperature from the GWR smoke model. The conditional logistic regression model \beta represents the change in risk of an pharmacy event associated with a short-term unit increase in exposure, and can be calculated as an average difference between exposure at the index time and a weighted average of exposure at all times in the referent window. (???)
 
 ```{r import original data, eval=FALSE, echo=FALSE}
 ### Import whole data set ------------------------------------------------------
@@ -593,10 +591,10 @@ write_csv(oregon_df2, write_path)
 ```
 
 
-### Time-Stratified Case-Crossover (Population-Weighted PM~2.5~ Assigned by Zip Code)
+Time-Stratified Case-Crossover (Population-Weighted PM~2.5~ Assigned by Zip Code)
 *referents same day of week within fire season May - September*
  
-The time-stratified casecross-over design uses subjects as their own controls. For each pharmacy claim, I also created counterfactual observations on the the same day of the week over the study period for each subject to indicate the outcome for this day is "1". Then I make the dates week by week before this date, and after this date in the whole wildfire season, and indicate these dates' outcomes are "0". Then I can use these outcomes for the following model building.
+The time-stratified casecross-over design uses subjects as their own controls. For each pharmacy claim, we also created counterfactual observations on the the same day of the week over the study period for each subject to indicate the outcome for this day is "1". Then I make the dates week by week before this date, and after this date in the whole wildfire season, and indicate these dates' outcomes are "0". Then I can use these outcomes for the following regression model building.
 
 ```{r casecrossover, eval=FALSE, echo=FALSE}
 ### Casecrossover study
@@ -675,7 +673,7 @@ write_csv(outcome_casecross, write_path2)
 
 ```
 
-To get the time stratified data set, I create the lag variables that take smoke values from the previous days for zip codes, join the zipcode level populatoin-weighted pm to the data set, and create age, sex, month and season index.
+Also, to get the time stratified data set, I create the lag variables that take smoke values from the previous days for zip codes, joined with the zipcode level populatoin-weighted pm to the data set, and create age, sex, month and season index.
 
 ```{r time stratified zip for casecrossover, eval=FALSE, echo=FALSE}
 ### Time stratified ------------------------------------------------------------
@@ -814,9 +812,9 @@ write_csv(outcome_casecross, write_path4)
 
 ```
 
-### Time stratified for time series (Population-Weighted PM~2.5~ Assigned by County)
+Time stratified for time series (Population-Weighted PM~2.5~ Assigned by County)
 
-I also make time stratified time series data set. The original data set only contains the zip code, but for time series, we want to research on the county level. Therefore, I assign each zip code with one county which I found online. There are 488 zipcodes in total (4 are missing but I use google to find it). This is a sensitivity analysis to confirm the casecross over results.
+I also make time stratified time series data set. The original data set only contains the zip code, but for time series, we want to research on the county level. Therefore, I assign each zip code with one county which I found online. There are 488 zipcodes in total (4 are missing but I use google to find the relavent county). This is a sensitivity analysis to check and confirm the casecross over results.
 
 ```{r time stratified county for ndc ts, echo=FALSE, include=FALSE, eval=FALSE}
 read_path7 <- paste0("../data_new/medication/oregon_asthma_ndc.csv")
@@ -1137,7 +1135,6 @@ write_csv(or_county_ts, write_path5)
 2. Make county population variable (to calculate rate)
 3. Make weekend/weekday variables
 
-
 ```{r time series, warning=FALSE, message=FALSE, echo=FALSE}
 read_path5 <- paste0("../data_new/medication/or_ndc_county_time_series.csv")
 or_ndc_county_ts <- read_csv(read_path5)
@@ -1216,7 +1213,9 @@ ggsave("../plot_new/ndc_rate_health_smk.pdf", plot = plot_health_smk,
 
 ```
 
-### map of smoke days (4)
+### map of smoke days
+
+The map shows 
 
 ```{r smoke days and map, warning=FALSE, message=FALSE, echo=FALSE}
 read_path6 <- paste0("../data_new/medication/or_county_time_series.csv")
