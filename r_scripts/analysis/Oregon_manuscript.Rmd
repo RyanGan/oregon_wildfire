@@ -5,13 +5,6 @@ date: "2017/10/30"
 output: html_document
 ---
 
----
-title: "The GWR wildfire smoke's association with 2013 Oregon medication of short acting beta agonists"
-author: "Jingyang Liu"
-date: "May 17, 2017"
-output: html_document
----
-
 ```{r library, include=FALSE, echo=FALSE}
 library(tidyverse)
 # library(data.table)
