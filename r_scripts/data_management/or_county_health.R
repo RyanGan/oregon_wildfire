@@ -13,21 +13,20 @@ library(data.table)
 library(readxl)
 
 getwd()
-setwd("C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire")
+setwd("C:/Users/jyliu/Desktop/local_git_repo/oregon_wildfire_new")
 
-grid_dir <- paste0('./data/Oregon/oregon_new_grid.shp')
+grid_dir <- paste0('./shapefile/oregon_new_grid/oregon_new_grid.shp')
 smoke_grid <- readOGR(dsn = grid_dir, layer = 'oregon_new_grid') 
 
-county_dir <- paste0('./shapefile/cb_2013_us_county_500k/cb_2013_us_county_500k.shp')
-us_county_2013 <- readOGR(dsn = county_dir, layer = 'cb_2013_us_county_500k')
+county_dir <- paste0('./shapefile/tl_2013_us_county/tl_2013_us_county.shp')
+us_county_2013 <- readOGR(dsn = county_dir, layer = 'tl_2013_us_county')
 or_county_2013 <- us_county_2013[us_county_2013$STATEFP =="41",]
-
 
 ### From previous work, the zip shapefie can be filter by us zip shapefile------
 # zip_dir <- paste0('./shapefile/tl_2013_us_zcta510/tl_2013_us_zcta510.shp')
 # us_zip_2013 <- readOGR(dsn = zip_dir, layer = 'tl_2013_us_zcta510')
 
-# read_path <- paste0('./oregon_zipcode.csv')
+# read_path <- paste0('./instructions/oregon_zipcode.csv')
 # or_zip <- read_csv(read_path)
 # names(or_zip) <- c('zip','type','city','county','area')
 # or_zip_2013 <- us_zip_2013[us_zip_2013$ZCTA5CE10 %in% or_zip$zip,]
@@ -167,7 +166,7 @@ stop <- proc.time() - start
 stop # 33.17 secs
 
 not_match <- which((zip_county_proportion > 0)&(zip_county_proportion < 1), arr.ind=T )
-dim(not_match) # 582
+dim(not_match) # 220
 
 zip_county_prop_df <- data.frame(zip_county_proportion)
 
@@ -186,7 +185,7 @@ zip_county_prop_df2 <- zip_county_prop_df2 %>%
   mutate(zip=rownames(zip_county_prop_df))
 
 ### Check using the zip county file from website
-or_check_county <- read_csv('./oregon_zip_county.csv')
+or_check_county <- read_csv('./instructions/oregon_zip_county.csv')
 head(or_check_county)
 names(or_check_county) <- c('zip','city','county','area')
 
@@ -222,5 +221,9 @@ or_check4$county[b]
 
 or_check3$zip[b]
 #  [1] 97014 97326 97347 97350 97358 97360 97378 97758 97759 97760 97761
+
+write_path <- paste('./data_new/county_data/or_zip_county_prop_new.csv') 
+write_csv(zip_county_prop_df2, write_path)
+
 
 

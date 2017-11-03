@@ -1,8 +1,8 @@
 #-------------------------------------------------------------------------------
-# Title: Washington population-weighted smoke PM2.5 by day and zip
-# Author: Jingyang Liu                                                                   
-# Date Created: April 3, 2017                                                  
-# R version: 3.3.3                                                       
+#     Title: Oregon population-weighted smoke PM2.5 by day and county
+#     Author: Jingyang Liu                                                                
+#     Date Created: Apr 2017   Date Modified: May 02, 2017                                                 
+#     R version: 3.3.3                                                       
 #-------------------------------------------------------------------------------
 
 # Note: This is general code that could be submitted in batches to handle 
@@ -13,14 +13,10 @@
 
 # load libraries ---------------------------------------------------------------
 library(tidyverse)
-library(dplyr)
+library(data.table)
 
 # Setting Working Directory ----------------------------------------------------
-#dir <- paste0("C:/Users/RGan/Google Drive/CSU/wild_fire/washington/",
-#               "smoke_data/created_pm_estimates")
-
-# relative path 
-dir <- paste0("../oregon_wildfire_new/data/Oregon_PM/")
+dir <- paste0("../data/Oregon_PM/")
 setwd(dir)
 getwd()
 list.files()
@@ -42,9 +38,10 @@ population_grid <- pop_grid %>%
 summary(population_grid)
 
 
-# Import the file that contains the proportion of each grid that overlaps a zip
-zip_grid_path <- paste0('zip_wrf_proportion.csv')
-zip_grid_proportion <- read_csv(zip_grid_path)
+# Import the file that contains the proportion of each grid that overlaps a county
+county_grid_path <- paste0('../../data_new/county_data/or_county_wrf_prop.csv')
+county_grid_proportion <- read_csv(county_grid_path)
+
 
 # Importing files that I would like to loop through
 # Geo weighted regresssion (Atmos model of choice)
@@ -70,6 +67,7 @@ wrf_f <- read_csv(wrf_f_path)
 # WRF temperature
 wrf_temp_path <- paste0("oregon_wrf_temperature_2013.csv")
 wrf_temp <- read_csv(wrf_temp_path)
+
 
 
 # Dataframes of PM2.5 attributed to wildfire smoke -----------------------------
@@ -114,6 +112,7 @@ grid_id <- krig[, 1:3]
 krig_smk_pm <- cbind(grid_id, krig_smk)
 head(krig_smk_pm[, 1:10])
 
+
 # Setting up dataframes for loop -----------------------------------------------
 # create a list of the dataframes I want to loop through
 df_list <- list(wrf_f = wrf_f, wrf_nf = wrf_nf, wrf_smk_pm = wrf_smk_pm, 
@@ -124,26 +123,25 @@ df_list <- list(wrf_f = wrf_f, wrf_nf = wrf_nf, wrf_smk_pm = wrf_smk_pm,
 df_name <- c('wrf_f', 'wrf_nf', 'wrf_smk_pm', 'geo_wt', 'krig', 'background', 
              'geo_smk_pm', 'krig_smk_pm', "wrf_temp")
 
-
-# General approach to producing population-weighted zipcode-specific PM2.5 -----
+# General approach to producing population-weighted county-specific PM2.5 -----
 
 # The best thing to do is mutiply the population grid by the concentration
 # matrices first, which I believe should give you the population weighted
-# concentrations for each grid (dim should be 1575 by 156 I think). Then take
-# that matrix and multiply by zipcode by grid matrix to get the population
+# concentrations for each grid (dim should be 1575 by 36 I think). Then take
+# that matrix and multiply by  county by grid matrix to get the population
 # weighted concentration for each grid, which I can then divide by
-# the zip_pop_matrix to get the zip code specific population weighted average.
+# the county_pop_matrix to get the county specific population weighted average.
 
 
 # zip and wrf grid overlap matrix ----------------------------------------------
-zip_grid_to_matrix <- zip_grid_proportion[ , 1:1575]
-zip_grid_matrix <- matrix(as.numeric(unlist(zip_grid_to_matrix)), 
-                          nrow=nrow(zip_grid_to_matrix))
-dim(zip_grid_matrix) # (dimension of matrix 417 x 1575)
+county_grid_to_matrix <- county_grid_proportion[ , 2:1576]
+county_grid_matrix <- matrix(as.numeric(unlist(county_grid_to_matrix)), 
+                             nrow=nrow(county_grid_to_matrix))
+dim(county_grid_matrix) # (dimension of matrix 36 x 1575)
 
 
 # creating population grid matrix ----------------------------------------------
-# matrix is a 1575 row, 1 column matrix that contains the grid estimated number
+# matrix is a 1107 row, 1 column matrix that contains the grid estimated number
 # of people
 summary(population_grid)
 population_to_matrix <- population_grid[, 5]
@@ -159,26 +157,28 @@ pop_grid_matrix <- matrix(as.numeric(unlist(population_to_matrix)),
 dim(pop_grid_matrix) # (1575 x 1 dimension matrix)
 
 # Matrix algebra that can be done outside the list
-# Multiply the pop_grid matrix by the zip_grid matrix to get a sum of
+# Multiply the pop_grid matrix by the county_grid matrix to get a sum of
 # the population in each zipcode
-zip_pop_matrix <-  zip_grid_matrix %*% pop_grid_matrix
-dim(zip_pop_matrix) # 417 x 1 matrix (column is population for each zip code)
+county_pop_matrix <-  county_grid_matrix %*% pop_grid_matrix
+dim(county_pop_matrix) # 36 x 1 matrix (column is population for each zip code)
 
 # convert zip_pop_matrix to a vector to use to divide later in the loop
-zip_pop_vector <- as.vector(zip_pop_matrix)
+county_pop_vector <- as.vector(county_pop_matrix)
 
 # Convert zip population matrix to a vector (easier to apply formula col by col)
 # easiest to create a vector to multiply each column (date) of the matrix
 grid_population_vector <- as.vector(pop_grid_matrix)
 tail(grid_population_vector)
 
+# output county column from county_grid_proportion for naming purposes later
+# county <- county_grid_proportion[,1]
+# head(county)
+
+
 # output zipcode column from zip_grid_proportion for naming purposes later
 # From last proportion calculation code ----------------------------------------
-read_path <- paste0('../../data_new/or_zip.csv')
-or_zip <- read_csv(read_path)
-
-zipcode <- as.character(or_zip[[1]])
-head(zipcode)
+county <- county_grid_proportion$county
+head(county)
 
 
 # start timer
@@ -203,67 +203,60 @@ for(i in 1:length(df_list)){
   
   pm_matrix <- matrix(as.numeric(unlist(daily_pm_to_matrix)), 
                       nrow=nrow(daily_pm_to_matrix))
-  dim(pm_matrix) # 1575 (pm val in wrf_grid) by 153 (days) matrix
+  dim(pm_matrix) # 1107 (pm val in wrf_grid) by 123 (days) matrix
   
-  # Multiply the matrix of zip_grid proportion by the PM concentration matrix
-  # This matrix contains the summed PM2.5 concentrations for each zip code for
+  # Multiply the matrix of county_grid proportion by the PM concentration matrix
+  # This matrix contains the summed PM2.5 concentrations for each county code for
   # each day
-  
-  # Check -----
-  # is this redundant, and should it be removed? I overwrite below
-  # zip_grid_wt_pm_matrix <- zip_grid_matrix %*% pm_matrix
-  
-  # dim(zip_grid_wt_pm_matrix) # 417 x 123 matrix (417 zipcodes by 123 days)
   
   # multiply the population vector by the pm concentration matrix for each day
   # (column in the matrix)
   
   pm_pop_matrix <- diag(grid_population_vector) %*% pm_matrix 
-  dim(pm_pop_matrix) # 1575 (grid) x 153 (days)
+  dim(pm_pop_matrix) # 1107 (grid) x 123 (days)
   
-  # now I want to multiply the pm_pop_matrix by the zip_gird matrix
-  zip_grid_wt_pm_matrix <-  zip_grid_matrix %*% pm_pop_matrix
-  # this gives me a matrix of the sum of values for each zipcode for each day 
-  dim(zip_grid_wt_pm_matrix) # 417 (summed pm2.5 in each zipcodes) x 153 (days)
+  # now I want to multiply the pm_pop_matrix by the county_gird matrix
+  county_grid_wt_pm_matrix <-  county_grid_matrix %*% pm_pop_matrix
+  # this gives me a matrix of the sum of values for each countycode for each day 
+  dim(county_grid_wt_pm_matrix) # 595 (summed pm2.5 in each countycodes) x 123 (days)
   
   # now I think each daily value of this matrix needs to be divided by
-  # the summed population of each zip code
-  # need to multiply by the inverse of the zip_pop_vector for each column 
+  # the summed population of each county code
+  # need to multiply by the inverse of the county_pop_vector for each column 
   # since you cannot divide with matrix algebra
-  zip_pop_and_grid_wt_pm <- diag(1/zip_pop_vector) %*% zip_grid_wt_pm_matrix 
-  dim(zip_pop_and_grid_wt_pm) # 417 (population wted avg of PM2.5 ) x 153 (days)
+  county_pop_and_grid_wt_pm <- diag(1/county_pop_vector) %*% county_grid_wt_pm_matrix 
+  dim(county_pop_and_grid_wt_pm) # 595 (population wted avg of PM2.5 ) x 123 (days)
   # this should work
-  summary(zip_pop_and_grid_wt_pm)
-  # There are two zipcodes with 0 people living in it, therefore there will be
+  summary(county_pop_and_grid_wt_pm)
+  # There are two countycodes with 0 people living in it, therefore there will be
   # 2 missing values for each day as dividing by 0 is not possible
   
   
-  # bind the zipcode column in with the matrix (I think this works)
-  zip_pm_conc <- cbind(zipcode, zip_pop_and_grid_wt_pm)
+  # bind the countycode column in with the matrix (I think this works)
+  county_pm_conc <- cbind(county, county_pop_and_grid_wt_pm)
   
   # now give every other column the header of the date of the geo_wt value
-  x <- colnames(daily_pm_grid[, 4:156]) # 417 row x 154 col
+  x <- colnames(daily_pm_grid[, 4:156])
   x # check date column names
-  x2 <- c('ZIPCODE', x) # concate with zipcode column name
+  x2 <- c('county', x) # concate with countycode column name
   x2
   # assign column names to matrix
-  colnames(zip_pm_conc) <- c(x2)
+  colnames(county_pm_conc) <- c(x2)
   
-  head(zip_pm_conc)
+  head(county_pm_conc)
   
   # create environment dataframe with name of original dataset hia is based off
   matrix_name <- paste(data_frame_name, 'df', sep = '_')
-  assign(matrix_name, zip_pm_conc)
+  assign(matrix_name, county_pm_conc)
   
-  # write permanent dataset
-  write_path <- paste('./zip_population_weighted_pm_', matrix_name, '.csv', sep = '')
-  write.csv(matrix_name, file = write_path)
-  
+  # commented out the code chunks that write permanent datasets of each dataframe
+  #write_path <- paste('./county_population_weighted_pm/', matrix_name, '.csv', sep = '')
+  #write.csv(matrix_name, file = write_path)
   
 } # end loop
 
 stop <- proc.time() - start
-stop # 5.92 sec
+stop # 4.02 sec
 
 # very fast loop, much easier than my extract function
 
@@ -287,59 +280,75 @@ pm_name <- c('wrf_f_pm', 'wrf_nf_pm', 'wrf_smk_pm', 'geo_wt_pm',
              'krig_pm', 'background_pm', 'geo_smk_pm', 'krig_smk_pm', "wrf_temp")
 
 # empty dataframe
-or_pm_pop_wt_2013 <- data.frame(matrix(vector(), 63801, 11, # rows, columns (417*153)
-                                       dimnames = list(c(), c("ZIPCODE", "date",
-                                                              pm_name))), stringsAsFactors = F)
+or_county_pm_pop_wt_2013 <- data.frame(matrix(vector(), 5508, 11, # rows, columns (36*153)
+                                              dimnames = list(c(), c("county", "date",
+                                                                     pm_name))), stringsAsFactors = F)
+
 # probably not efficient to fill cols 1 and 2 on each loop, but eh, it's fast anyways
 
 for(k in 1:length(tidy_loop)){
+  
   df_to_tidy <- data.frame(tidy_loop[[k]])
   pm_col_name <- pm_name[k]
   
-  or_zip_pm_pop_wt <- df_to_tidy %>% gather(date, pm_method, -ZIPCODE) %>% 
-    arrange(ZIPCODE, date)
+  or_county_pm_pop_wt <- df_to_tidy %>% gather(date, pm_method, -county) %>% 
+    arrange(county, date)
   # convert character to date
-  or_zip_pm_pop_wt$date <- as.Date(or_zip_pm_pop_wt$date, "X%Y%m%d")
+  or_county_pm_pop_wt$date <- as.Date(or_county_pm_pop_wt$date, "X%Y%m%d")
   # rename the column 'pm_method' to the stored pm_col_name
-  colnames(or_zip_pm_pop_wt) <- c("ZIPCODE", "date", pm_col_name)
+  colnames(or_county_pm_pop_wt) <- c("county", "date", pm_col_name)
   
   
   # final dataset
-  or_pm_pop_wt_2013[, 1] <- or_zip_pm_pop_wt[, 1]
-  or_pm_pop_wt_2013[, 2] <- or_zip_pm_pop_wt[, 2]
-  or_pm_pop_wt_2013[, k+2] <- or_zip_pm_pop_wt[, 3]
+  or_county_pm_pop_wt_2013[, 1] <- or_county_pm_pop_wt[, 1]
+  or_county_pm_pop_wt_2013[, 2] <- or_county_pm_pop_wt[, 2]
+  or_county_pm_pop_wt_2013[, k+2] <- or_county_pm_pop_wt[, 3]
   
-} # end of loop
+} # end loop
 
-summary(or_pm_pop_wt_2013) 
-head(or_pm_pop_wt_2013)
+summary(or_county_pm_pop_wt_2013) 
+head(or_county_pm_pop_wt_2013)
 
-df_check <- or_pm_pop_wt_2013 %>% filter(ZIPCODE == 97005 & date == '2013-09-21')
+# Join in County FIPS codes with final dataset ---------------------------------
+# County FIPS codes for Rish
+getwd() # check WD, can use a relative path on my pc
+# infile fips codes (I mispelled as fps)
+
+county_fips <- read.table('../../instructions/us_fips.txt', sep = ",", colClasses = rep("character", 5))
+
+
+or_fips <- county_fips %>% 
+  filter(V2=="41") %>%
+  rename(county = V4, fips = V3, state = V1, st_code = V2) %>% # rename variables
+  select(state, st_code, county, fips)
+
+head(or_fips)
+
+write_csv(or_fips, '../../instructions/oregon_FIPS.csv')
+
+oregon_fips <- read_csv('../../instructions/oregon_FIPS.csv')
+# remove the "County" character
+# factor(oregon_fips$county)
+oregon_fips$county <- gsub(" County", "", as.character(factor(oregon_fips$county)))
+
+oregon_fips <- oregon_fips %>%
+  mutate(st_county_fips = with(oregon_fips, paste0(st_code, fips)))
+
+# merge in fips codes
+or_county_pm_pop_wt_2013_w_fips <- oregon_fips %>% 
+  full_join(or_county_pm_pop_wt_2013, by = 'county') %>%
+  select(-st_code, -fips) %>%
+  rename(fips = st_county_fips, wrf_pm = wrf_f_pm)
+
+summary(or_county_pm_pop_wt_2013_w_fips)
+
+df_check <- or_county_pm_pop_wt_2013_w_fips %>% 
+  filter(county == 'Yamhill' & date == '2013-09-21')
 df_check
 
-write_path <- paste0('./zip_pm_to_merge_with_acap.csv')
-write_csv(or_pm_pop_wt_2013, write_path)
+# Write permanent dataframe ----------------------------------------------------
 
-# looks good; write premanent file to merge with health data
+write_path <- paste0('../../data_new/county_data/or_county_pop_wt_pm.csv')
+write_csv(or_county_pm_pop_wt_2013_w_fips, write_path)
 
-
-
-
-# Calculation checks -----------------------------------------------------------
-
-which(colnames(geo_smk_pm_df)== 'X20130921')
-check <- geo_smk_pm_df[4, 145]
-check
-# this is the geo_smk_pm value on sept 21st for zipcode 97005
-# value of 107.7 population weighted average for zipcode 97005 on Sept 21st
-# my old way of estimating prodced a geo_smk mean of 98.698, and max of 113.2,
-# and min of 78.9 ???
-
-# Checking the population wted estimate values with the observed values
-# Using Spokane Monroe station and zip 99205
-geo_wt_samp <- data.frame(geo_wt_df)
-zip <- filter(geo_wt_samp, ZIPCODE == "97405")
-
-spokane_check <- zip[, 60:95]
-spokane_check
 

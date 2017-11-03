@@ -1,0 +1,192 @@
+ ---
+title: "Oregon 2013 Time-Series Analysis"
+author: "Jingyang Liu"
+date: "May 10, 2017"
+output: html_document
+---
+
+###  County-Level Time-Series for the Fire Season
+This time series analysis is for the Oregon county-level all emergency visit in All Payer All Claims data set.
+
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(readr)
+library(lme4)
+library(broom)
+library(htmlTable)
+library(knitr)
+```
+
+First filter the date to only 2013 May to 2013 September.
+Rescale the pm variables to 10 units.
+
+```{r, message=FALSE, warning=FALSE}
+
+# load time series dataframe
+or_ts_df <- read_csv("../data_new/county_data/or_county_timeseries.csv")
+
+# analysis dataframe
+or_may_sep_df <- or_ts_df %>% 
+  # create day of the week variable
+  mutate(day = as.factor(weekdays(date))) %>% 
+  # set missing outcome values to 0 since missing indicates no ER or urgent care 
+  # visits on that date (which is reasonable in sparsely populated counties)
+  # mutate_each(funs(wo_miss = ifelse(is.na(.), 0, .)), n_obs:broken_arm_n) %>% 
+  # create a binary smoke indicator variable based smk variables >5, >10, and >15 units 
+  mutate(wrf_smk5 = ifelse(wrf_smk_pm >= 5, 1, 0), 
+         wrf_smk10 = ifelse(wrf_smk_pm >= 10, 1, 0),
+         wrf_smk15 = ifelse(wrf_smk_pm >= 15, 1, 0), 
+         geo_smk5 = ifelse(geo_smk_pm >= 5, 1, 0),
+         geo_smk10 = ifelse(geo_smk_pm >= 10, 1, 0),
+         geo_smk15 = ifelse(geo_smk_pm >= 15, 1, 0),
+         krig_smk5 = ifelse(krig_smk_pm >= 5, 1, 0),
+         krig_smk10 = ifelse(krig_smk_pm >= 10, 1, 0),
+         krig_smk15 = ifelse(krig_smk_pm >= 15, 1, 0),
+         season = ifelse(date >= "2013-05-01" & date <= "2013-06-21", "spring", 
+                  ifelse(date >= "2013-06-22" & date <= "2013-09-22", "summer",
+                  ifelse(date >= "2013-09-23" & date <= "2013-12-21", "fall",
+                                "other")))) %>% 
+  # rescale pm variables to 10 units
+  mutate_each(funs(unit10 = ./10), wrf_pm:krig_smk_pm) %>%
+  select(-42, -43, -44)
+  # select(1:2, 31:33, 36, 34:35, 38:44, 28:29, 30, 55, 58, 
+  #        65, 64, 63) # subset and order variables used in analysis # 23 column
+  # wa: 12 pm; 15 disease
+
+
+# outcomes to loop through
+outcome_list <- c('All ER', 'All Respiratory', 'Asthma', 'Pneumonia', 
+                  'Acute Bronchitis','COPD', 'Cardiovascular Disease',
+                  'Ischemic Heart Disease', 'Arrhythmia', 'Heart Failure', 
+                  'Cerebrovascular Disease', 'Myocardial Infarction',
+                  'Broken Arm')
+
+# looking only at wrf chem, kriging, and geo-weighted; taking out 'Global Smoke' method
+method_list <- c('WRF-Chem Smoke', 'Geo-Weighted Smoke', 'Kriging Smoke')
+
+# create an empty list to row bind dataframes together
+datalist <- list()
+
+#glimpse(wash_jul_oct_df)
+# finding columns to retain
+#which(colnames(wash_jul_oct_df)=='geo_smk_pm_unit10')
+#summary(wash_jul_oct_df)
+# loop through outcomes
+for(i in 6:18){
+  
+  # empty matrix for table
+  point_estimates <- matrix(nrow = 3, ncol = 5, byrow = T)
+  
+  colnames(point_estimates) <- c('outcome', 'pm_method', 'risk_ratio', 
+                                 'lower95', 'upper95')
+  
+  # variable to model 
+  outcome_name <- outcome_list[i-5]
+  # fill outcome name
+  point_estimates[, 1] <- outcome_name
+  
+  # loop through pm estimation methods
+  for(j in 41:43){
+
+    var_name <- method_list[j-40]
+  
+    # random effects model where county is treated as a random intercept 
+    mixed_mod_adj <- glmer(or_may_sep_df[[i]] ~ or_may_sep_df[[j]] + day + season +
+                             wrf_temp + (1|county), or_may_sep_df, family = "poisson")
+    
+    model_df <-tidy(mixed_mod_adj)
+    
+    # populate matrix
+    row_n <- j-40
+    # method
+    point_estimates[row_n, 2] <- var_name
+    # rate ratio
+    point_estimates[row_n, 3] <- round(exp(model_df[2,2]), 3)
+    # 95% lower bound
+    point_estimates[row_n, 4] <- round(exp((model_df[2,2]) -
+                                             1.96*(model_df[2,3])), 3)
+    # 95% upper bound
+    point_estimates[row_n, 5] <- round(exp((model_df[2,2]) +
+                                             1.96*(model_df[2,3])), 3)
+    
+    # save point estimates as a dataframe
+    point_est_df <- as_data_frame(point_estimates)
+    
+  } # end methods loop
+  
+  # combine previous values in dataframe that has all outcome/methods comparisons
+  datalist[[i-5]] <- point_est_df
+  
+} # end outcome loop
+
+# combine each outcome dataframe itteration in to a big dataset
+combined_point_est_df <- bind_rows(datalist)  
+
+
+# subset columns I want to put in to the table
+table_df <- combined_point_est_df %>% select(2:5) 
+
+
+tab <- htmlTable(txtRound(table_df, digits = 3, 1:3),
+                 caption = paste0("County-Level Time-Series: Association between",
+                                  " a 10 ug/m^3 in PM2.5 and Health Outcomes"),
+                 # row group by outcome
+                 rgroup = outcome_list,
+                 n.rgroup = c(rep(3, 12)), # 4 rows for each method for each outcome
+                 # column headers
+                 header = c("Method", "RR&dagger;", "Lower", "Upper"),
+                 # column spanner
+                 cgroup = c("", "95% CI"), 
+                 n.cgroup = c(2, 2),
+                 padding.rgroup = "&nbsp;&nbsp;",
+                 css.cell = "padding-left: 0.5em; padding-right: .5em;", # cell space
+                 align = "llccccc", # column alignment,
+                 tfoot="&dagger; Adjusted for temperature, day of the week, and season."
+) # end table
+
+print(tab)
+
+kable(combined_point_est_df)
+
+# ggplot of odds ratios, facet wrapped by outcomes -----
+# convert variables from character to either numeric or factor
+# factor preserves the order of the variable
+combined_point_est_df$outcome <- factor(combined_point_est_df$outcome, 
+                                        levels = unique(combined_point_est_df$outcome))
+
+combined_point_est_df$pm_method <- factor(combined_point_est_df$pm_method, 
+                                          levels = unique(combined_point_est_df$pm_method))
+
+
+combined_point_est_df$risk_ratio <- as.numeric(combined_point_est_df$risk_ratio)
+combined_point_est_df$lower95 <- as.numeric(combined_point_est_df$lower95)
+combined_point_est_df$upper95 <- as.numeric(combined_point_est_df$upper95)
+
+## ggplot
+print_plot <- ggplot(combined_point_est_df, 
+                     aes(x = pm_method, y = risk_ratio, colour = pm_method)) +
+  geom_point() + #geom_text(vjust = 0, nudge_x = 0.3) +
+  geom_errorbar(aes(ymin=lower95, ymax=upper95), width = 0.2) +
+  facet_wrap(~outcome, nrow = 3) +
+  geom_hline(yintercept = 1, linetype=2) +
+  ggtitle('County-Level Time-Series: Association Between PM2.5 from \n Wildfire Smoke on Hospitalizations') +
+  ylab('Risk Ratio for 10µg/m^3 Increase in PM2.5') +
+  xlab('Time-Stratified Within July to October Fire Season') +
+  scale_colour_discrete(name= "Smoke Method") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.y = element_text(angle = 90),
+        # facet text size
+        strip.text = element_text(size = 7),
+        legend.text = element_text(size = 7)) 
+
+print(print_plot)
+
+ggsave("../plot_new/or_county_time_series.pdf", plot = print_plot, 
+       width = 12, height = 8, units = "in")
+
+
+```

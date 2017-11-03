@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# ignore
+*.Rproj
+*.html
+# ignore the directory where health data is kept
+/data/health
