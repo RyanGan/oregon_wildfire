@@ -1,0 +1,27 @@
+---
+title: "Douglas-complex fire smoke and cardiopulmonary morbidity"
+author: "Ryan Gan"
+date: "11/3/2017"
+output: html_document
+---
+
+##1. Introduction
+
+In the summer of 2013, the Douglas-Complex fires occured in southwest Oregon. Oregonians in this part of the state were at risk of exposure to extreme levels of particulate matter (PM). This project aim is to determine if there is an association to smoke from the Douglas-Complex fires and acute cardiopulmonary morbidity in the state of Oregon.
+
+Data came from the Oregon All Payer All Claims Database (APAC) in the year 2013. The APAC records the health care billing data for Oregon's insured populations. APAC include individual billing records for both diagnoses codes (International Classification of Diseases, Clinical Modification (ICD-9-CM) diagnoses codes) and pharmacy codes (National Drug Codes (NDC)). 
+
+Our previous research that found an association with wildfire smoke and respiratory outcomes in Washington state in 2012 wildfire season using a novel estimate of smoke concentration, geographically weighted ridge regression (GWR) guided the methodological approaches used in this project. As Oregon contains pharmacy records, we evaluate the association between smoke and respiratory rescue medications (beta 2 agonists) (abbreviate to SABA). 
+
+*Research question*
+We evaluated the association between smoke concentrations using the GWR method and cardiopulmonary morbidity, including ED/urgent care visits and SABA fills in Oregon state during the 2013 wildfire season.
+
+This markdown document contains the code and results that were used to address this research question.
+
+**Note to Jingyang: I saw all the packages you used. How many do you actually need to run these analyses? It also looks like you need to run this markdown file on the server? I would like to avoid that and I can help you do this.**
+
+Packages used:
+```{r setup}
+library(tidyverse)
+```
+
