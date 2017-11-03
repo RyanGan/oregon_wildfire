@@ -27,11 +27,20 @@ data files for smoke and shapefiles
 ### File naming convention
 Implementing a naming structure for files
 
-Health outcomes naming structure:
-Study4digitYear-StudyState_health_casecross_outcome
+*Health outcomes naming structure:*
+studyyear4digit-studystate_health_casecross_outcome
 
-Exposure naming structure:
+Naming the asthma timestratified case-crossover
+Example: 2013-oregon_health_casecross_asthma
 
+*Exposure naming structure:*
+studyyear4digit-studystate_smoke_method
+
+Naming the absolute PM2.5 values estimated using GWR blended method
+Example: 2013-oregon_pm25_gwr
+Naming the smoke PM2.5 values estimated using GWR 
+Example: 2013-oregon_smokepm25_gwr
+Example: 
 
 Note from Ryan. Oregon git repo needs to be organized. Also, ask Jingyang to commit to development branch.
 
