@@ -26,9 +26,70 @@ library(tidyverse)
 ```
 
 ##2. Wildfire smoke descriptive characteristics
-Import PM~2.5~ data.
 
-Map of smoke count and smoke time series will go here.
+Importing ZIP code-level population-weighted PM~2.5~ daily data.
+
+```{r smoke data import and wrangle}
+# pm path
+pm_path <- paste0("./data/pm/2013-oregon_county_pm25.csv")
+# county pm
+county_pm_df <- read_csv(pm_path)
+
+# estimate county smoke 
+county_smk_count <- county_pm_df %>% 
+  # binary smoke variable at >10 ug/m^3
+  mutate(gwr_smk10 = ifelse(geo_smk_pm >= 10, 1, 0)) %>% 
+  group_by(county) %>% 
+  summarise(smk_day10 = sum(gwr_smk10)) %>% 
+  # lower case county name and remove "." to match spatial df
+  mutate(subregion = tolower(stringr::str_replace(county, "[.]", " ")))
+
+# use the map function from the maps package to get the polygon data
+county_poly <- maps:::map("county", "oregon", plot=FALSE, fill = TRUE)
+# find centroids
+county_centroids <- maps:::apply.polygon(county_poly, maps:::centroid.polygon)
+
+# create a data frame for graphing out of the centroids of each polygon
+county_centroids <- county_centroids[!is.na(names(county_centroids))]
+centroid_array <- Rreduce(rbind, county_centroids)
+
+dimnames(centroid_array) <- list(gsub("[^,]*,", "", names(county_centroids)),
+                                 c("long", "lat"))
+county_text <- as.data.frame(centroid_array)
+county_text$county <- rownames(label_df)
+```
+
+### Number of days in Oregon where smoke PM~2.5~ exceeded 10 ug/m^3. 
+
+```{r smoke days map}
+
+smoke_map <- ggplot(or_county_spatial_df, aes(x=long,y=lat, group=group)) +
+  # fill with number of smoke days
+  geom_polygon(aes(fill =smk_day10)) +
+  scale_fill_gradient(expression("Smoke Days > 10 µg/m"^3),
+    low= "#3B9AB2", high="#F21A00", 
+    guide = guide_colorbar(direction="horizontal", title.position = "top",
+                           title.hjust = 0.5, barwidth = 20)) +
+  # add county path on top
+  geom_path(colour="#EBCC2A") +
+  # add county text 
+  geom_text(data = county_text, aes(x=long, y=lat, label = county, group=NULL), 
+    colour = "white", size = 2.5) +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    strip.text = element_text(size = 13),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(colour=NA, fill=NA),
+    legend.position = "bottom")
+
+smoke_map
+```
+
+Most of the heavy smoke days were in the south-west part of Oregon. I've added county names to map but some text aren't well placed. I should probably use centroid, but then I'll have to import a shapefile to do this. I'll fix this later; I plan to add in fire locations.
+
+### Time-series of geo-weighted regression estimates of smoke PM~2.5~ by county
 
 ##3. Descriptive table of number of health outcomes
 
