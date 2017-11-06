@@ -1,0 +1,153 @@
+---
+title: "Oregon distributed lag model best fit degree of freedom"
+author: "Jingyang Liu"
+date: "2017/11/6"
+output: html_document
+---
+
+```{r library, include=FALSE, echo=FALSE}
+library(tidyverse)
+# library(data.table)
+library(survival)
+library(ggplot2)
+library(htmlTable)
+library(knitr)
+library(broom)
+library(lme4)
+library(maps)
+library(lubridate) # date
+library(ggrepel)
+library(sp)
+library(cowplot)
+library(geofacet)
+
+# distributed lag model libraries
+library(dlnm)
+library(mvmeta)
+library(splines)
+
+```
+
+Load data
+
+```{r descriptive table, echo = F, message = F, warning = F, results='asis'}
+read_path6 <- paste0("../data_new/medication/oregon_ndc_time_strat_casecrossover_zip.csv")
+inhaler_ndc <- read_csv(read_path6)
+# asthma_ndc <- fread(read_path6, showProgress = T) # faster, but seems error in overall plot analysis
+
+# dataframe to loop through
+inhaler_ndc_df <- data.frame(inhaler_ndc)
+
+
+
+```
+
+```{r input, echo = FALSE, message=FALSE, warning=FALSE}
+read_path8 <- paste0("../data_new/county_data/zip_to_county_new.csv")
+or_zip_to_county <- read_csv(read_path8)
+
+read_path9 <- paste0("../data_new/county_data/or_census_pop_est_county.csv")
+or_pop <- read_csv(read_path9)
+
+or_pop <- or_pop %>%
+  rename(county = GEO_display_label, pop = respop72013) %>%
+  select(county, pop) 
+or_pop$county <- gsub(" County, Oregon", "", as.character(factor(or_pop$county)))
+
+inhaler_ndc_lag_df <- inhaler_ndc_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-05-27")] <- "weekend"
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-07-04")] <- "weekend"
+inhaler_ndc_lag_df$day[which(inhaler_ndc_lag_df$date=="2013-09-02")] <- "weekend"
+
+```
+
+
+### Find the smallest of AIC with df from 3 to 6 
+
+Choose df = 5 because it has the least AIC.
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+                           
+# which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_zip") # 159
+# which(colnames(inhaler_ndc_lag_df)=="geo_smk_pm10_lag1_zip") # 160
+# which(colnames(inhaler_ndc_lag_df)=="wrf_temp_zip") # 93
+# which(colnames(inhaler_ndc_lag_df)=="wrf_temp_lag1_zip") # 150
+
+inhaler_geo_lag <- inhaler_ndc_lag_df %>%
+  select(159, 160:166) # GWR-method
+  
+inhaler_temp_lag <- inhaler_ndc_lag_df %>%
+  select(93, 150:156) # GWR-method
+
+
+inhaler_geo_lag <- as.matrix(inhaler_geo_lag)
+inhaler_temp_lag <- as.matrix(inhaler_temp_lag)
+
+
+# create fit matrix
+fit_mat <- matrix(NA, nrow=4, ncol=5)
+colnames(fit_mat) <- c("outcome", "exposure", "fit", "df", "aic")
+
+# fill outcome name in first column
+fit_mat[,1] <- "Beta - 2 agonists"
+# fill in exposure (geo smoke)
+fit_mat[,2] <- "geo_smk10"
+# fit type
+fit_mat[,3] <- "ns"
+  
+# 2 df will not work for a spline, going from 3 to 6 df
+  for(h in 3:6){ # start loop for df
+
+    # fitting a natural spline for lag with 5 knots?
+    fit_mat[h-2, 4] <- degree_freedom <- h
+
+    # define basis b using natural spline function
+    B <- ns(0:7, df = degree_freedom, intercept = T)
+    
+    # multiply lagged pm matrix by basis
+    inhaler_geo_lag_B <- inhaler_geo_lag%*%B
+    inhaler_temp_lag_B <- inhaler_temp_lag%*%B
+
+    fit <- clogit(outcome ~ inhaler_geo_lag_B + inhaler_temp_lag_B + strata(personkey), 
+              inhaler_ndc_lag_df)
+
+    AIC(fit)
+    
+    # fill AIC
+    fit_mat[h-2,5] <- round(AIC(fit),5)
+
+    } # end model fit loop
+  
+
+# now that we have a range of df/knots, I want to filter to the minimum aic
+# for each outcome and print out that value in a table
+
+kable(fit_mat, caption="Distributed lag spline of 3-6 degree of freedom fit by AIC")
+
+lag_spline_best_fit <- as_tibble(fit_mat) %>%  
+  slice(which.min(aic)) # df of 3 has the smallest AIC
+
+# kable
+knitr::kable(lag_spline_best_fit, caption = paste0("Distributed lag spline ",
+  "degree of freedom best fit by AIC"))
+```
+
+
