@@ -26,6 +26,8 @@ library(tidyverse)
 ```
 
 ##2. Wildfire smoke descriptive characteristics
+Import PM~2.5~ data.
+
 Map of smoke count and smoke time series will go here.
 
 ##3. Descriptive table of number of health outcomes
