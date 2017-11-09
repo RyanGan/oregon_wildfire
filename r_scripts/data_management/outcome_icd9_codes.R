@@ -1,7 +1,8 @@
 # ------------------------------------------------------------------------------
 # Title: Basic data wrangle and cleaning of Oregon 2013 claims data
 # Author: Ryan Gan
-# Date Created: December 30, 2016
+# Date Created: December 30, 2016 
+# Date Checked and Modified: Nov 9, 2017 (Jingyang Liu) 
 # R Version: 3.3.2
 # ------------------------------------------------------------------------------
 
@@ -18,7 +19,7 @@ library(readxl) # read excel files
 
 # read in icd9 data and create lists of vectors of icd9 codes ----
 # read in xlsx icd9 codes and description
-icd9_df <- read_excel("./data/CMS32_DESC_LONG_SHORT_DX.xlsx") %>% 
+icd9_df <- read_excel("../data_original/CMS32_DESC_LONG_SHORT_DX.xlsx") %>% 
   # rename the terrible variable names
   select(dx_code = 1, long_desc = 2, short_desc = 3)
 
@@ -48,12 +49,12 @@ outcome_icd9_range <- data_frame(outcome_name, start_icd9, stop_icd9)
 
 # list of icd9 codes -----------------------------------------------------------
 outcome_icd9_list <- apply(outcome_icd9_range, 1, 
-  function(x) { # start of function
-    icd9_df %>% 
-      slice(which(icd9_df$dx_code == x[2]): which(icd9_df$dx_code == x[3])) %>%
-      select(1) %>%
-      as_vector()
-  } )
+                           function(x) { # start of function
+                             icd9_df %>% 
+                               slice(which(icd9_df$dx_code == x[2]): which(icd9_df$dx_code == x[3])) %>%
+                               select(1) %>%
+                               as_vector()
+                           } )
 
 # assign list names
 names(outcome_icd9_list) <- outcome_name
@@ -70,8 +71,6 @@ outcome_icd9_list <- c(outcome_icd9_list, list(copd = copd_icd9))
 # will matter, but I need to try it out before I'll know
 
 # save R file to use in other scripts
-save_path <- paste0("./data/outcome_list.RData")
+save_path <- paste0("../data_original/outcome_list.RData")
 save(outcome_icd9_list, file = save_path)
-
-
 
