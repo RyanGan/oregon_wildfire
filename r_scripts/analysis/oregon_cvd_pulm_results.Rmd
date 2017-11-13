@@ -131,31 +131,85 @@ Importing casecross over dataframes.
 ```{r health data import, message=F, warning=F}
 # importing case-crossover dataframes 
 # SABA case-crossover will be imported first
-# i can't find a lot of the files
+
+# SABA
+saba_path <- paste0("./data/health/2013-oregon_casecross_saba.csv")
+saba_df <- read_csv(saba_path)
+
+# respiratory
+respiratory_path <- paste0("./data/health/2013-oregon_casecross_respiratory.csv")
+respiratory_df <- read_csv(respiratory_path)
+
 # asthma
-asthma_path <- paste0("./data/health/2017-oregon_casecross_asthma.csv")
+asthma_path <- paste0("./data/health/2013-oregon_casecross_asthma.csv")
 asthma_df <- read_csv(asthma_path)
 
-# cvd 
-cvd_path <- paste0("./data/health/2017-oregon_casecross_cvd.csv")
+# COPD
+copd_path <- paste0("./data/health/2013-oregon_casecross_copd.csv")
+copd_df <- read_csv(copd_path)
+
+# pneumonia
+pneumonia_path <- paste0("./data/health/2013-oregon_casecross_pneumonia.csv")
+pneumonia_df <- read_csv(pneumonia_path)
+
+# acute bronchitis
+acute_bronch_path <- paste0("./data/health/2013-oregon_casecross_acute_bronch.csv")
+acute_bronch_df <- read_csv(arrhythmia_path)
+
+# Cardiovascular Disease
+cvd_path <- paste0("./data/health/2013-oregon_casecross_cvd.csv")
 cvd_df <- read_csv(cvd_path)
 # had a warning message for cvd dataframe import; should check on this
+
+# arrhythmia
+arrhythmia_path <- paste0("./data/health/2013-oregon_casecross_arrhythmia.csv")
+arrhythmia_df <- read_csv(arrhythmia_path)
+
+# Cerebrovascular Disease
+cerbrovas_dis_path <- paste0("./data/health/2013-oregon_casecross_cerbrovas_dis.csv")
+cerbrovas_dis_df <- read_csv(cerbrovas_dis_path)
+
+# Heart Failure
+heart_failure_path <- paste0("./data/health/2013-oregon_casecross_heart_failure.csv")
+heart_failure_df <- read_csv(heart_failure_path)
+
+# Ischemic Heart Disease
+isch_heart_dis_path <- paste0("./data/health/2013-oregon_casecross_isch_heart_dis.csv")
+isch_heart_dis_df <- read_csv(isch_heart_dis_path)
+
+# Myocardial Infarction
+myocardial_infarc_path <- paste0("./data/health/2013-oregon_casecross_myocardial_infarc.csv")
+myocardial_infarc_df <- read_csv(myocardial_infarc_path)
+
 
 # import all other dataframes
 
 # I think purrr would be a good way to loop through a list of outcome dataframes
 # bind dataframes in a list
-outcome_df_list <- list(asthma_df, cvd_df)
+outcome_df_list <- list(saba_df, respiratory_df, asthma_df, copd_df, pneumonia_df, 
+                        acute_bronch_df, cvd_df, arrhythmia_df, cerbrovas_dis_df, 
+                        heart_failure_df, isch_heart_dis_df, myocardial_infarc_df)
 
 # name list elements in order I'd like to present in document
 # commented out for now.
-# outcome_names <- c("SABA", "Respiratory", "Asthma", "COPD", "Pneumonia", 
-#   "Acute Bronchitis", "Cardiovascular Disease", "Arrhythmia", 
-#   "Cerebrovascular Disease", "Heart Failure", "Ischemic Heart Disease", 
-#   "Myocardial Infarction")
-outcome_names <- c("Asthma", "CVD")
+outcome_names <- c("SABA", "Respiratory", "Asthma", "COPD", "Pneumonia", 
+                   "Acute Bronchitis", "Cardiovascular Disease", "Arrhythmia", 
+                   "Cerebrovascular Disease", "Heart Failure", "Ischemic Heart Disease", 
+                   "Myocardial Infarction")
 
-names(outcome_df_list) <- c( 'Asthma', 'CVD')
+names(outcome_df_list) <- c('SABA', 'Respiratory', 'Asthma', 'COPD', 'Pneumonia', 
+                            'Acute Bronchitis', 'Cardiovascular Disease', 'Arrhythmia', 
+                            'Cerebrovascular Disease', 'Heart Failure', 
+                            'Ischemic Heart Disease', 'Myocardial Infarction')
+
+# try athma
+outcome_df_list <- list(asthma_df)
+
+outcome_names <- c("Asthma")
+
+names(outcome_df_list) <- c('Asthma')
+
+
 ```
 
 CVD warning message on import. Have Jingyang check. Maybe why proportion of CVD vs respiratory so different in Oregon?
@@ -202,7 +256,7 @@ return(outcome_n_row)
 } # end function
 
 # outcome names
-outcome_names <- names(outcome_df_list) %>% 
+outcome_names <- names(outcome_df_list) %>%
   data_frame() %>% 
   rename(outcome = ".")
 
