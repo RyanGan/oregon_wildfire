@@ -22,11 +22,106 @@ This markdown document contains the code and results that were used to address t
 
 Packages used: tidyverse
 ```{r setup}
-library(tidyverse)
+library(tidyverse) # general data wrangle
+library(survival) # conditional logistic regression
 ```
 
 ##2. Wildfire smoke descriptive characteristics
-Map of smoke count and smoke time series will go here.
+
+Importing ZIP code-level population-weighted PM~2.5~ daily data.
+
+```{r smoke data import and wrangle}
+# pm path
+pm_path <- paste0("./data/pm/2013-oregon_county_pm25.csv")
+# county pm
+county_pm_df <- read_csv(pm_path) %>% 
+  mutate(county = stringr::str_replace(county, "[.]", ""))
+
+# estimate county smoke 
+county_smk_count <- county_pm_df %>% 
+  # binary smoke variable at >10 ug/m^3
+  mutate(gwr_smk10 = ifelse(geo_smk_pm >= 10, 1, 0)) %>% 
+  group_by(county) %>% 
+  summarise(smk_day10 = sum(gwr_smk10)) %>% 
+  # lower case county name and remove "." to match spatial df
+  mutate(subregion = tolower(stringr::str_replace(county, "[.]", " ")))
+
+# extract oregon map data
+or_county_spatial_df <- map_data("county", "oregon") %>% 
+  right_join(county_smk_count, by = "subregion")
+
+# use the map function from the maps package to get the polygon data
+county_poly <- maps::map("county", "oregon", plot=FALSE, fill = TRUE)
+# find centroids
+county_centroids <- maps:::apply.polygon(county_poly, maps:::centroid.polygon)
+
+# create a data frame for graphing out of the centroids of each polygon
+county_centroids <- county_centroids[!is.na(names(county_centroids))]
+centroid_array <- Reduce(rbind, county_centroids)
+
+county_text <- reduce(county_centroids, rbind) %>% 
+  as_data_frame() %>% 
+  rename(long = V1, lat = V2) %>% 
+  mutate(county = stringr::str_sub(
+    stringr::str_to_title(names(county_centroids)), start=8L)) 
+```
+
+### Number of days in Oregon where smoke PM~2.5~ exceeded 10 ug/m^3. 
+
+```{r smoke days map}
+smoke_map <- ggplot(or_county_spatial_df, aes(x=long,y=lat, group=group)) +
+  # fill with number of smoke days
+  geom_polygon(aes(fill =smk_day10)) +
+  scale_fill_gradient(expression("Smoke Days > 10 µg/m"^3),
+    low= "#3B9AB2", high="#F21A00", 
+    guide = guide_colorbar(direction="horizontal", title.position = "top",
+                           title.hjust = 0.5, barwidth = 20)) +
+  # add county path on top
+  geom_path(colour="#EBCC2A") +
+  # add county text 
+  geom_text(data = county_text, aes(x=long, y=lat, label = county, group=NULL), 
+    colour = "white", size = 2) +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    strip.text = element_text(size = 8),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(colour=NA, fill=NA),
+    legend.position = "bottom")
+
+smoke_map
+```
+
+Most of the heavy smoke days were in the south-west part of Oregon. I've added county names to map but some text aren't well placed. I should probably use centroid, but then I'll have to import a shapefile to do this. I'll fix this later; I plan to add in fire locations.
+
+### Time-series of geo-weighted regression estimates of smoke PM~2.5~ by county
+
+Using the geofacet package to organize small-multiples by geography. 
+
+*Note 11/7/17: Not sure how much I love the layout of this Oregon geofacet grid, but we'll see what people think. I like that geofacet lets you look at the two maps together to understand the exposure pattern, but too much whitespace. However, with this orientation, I believe you could cut out the smoke days figure.*
+
+```{r geofacet time series of pm}
+# use or_counties_grid from geo_facet 
+or_grid <- geofacet::or_counties_grid1
+# small multiples plot
+plot <- ggplot(county_pm_df, aes(x=date, y= geo_smk_pm)) + 
+  geom_point(color = "#00A08A", size = 0.5) +
+  scale_x_date(date_labels = "%m") +
+  geofacet::facet_geo(~county, grid = or_grid) +
+  ylab(expression("Smoke PM2.5 µg/m"^3)) +
+  xlab("Month in 2013") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    strip.text = element_text(size = 8),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(colour=NA, fill=NA),
+    legend.position = "bottom")
+# plot 
+plot  
+```
+
+Elevated levels of smoke in late July to early August in Curry, Josephine, Jackson, and Klamath counties.
 
 ##3. Descriptive table of number of health outcomes
 
@@ -37,14 +132,12 @@ Importing casecross over dataframes.
 # importing case-crossover dataframes 
 # SABA case-crossover will be imported first
 # i can't find a lot of the files
-#resp_path <- paste0("./"
-
 # asthma
-asthma_path <- paste0("../../data/health/2017-oregon_casecross_asthma.csv")
+asthma_path <- paste0("./data/health/2017-oregon_casecross_asthma.csv")
 asthma_df <- read_csv(asthma_path)
 
 # cvd 
-cvd_path <- paste0("../../data/health/2017-oregon_casecross_cvd.csv")
+cvd_path <- paste0("./data/health/2017-oregon_casecross_cvd.csv")
 cvd_df <- read_csv(cvd_path)
 # had a warning message for cvd dataframe import; should check on this
 
@@ -55,10 +148,12 @@ cvd_df <- read_csv(cvd_path)
 outcome_df_list <- list(asthma_df, cvd_df)
 
 # name list elements in order I'd like to present in document
-outcome_names <- c("SABA", "Respiratory", "Asthma", "COPD", "Pneumonia", 
-  "Acute Bronchitis", "Cardiovascular Disease", "Arrhythmia", 
-  "Cerebrovascular Disease", "Heart Failure", "Ischemic Heart Disease", 
-  "Myocardial Infarction")
+# commented out for now.
+# outcome_names <- c("SABA", "Respiratory", "Asthma", "COPD", "Pneumonia", 
+#   "Acute Bronchitis", "Cardiovascular Disease", "Arrhythmia", 
+#   "Cerebrovascular Disease", "Heart Failure", "Ischemic Heart Disease", 
+#   "Myocardial Infarction")
+outcome_names <- c("Asthma", "CVD")
 
 names(outcome_df_list) <- c( 'Asthma', 'CVD')
 ```
@@ -125,16 +220,194 @@ knitr::kable(descriptive_table,
 
 ##4. Distributed lag cumulative effect results
 
+For this project, we use the time-stratified case-crossover study design in the same way we did for the 2012 Wenatchee-Complex fire project. Briefly, we identify admissions dates for ED or urgent care visits, and pharmacy fill dates for SABA, using billing records. 
+
+In the Wenatchee-Complex fire project, we looked at the same-day relationship between smoke exposure and health outcomes. For the Douglas-complex fire, we will evaluate a 0 to 7 day distributed lag association, first comparing the overall cumulative effect over these 7 days, and then get in to the lagged effects.
+
+*Note: 11/7/17: Jingyang will provide a csv of the best-fit knots for the distributed lag splines based on AIC.*
+
+*Note: 11/7/17: Jingyang, can I use the lagged days in the case-crossover dataframes? Please confrim that the value for lag day 1 is the day before, lag day 2 is from 2 days before, etc..., and not the week before, two weeks before, etc... What does the _m denoter mean too? Jingyang says it's not necissary; we will remove creating this variable in the data management scripts. Do we use the patid or personkey identifier for strata? check.*
+
+Basis function also included for WRF temp. We will need to find the best fit of spline for temp seperately from PM. For asthma, it looks like 2 DF is best.
+
+Making a custom distributed lag function. Consider adding additional options like specifying number of lag days. That would require a reworking of how the case-crossovers are set up (kind of).
+
+```{r distributed lag function}
+# custom distributed lag function 
+distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
+  # limit to complete cases
+  complete_data <- data %>% 
+    # filter to complete case for smoke
+    filter(!is.na(geo_smk_pm_lag7_zip))
+
+  # output matrix of gwr values
+  pm_matrix <- complete_data %>% 
+    select(contains("geo_smk_pm")) %>%
+    # remove anything with m in it; will go back in original code and not create 
+    # this to begin with
+    select(-contains("_m")) %>% 
+    # divide exposure values by 10 units to interpret on 10 ug/m^3 scale
+    mutate_all(funs(./10)) %>% 
+    # convert to matrix
+    as.matrix()
+  
+  # output temp matrix
+  temp_matrix <- complete_data %>% 
+    select(contains("wrf_temp")) %>%
+    # remove anything with m in it; will go back in original code and not create 
+    # this to begin with
+    select(-contains("_m")) %>% 
+    # convert to matrix
+    as.matrix()
+  
+  # calculation of basis ----
+  # define basis using natural spline function from "splines"" package
+  pm_b <- splines::ns(0:7, df=pm_df, intercept=T)
+  # create pm basis
+  pm_basis <- pm_matrix %*% pm_b
+  # create temp basis
+  temp_b <- splines::ns(0:7, df=temp_df, intercept=T)
+  temp_basis <- temp_matrix %*% temp_b
+  
+  # fit model with basis ----
+  mod <- clogit(outcome ~ pm_basis + temp_basis + strata(personkey),
+    data = complete_data)
+  
+  # calculate estimates ----
+  # output pm basis parameters
+  dl_parms <- broom::tidy(mod) %>% 
+    filter(stringr::str_detect(term, "pm")) %>% 
+    select(estimate) %>% 
+    as_vector()
+  # estimate distributed lag values for each day
+  dl_estimates <- data.frame(estimate = pm_b %*% dl_parms)
+  # covariance matrix for knots
+  cov_matrix <- as.matrix(vcov(mod))[1:3,1:3]
+  
+  # estimate variance of spline
+  dl_var <- pm_b %*% cov_matrix %*% t(pm_b)
+  # estimate standard error
+  dl_estimates$stderr <- sqrt(diag(dl_var))
+  
+  # calculate lower and upper bound
+  dl_estimates$lower95 <- dl_estimates$estimate-(dl_estimates$stderr*1.96)
+  dl_estimates$upper95 <- dl_estimates$estimate+(dl_estimates$stderr*1.96)
+
+    if(cumulative==T) {
+      type <- "cumulative"  
+      # cumulative outcome and 95CI
+      estimate <- sum(dl_estimates$estimate)
+      # stderr cumulative effect
+      estimate_se <- sqrt(sum(dl_var))
+      # cumulative 95CI
+      lower95 <- estimate-(estimate_se*1.96)
+      upper95 <- estimate+(estimate_se*1.96)
+      # return dataframe
+      return_estimate <- data_frame(type, estimate, lower95, upper95) %>% 
+        mutate_if(is.numeric, exp)
+      return(return_estimate)
+    }
+    else { # if cumulative is not true, or false, return distributed lag est
+      # return dataframe
+      return_estimate <- dl_estimates %>% 
+        mutate_if(is.numeric, exp) %>% 
+        mutate(type = "lag", 
+               time = (as.numeric(rownames(.))-1)/-1) %>% 
+        select(type, time, estimate, lower95, upper95)
+       # return estimate  
+      return(return_estimate)
+      }
+      # end of if
+} 
+```
+
+Using the custom function to estimate cumulative effects for the list of dataframes. It will work on an individual dataframe, but I built it to use with the purrr map functions. 
+
+*Note for Jingyang 11/8/17: purrr map functions are the tidyverse equivalents of apply-type functions*
+
+```{r cumulative association}
+# use custom function to create a dataframe of cumulative values
+# using purrr::map_dfr function
+# purrr::map_dfr will work if it's just the cumulative, but won't work for lagged
+cumulative_results <- outcome_df_list %>% 
+  map_dfr(~distributed_lag(., pm_df=3, temp_df=2, cumulative=T)) %>% 
+  bind_cols(., data_frame(outcome_names)) %>% 
+  select(outcome_names, type, estimate, lower95, upper95)
+
+# will put this table eventually
+head(cumulative_results)
+
+# ggplot ----
+plot <- ggplot(cumulative_results, aes(x=outcome_names, y = estimate)) +
+  geom_point(colour = "darkblue") +
+  geom_text(aes(label = round(estimate,2)), hjust = -0.25) +
+  geom_errorbar(aes(ymin=lower95, ymax=upper95), colour= "darkblue", width = 0.2) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "red") +
+  theme(
+   panel.background = element_rect(fill = 'white', colour = 'black'),
+   panel.grid.major = element_blank(),
+   panel.grid.minor = element_blank()) +
+  ylab(expression("Cumulative odds ratio for a 10 ug/m^3 increase smoke PM"[2.5])) +
+  xlab("Outcomes")
+
+plot
+```
+
+This is generally how I'd like the plots to look, but I plan to add color grouping to SABA, respiratory, and CVD groupings. Also considering reducing the lag time evaluated since I think we are getting in to variance issues a week out with this dataset (as evidence, large error around asthma outcome relative to other studies).
+
+I will also come back and tweak color scheme and labels.
+
 ##5. Distributed lag results
+
+That same function can be used to generate detailed estimates of the association over time. In this case, we'll look at the same day to seven days prior the event.
+
+```{r distributed lag}
+# this approach will work that creates a list of dataframes with map then
+# binds the lists together in one dataframe
+dl_results <- outcome_df_list %>% 
+  purrr::map(~distributed_lag(., pm_df=3, temp_df=2, cumulative=F)) %>% 
+  plyr::rbind.fill() %>% 
+  bind_cols(., data_frame(rep(outcome_names, each=8))) %>% 
+  rename(outcome_names = `rep(outcome_names, each = 8)`) %>% 
+  select(outcome_names, type, time, estimate, lower95, upper95)
+
+# results will come in a format to make small multiples I think
+head(dl_results)
+
+# small multiples DL plot ----
+dl_plot <- ggplot(dl_results, aes(x=time, y=estimate)) +
+  geom_line(colour = "#046C9A", size = 1) +
+  geom_ribbon(aes(ymin = lower95, ymax = upper95), fill = "#ABDDDE", alpha = 0.5) + 
+  scale_y_continuous(limits = c(0.9, 1.15)) +
+  scale_x_continuous(breaks = c(seq(-7, 0, by=1))) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "red") +
+  facet_wrap(~outcome_names, scales = "free_x") +
+  ylab(expression("Odd ratio for a 10 ug/m^3 increase smoke PM"[2.5])) +
+  xlab("Lagged Days") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    strip.text = element_text(size = 10),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(colour=NA, fill=NA))
+
+dl_plot
+```
+
+DL plot shows an effect with asthma even though the cumulative effect size is similar in magnitude to what we've seen before, but the 95%CIs overlap 1. I think this is a power issue trying to look at lagged effects for more than a week.
+
+Worth discussing with the group.
 
 ##6. Stratified cumulative results
 
-##7. SABA cumulative effect by underlying respiratory diagnosis
+*Jingyang to complete using function*
+Stratify cumulative effect by sex and age group.
 
+##7. SABA cumulative effect by underlying respiratory diagnosis
+*Jingyang to complete using function*
 
 ### Comments:
 1. File structure needs to be cleaned up. There are way too many subdirectories.
 2. Remove r code files that are not useful. There are too many files with similar code inside.
-3. Variables in the casecross over datasets raise some questions. For example, what is the difference from the varialbes geo_smk_pm and 
+3. Variables in the casecross over datasets raise some questions.  
 
 
