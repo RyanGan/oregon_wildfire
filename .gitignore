@@ -6,6 +6,11 @@
 # ignore
 *.Rproj
 *.html
+<<<<<<< HEAD
 # ignore the directory where health data is kept
 /data/health
 /data/pm
+=======
+# ignore the directory where data is kept 
+/data
+>>>>>>> dacae0a1fd0fd5a4788c9fff879975ab6fe23a06
