@@ -225,7 +225,11 @@ knitr::kable(descriptive_table,
   caption = "Descriptive charactersitics of ED/urgent care visits")
 ```
 
-##4. Distributed lag cumulative effect results
+##4. Same-day association results
+
+*Jingyang, add same day associations here using purrr map functions here. I want to compare them to the cumulative associations. You do not need to make an elaborate function like I did for the distributed lag. You should just be able to use clogit. Include the same day GWR smoke estimate and same day temperature as a covariate.*
+
+##5. Distributed lag cumulative effect results
 
 For this project, we use the time-stratified case-crossover study design in the same way we did for the 2012 Wenatchee-Complex fire project. Briefly, we identify admissions dates for ED or urgent care visits, and pharmacy fill dates for SABA, using billing records. 
 
@@ -343,8 +347,8 @@ cumulative_results <- outcome_df_list %>%
   # preserve order of names
   mutate(outcome_names = parse_factor(outcome_names, levels = outcome_names))
 
-# will put this table eventually
-head(cumulative_results)
+# will put this table eventually and split out plot
+#head(cumulative_results)
 
 # ggplot ----
 plot <- ggplot(cumulative_results, aes(x=outcome_names, y = estimate)) +
@@ -358,8 +362,7 @@ plot <- ggplot(cumulative_results, aes(x=outcome_names, y = estimate)) +
    panel.grid.major = element_blank(),
    panel.grid.minor = element_blank(),
    axis.text.x = element_text(angle=90, hjust = 1)) +
-  ylab(expression(paste0("Cumulative odds ratio for a 10 ug/m"^3, 
-    " increase smoke PM"[2.5]))) +
+  ylab(expression("Cumulative odds ratio: 10 ug/m^3 increase smoke PM"[2.5])) +
   xlab("Outcomes")
 
 plot
@@ -369,7 +372,7 @@ This is generally how I'd like the plots to look, but I plan to add color groupi
 
 I will also come back and tweak color scheme and labels.
 
-##5. Distributed lag results
+##6. Distributed lag results
 
 That same function can be used to generate detailed estimates of the association over time. In this case, we'll look at the same day to seven days prior the event.
 
@@ -381,20 +384,22 @@ dl_results <- outcome_df_list %>%
   plyr::rbind.fill() %>% 
   bind_cols(., data_frame(rep(outcome_names, each=8))) %>% 
   rename(outcome_names = `rep(outcome_names, each = 8)`) %>% 
-  select(outcome_names, type, time, estimate, lower95, upper95)
+  select(outcome_names, type, time, estimate, lower95, upper95) %>% 
+  # preserve order of names
+  mutate(outcome_names = parse_factor(outcome_names, levels = outcome_names))
 
 # results will come in a format to make small multiples I think
-head(dl_results)
+#head(dl_results)
 
 # small multiples DL plot ----
 dl_plot <- ggplot(dl_results, aes(x=time, y=estimate)) +
   geom_line(colour = "#046C9A", size = 1) +
   geom_ribbon(aes(ymin = lower95, ymax = upper95), 
               fill = "#ABDDDE", alpha = 0.5) + 
-  scale_y_continuous(limits = c(0.9, 1.15)) +
+  scale_y_continuous(limits = c(0.8, 1.2)) +
   scale_x_continuous(breaks = c(seq(-7, 0, by=1))) +
   geom_hline(yintercept = 1, linetype = 2, colour = "red") +
-  facet_wrap(~outcome_names, scales = "free_x") +
+  facet_wrap(~outcome_names) +
   ylab(expression("Odd ratio for a 10 ug/m^3 increase smoke PM"[2.5])) +
   xlab("Lagged Days") +
   theme(panel.background = element_rect(fill = 'white', colour = 'black'),
@@ -410,12 +415,12 @@ DL plot shows an effect with asthma even though the cumulative effect size is si
 
 Worth discussing with the group.
 
-##6. Stratified cumulative results
+##7. Stratified cumulative results
 
 *Jingyang to complete using function*
 Stratify cumulative effect by sex and age group.
 
-##7. SABA cumulative effect by underlying respiratory diagnosis
+##8. SABA cumulative effect by underlying respiratory diagnosis
 *Jingyang to complete using function*
 
 ### Comments:
