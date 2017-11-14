@@ -128,38 +128,40 @@ Elevated levels of smoke in late July to early August in Curry, Josephine, Jacks
 Importing casecross over dataframes.
 **Note to Jingyang 11/3/17: Same issue as above. How many of these files needs to be uploaded to produce results? A lot of this seems redundant or inefficient. I cannot find a lot of outcome files I need. I also need the SABA casecrossover dataframe. Listing example of two casecross over dataframes for now. Let's talk about this.**
 
+*Note 2017-11-14: It may be easiest to make a set of casecross over functions and put them in a package rather than import the timestratified casecross overs each time.*
+
 ```{r health data import, message=F, warning=F}
-# importing case-crossover dataframes 
-# SABA case-crossover will be imported first
-# i can't find a lot of the files
-# asthma
-asthma_path <- paste0("./data/health/2017-oregon_casecross_asthma.csv")
-asthma_df <- read_csv(asthma_path)
+# path for health dataframe
+health_path <- "./data/health/"
+# importing time-stratified case-crossover dataframe
+casecross_files <- list.files(path=health_path, pattern="*casecross*")
 
-# cvd 
-cvd_path <- paste0("./data/health/2017-oregon_casecross_cvd.csv")
-cvd_df <- read_csv(cvd_path)
-# had a warning message for cvd dataframe import; should check on this
+# reorder file names in way I'd like it to be analyzed
+# also ditching broken arm
+casecross_order <- casecross_files[c(13,12,3,6,11,1,7,2,5,8,9,10)]
 
-# import all other dataframes
+# extract the name of the dataframe after study type
+file_names <- stringr::str_extract(casecross_order, 
+  pattern="(?<=casecross_)\\w+")
 
-# I think purrr would be a good way to loop through a list of outcome dataframes
-# bind dataframes in a list
-outcome_df_list <- list(asthma_df, cvd_df)
+# read in all the files in to a list
+outcome_df_list <- casecross_order %>%  
+  purrr::map(~read_csv(paste0(health_path, .)))
+
+# name dataframes
+names(outcome_df_list) <- file_names
 
 # name list elements in order I'd like to present in document
-# commented out for now.
-# outcome_names <- c("SABA", "Respiratory", "Asthma", "COPD", "Pneumonia", 
-#   "Acute Bronchitis", "Cardiovascular Disease", "Arrhythmia", 
-#   "Cerebrovascular Disease", "Heart Failure", "Ischemic Heart Disease", 
-#   "Myocardial Infarction")
-outcome_names <- c("Asthma", "CVD")
-
-names(outcome_df_list) <- c( 'Asthma', 'CVD')
+outcome_names <- c("SABA", "Respiratory", "Asthma", "COPD", "Pneumonia", 
+  "Acute Bronchitis", "Cardiovascular Disease", "Arrhythmia", 
+  "Cerebrovascular Disease", "Heart Failure", "Ischemic Heart Disease", 
+  "Myocardial Infarction")
 ```
 
 CVD warning message on import. Have Jingyang check. Maybe why proportion of CVD vs respiratory so different in Oregon?
 *Warning message:In rbind(names(probs), probs_f) :number of columns of result is not a multiple of vector length (arg 1)*
+
+*Also warnings on mixed data types of NULL and numeric; another reason to revise and create timestratified casecross over functions*.
 
 Descriptive table will go here. Jingyang, I'll have you add the other dataframes to analyze. I provided an example of Asthma and CVD. 
 
@@ -176,8 +178,13 @@ table1_fun <- function(data_list){
     filter(outcome == 1) %>%
     group_by(age_ind) %>% 
     summarise(n = n()) %>%
+    # this will fix the 0 categories of certain CVD outcomes in children
+    add_row(age_ind = 0, n = 0) %>% 
+    arrange(age_ind) %>% 
+    group_by(age_ind) %>% 
+    summarise(n = sum(n)) %>% 
     mutate(age_cat = ifelse(age_ind == 0, "age_under15",
-                      ifelse(age_ind == 1, "age_15to65", "age_over65")),
+                    ifelse(age_ind == 1, "age_15to65", "age_over65")),
            # preserve factor order
            age_cat = parse_factor(age_cat, levels = age_cat)) %>% 
     select(-age_ind) %>% 
@@ -192,26 +199,26 @@ table1_fun <- function(data_list){
   # bind all rows together
   outcome_n_row <- bind_cols(total_n, age_cat_n, sex_n) %>% 
     mutate(perc_15 = round(age_under15/total_n,2), 
-           perc_15to65 = round(age_15to65/total_n,2),
-           perc_65 = round(age_over65/total_n,2),
-           perc_F = round(F/total_n,2),
-           perc_M = round(M/total_n,2)) %>% 
+      perc_15to65 = round(age_15to65/total_n,2),
+      perc_65 = round(age_over65/total_n,2),
+      perc_F = round(F/total_n,2),
+      perc_M = round(M/total_n,2)) %>% 
     select(total_n, age_under15, perc_15, age_15to65, perc_15to65, 
            age_over65, perc_65, F, perc_F, M, perc_M)
 return(outcome_n_row)
 } # end function
 
 # outcome names
-outcome_names <- names(outcome_df_list) %>% 
-  data_frame() %>% 
-  rename(outcome = ".")
+outcome <- outcome_names %>% 
+  as_tibble() %>%
+  rename(outcome = value)
 
 # apply custom function to generate descriptive table
 table_vals <- outcome_df_list %>% 
   # map to dataframe
   map_dfr(table1_fun) 
 # descriptive table, bind outcome names and values
-descriptive_table <- bind_cols(outcome_names, table_vals)
+descriptive_table <- bind_cols(outcome, table_vals)
 
 # output table
 knitr::kable(descriptive_table, 
@@ -332,7 +339,9 @@ Using the custom function to estimate cumulative effects for the list of datafra
 cumulative_results <- outcome_df_list %>% 
   map_dfr(~distributed_lag(., pm_df=3, temp_df=2, cumulative=T)) %>% 
   bind_cols(., data_frame(outcome_names)) %>% 
-  select(outcome_names, type, estimate, lower95, upper95)
+  select(outcome_names, type, estimate, lower95, upper95) %>% 
+  # preserve order of names
+  mutate(outcome_names = parse_factor(outcome_names, levels = outcome_names))
 
 # will put this table eventually
 head(cumulative_results)
@@ -341,13 +350,16 @@ head(cumulative_results)
 plot <- ggplot(cumulative_results, aes(x=outcome_names, y = estimate)) +
   geom_point(colour = "darkblue") +
   geom_text(aes(label = round(estimate,2)), hjust = -0.25) +
-  geom_errorbar(aes(ymin=lower95, ymax=upper95), colour= "darkblue", width = 0.2) +
+  geom_errorbar(aes(ymin=lower95, ymax=upper95), 
+                colour= "darkblue", width = 0.2) +
   geom_hline(yintercept = 1, linetype = 2, colour = "red") +
   theme(
    panel.background = element_rect(fill = 'white', colour = 'black'),
    panel.grid.major = element_blank(),
-   panel.grid.minor = element_blank()) +
-  ylab(expression("Cumulative odds ratio for a 10 ug/m^3 increase smoke PM"[2.5])) +
+   panel.grid.minor = element_blank(),
+   axis.text.x = element_text(angle=90, hjust = 1)) +
+  ylab(expression(paste0("Cumulative odds ratio for a 10 ug/m"^3, 
+    " increase smoke PM"[2.5]))) +
   xlab("Outcomes")
 
 plot
@@ -377,7 +389,8 @@ head(dl_results)
 # small multiples DL plot ----
 dl_plot <- ggplot(dl_results, aes(x=time, y=estimate)) +
   geom_line(colour = "#046C9A", size = 1) +
-  geom_ribbon(aes(ymin = lower95, ymax = upper95), fill = "#ABDDDE", alpha = 0.5) + 
+  geom_ribbon(aes(ymin = lower95, ymax = upper95), 
+              fill = "#ABDDDE", alpha = 0.5) + 
   scale_y_continuous(limits = c(0.9, 1.15)) +
   scale_x_continuous(breaks = c(seq(-7, 0, by=1))) +
   geom_hline(yintercept = 1, linetype = 2, colour = "red") +
