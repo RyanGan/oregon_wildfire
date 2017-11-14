@@ -1,6 +1,5 @@
 # Association between smoke from the 2013 Douglas-Complex fire and cardiopulmonary morbidity
 
-# NEW CHANGE TO SHOW HOW GIT WORKFLOW SHOULD WORK
 
 ### Created by: Ryan Gan and Jingyang Liu
 Created on: 2017-11-07
