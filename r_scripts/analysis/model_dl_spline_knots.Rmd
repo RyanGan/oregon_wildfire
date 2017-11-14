@@ -107,7 +107,7 @@ fit_mat <- matrix(NA, nrow=4, ncol=5)
 colnames(fit_mat) <- c("outcome", "exposure", "fit", "df", "aic")
 
 # fill outcome name in first column
-fit_mat[,1] <- "Beta - 2 agonists"
+fit_mat[,1] <- "SABA"
 # fill in exposure (geo smoke)
 fit_mat[,2] <- "geo_smk10"
 # fit type
@@ -136,18 +136,124 @@ fit_mat[,3] <- "ns"
 
     } # end model fit loop
   
+fit_mat_saba <- as_data_frame(fit_mat)
 
 # now that we have a range of df/knots, I want to filter to the minimum aic
 # for each outcome and print out that value in a table
 
-kable(fit_mat, caption="Distributed lag spline of 3-6 degree of freedom fit by AIC")
+# kable(fit_mat, caption="Distributed lag spline of 3-6 degree of freedom fit by AIC")
 
-lag_spline_best_fit <- as_tibble(fit_mat) %>%  
-  slice(which.min(aic)) # df of 3 has the smallest AIC
+# lag_spline_best_fit <- as_tibble(fit_mat) %>%  
+#   slice(which.min(aic)) # df of 3 has the smallest AIC
 
 # kable
-knitr::kable(lag_spline_best_fit, caption = paste0("Distributed lag spline ",
-  "degree of freedom best fit by AIC"))
+# knitr::kable(lag_spline_best_fit, caption = paste0("Distributed lag spline ",
+#   "degree of freedom best fit by AIC"))
 ```
 
+```{r diseases, message=FALSE, echo=FALSE, warning=FALSE}
+var_list <- c('respiratory', 'asthma', 'pneumonia',  'acute_bronch', 'copd', 
+              'cvd', 'isch_heart_dis', 'arrhythmia', 'heart_failure', 
+              'cerbrovas_dis', 'myocardial_infarc', 'broken_arm')
 
+datalist <- list()
+
+  # j <- c('respiratory')
+ 
+  # standard for statement without parallel computing
+  for(j in var_list){
+  read_path <- paste('../data_new/casecrossover/time_strat/or', j, 'may_to_sep_time_strat_casecross.csv', sep='_')
+  or_disease <- read_csv(read_path)
+
+  or_disease_df <- data.frame(or_disease)
+  
+  or_disease_lag_df <- or_disease_df %>%
+  left_join(or_zip_to_county, by = "ZIPCODE") %>%
+  left_join(or_pop, by = "county") %>%
+  mutate(day = ifelse(weekdays(date) == "Monday" |
+                      weekdays(date) == "Tuesday" |
+                      weekdays(date) == "Wednesday"|
+                      weekdays(date) == "Thursday"|
+                      weekdays(date) == "Friday", "weekday",
+               ifelse(weekdays(date) == "Saturday" |
+                      weekdays(date) == "Sunday", "weekend", NA))) %>%
+  mutate(geo_smk_pm10_zip = geo_smk_pm_zip/10,
+         geo_smk_pm10_lag1_zip =geo_smk_pm_lag1_zip/10,
+         geo_smk_pm10_lag2_zip =geo_smk_pm_lag2_zip/10,
+         geo_smk_pm10_lag3_zip =geo_smk_pm_lag3_zip/10,
+         geo_smk_pm10_lag4_zip =geo_smk_pm_lag4_zip/10,
+         geo_smk_pm10_lag5_zip =geo_smk_pm_lag5_zip/10,
+         geo_smk_pm10_lag6_zip =geo_smk_pm_lag6_zip/10,
+         geo_smk_pm10_lag7_zip =geo_smk_pm_lag7_zip/10) 
+
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-05-27")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-07-04")] <- "weekend"
+or_disease_lag_df$day[which(or_disease_lag_df$date=="2013-09-02")] <- "weekend"
+
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_zip") #174
+# which(colnames(or_disease_lag_df)=="geo_smk_pm10_lag1_zip") #175
+# which(colnames(or_disease_lag_df)=="wrf_temp_zip") #94
+# which(colnames(or_disease_lag_df)=="wrf_temp_lag1_zip") #151
+
+or_disease_geo_lag <- or_disease_lag_df %>%
+  select(174, 175:181) # GWR-method
+  
+or_disease_temp_lag <- or_disease_lag_df %>%
+  select(94, 151:157) # GWR-method
+
+lag_max <- 7
+
+or_disease_geo_lag <- as.matrix(or_disease_geo_lag)
+or_disease_temp_lag <- as.matrix(or_disease_temp_lag)
+
+
+# create fit matrix
+fit_mat <- matrix(NA, nrow=4, ncol=5)
+colnames(fit_mat) <- c("outcome", "exposure", "fit", "df", "aic")
+
+# fill outcome name in first column
+fit_mat[,1] <- j
+# fill in exposure (geo smoke)
+fit_mat[,2] <- "geo_smk10"
+# fit type
+fit_mat[,3] <- "ns"
+  
+# 2 df will not work for a spline, going from 3 to 6 df
+  for(h in 3:6){ # start loop for df
+
+    # fitting a natural spline for lag with 5 knots?
+    fit_mat[h-2, 4] <- degree_freedom <- h
+
+    # define basis b using natural spline function
+    B <- ns(0:7, df = degree_freedom, intercept = T)
+    
+    # multiply lagged pm matrix by basis
+    or_disease_geo_lag_B <- or_disease_geo_lag%*%B
+    or_disease_temp_lag_B <- or_disease_temp_lag%*%B
+
+    fit <- clogit(outcome ~ or_disease_geo_lag_B + or_disease_temp_lag_B + strata(personkey), 
+              or_disease_lag_df)
+
+    AIC(fit)
+    
+    # fill AIC
+    fit_mat[h-2,5] <- round(AIC(fit),5)
+
+    } # end model fit loop
+i <- match(j, var_list)
+datalist[[i]] <- as_data_frame(fit_mat)
+  }
+
+combine <- bind_rows(datalist)
+
+combine_saba <- bind_rows(fit_mat_saba, combine)
+
+# now that we have a range of df/knots, I want to filter to the minimum aic
+# for each outcome and print out that value in a table
+
+kable(combine_saba, caption="Distributed lag spline of 3-6 degree of freedom fit by AIC")
+
+write_path <- paste0('../data_new/medication/model_dl_spline_knots.csv')
+write_csv(combine_saba, write_path)
+
+```
