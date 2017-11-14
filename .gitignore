@@ -8,3 +8,4 @@
 *.html
 # ignore the directory where health data is kept
 /data/health
+/data/pm
