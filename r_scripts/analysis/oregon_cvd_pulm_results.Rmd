@@ -492,7 +492,7 @@ Stratify cumulative effect by sex and age group.
 ##8. SABA cumulative effect by underlying respiratory diagnosis
 *Jingyang to complete using function*
 
-##9. Conculstions
+##9. Conculsions
 So far, it looks like SABA and Asthma are the only associtions. Furthermore, the cumulative 0-7 day relationship between asthma and smoke has wide error bars and overlaps 1, suggesting the association could be null. I think it's more likely that this is because we introduce some noise on lag days 4-7. It's possible that an adjustment like weekend may help. It may also make sense to do something similar to Anna Rappold or others and shorten our lagged response. I also think this is a produce of sample size too. 
 
 ### Comments:
