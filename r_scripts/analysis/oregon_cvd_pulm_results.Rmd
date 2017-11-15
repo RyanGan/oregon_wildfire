@@ -232,73 +232,64 @@ knitr::kable(descriptive_table,
 *Note from Jingyang on Nov 14:*
 *Just a little improvement advice for plot: Because the number (which labels the last disease's odds ratio) can only be seen one digital, I suggest to add more margin to the right side. Also for the DLM graph.*
 
+Create function to calculate same-day association (odds ratio) and 95% confidence interval between increasing smoke and outcomes.
+
 ```{r same day association fuction}
-same_day_fun <- function(data, pm_df, temp_df){
+same_day_fun <- function(data){
 
   # limit to complete cases
   complete_data <- data %>% 
     # filter to complete case for smoke
-    filter(!is.na(geo_smk_pm_zip))
-
-  # output matrix of gwr values
-  pm_matrix <- complete_data %>% 
-    select(geo_smk_pm_zip) %>%
-    # divide exposure values by 10 units to interpret on 10 ug/m^3 scale
-    mutate_all(funs(./10)) %>% 
-    # convert to matrix
-    as.matrix()
-  
-  # output temp matrix
-  temp_matrix <- complete_data %>% 
-    select(wrf_temp_zip) %>%
-    # convert to matrix
-    as.matrix()
-  
+    filter(!is.na(geo_smk_pm_zip)) %>% 
+    # create 10 unit smk variable 
+    mutate(geo_smk10 = geo_smk_pm_zip/10)
+    
   # fit model with basis ----
-  mod <- clogit(outcome ~ pm_matrix + temp_matrix + strata(personkey),
+  mod <- clogit(outcome ~ geo_smk10 + wrf_temp_zip + strata(personkey),
     data = complete_data)
   
   # odds ratio
-  sd_estimates <- round(exp(summary(mod)$coefficient[1,1]), 3) # sd stands for same day
+  estimates <- round(exp(summary(mod)$coefficient[1,1]), 3) # sd stands for same day
     
   # 95% lower bound
-  sd_lower <- round(exp((summary(mod)$coefficient[1,1]) -
+  lower95 <- round(exp((summary(mod)$coefficient[1,1]) -
                                     1.96*(summary(mod)$coefficient[1,3])), 3)
   # 95% upper bound
-  sd_upper <- round(exp((summary(mod)$coefficient[1,1]) +
+  upper95 <- round(exp((summary(mod)$coefficient[1,1]) +
                                     1.96*(summary(mod)$coefficient[1,3])), 3)
   # standard error
   sd_stderr <- round(summary(mod)$coefficient[1,3], 4)
   # p val
   sd_pvalue <- round(summary(mod)$coefficient[1,5], 4)
   
-  return_estimate <- data_frame(sd_estimates, sd_lower, sd_upper) 
+  return_estimate <- data_frame(estimates, lower95, upper95) 
   return(return_estimate) 
 } 
 ```
 
 ```{r same day association table}
-sameday_cumulative_results <- outcome_df_list %>% 
-  map_dfr(~same_day_fun(., pm_df=3, temp_df=2)) %>% 
+sameday_results <- outcome_df_list %>% 
+  map_dfr(~same_day_fun(.)) %>% 
   bind_cols(., data_frame(outcome_names)) %>% 
-  select(outcome_names, sd_estimates, sd_lower, sd_upper) %>% 
+  select(outcome_names, estimates, lower95, upper95) %>% 
   # preserve order of names
   mutate(outcome_names = parse_factor(outcome_names, levels = outcome_names))
 
-knitr::kable(sameday_cumulative_results, 
-  caption = "Same day odds ratio and CI of pharmacy/ED/urgent care visits")
+knitr::kable(sameday_results, 
+  caption = "Same day odds ratio and 95% CI of pharmacy/ED/urgent care visits")
 ```
+
+Applying function to the list of outcome dataframes.
 
 ```{r same day association graph}
 # ggplot ----
-plot <- ggplot(sameday_cumulative_results, aes(x=outcome_names, y = sd_estimates)) +
-  geom_point(colour = "darkblue") +
-  geom_text(aes(label = round(sd_estimates,2)), hjust = -0.25) +
-  geom_errorbar(aes(ymin=sd_lower, ymax=sd_upper), 
-                colour= "darkblue", width = 0.2) +
-  geom_hline(yintercept = 1, linetype = 2, colour = "red") +
-  theme(
-   panel.background = element_rect(fill = 'white', colour = 'black'),
+plot <- ggplot(sameday_results, aes(x=outcome_names, y = estimates)) +
+  geom_point(colour = "#46ACC8") +
+  geom_text(aes(label = round(estimates,2)), hjust = -0.25) +
+  geom_errorbar(aes(ymin=lower95, ymax=upper95), 
+                colour= "#46ACC8", width = 0.2) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "#B40F20") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
    panel.grid.major = element_blank(),
    panel.grid.minor = element_blank(),
    axis.text.x = element_text(angle=90, hjust = 1)) +
@@ -431,13 +422,12 @@ cumulative_results <- outcome_df_list %>%
 
 # ggplot ----
 plot <- ggplot(cumulative_results, aes(x=outcome_names, y = estimate)) +
-  geom_point(colour = "darkblue") +
+  geom_point(colour = "#00A08A") +
   geom_text(aes(label = round(estimate,2)), hjust = -0.25) +
   geom_errorbar(aes(ymin=lower95, ymax=upper95), 
-                colour= "darkblue", width = 0.2) +
-  geom_hline(yintercept = 1, linetype = 2, colour = "red") +
-  theme(
-   panel.background = element_rect(fill = 'white', colour = 'black'),
+                colour= "#00A08A", width = 0.2) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "#FF0000") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
    panel.grid.major = element_blank(),
    panel.grid.minor = element_blank(),
    axis.text.x = element_text(angle=90, hjust = 1)) +
@@ -490,7 +480,7 @@ dl_plot <- ggplot(dl_results, aes(x=time, y=estimate)) +
 dl_plot
 ```
 
-DL plot shows an effect with asthma even though the cumulative effect size is similar in magnitude to what we've seen before, but the 95%CIs overlap 1. I think this is a power issue trying to look at lagged effects for more than a week.
+DL plot shows an effect with asthma even though the cumulative effect size is similar in magnitude to what we've seen before, but the 95% CIs overlap 1. I think this is a power issue trying to look at lagged effects for more than a week. I've applied a general 3 degrees of freedom knot for PM~2.5~ and 2 degrees of freedom knot for temperature. I think temperature is okay to do this, but I'm still figuring out a way to build a best-fit knot in to the function.
 
 Worth discussing with the group.
 
@@ -501,6 +491,9 @@ Stratify cumulative effect by sex and age group.
 
 ##8. SABA cumulative effect by underlying respiratory diagnosis
 *Jingyang to complete using function*
+
+##9. Conculstions
+So far, it looks like SABA and Asthma are the only associtions. Furthermore, the cumulative 0-7 day relationship between asthma and smoke has wide error bars and overlaps 1, suggesting the association could be null. I think it's more likely that this is because we introduce some noise on lag days 4-7. It's possible that an adjustment like weekend may help. It may also make sense to do something similar to Anna Rappold or others and shorten our lagged response. I also think this is a produce of sample size too. 
 
 ### Comments:
 1. File structure needs to be cleaned up. There are way too many subdirectories.

@@ -1,5 +1,4 @@
-# Association between smoke from the 2013 Douglas-Complex fire and cardiopulmonary morbidity
-
+# Association between smoke from the 2013 Douglas-Complex fire nd cardiopulmonary morbidity
 
 ### Created by: Ryan Gan and Jingyang Liu
 Created on: 2017-11-07
