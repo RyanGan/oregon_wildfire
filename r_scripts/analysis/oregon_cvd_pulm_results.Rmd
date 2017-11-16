@@ -106,7 +106,9 @@ Using the geofacet package to organize small-multiples by geography.
 
 ```{r geofacet time series of pm}
 # use or_counties_grid from geo_facet 
-or_grid <- geofacet::or_counties_grid1
+or_grid <- geofacet::or_counties_grid1 %>% 
+  mutate(name = ifelse(name == "HoodRiver", "Hood River", name))
+
 # small multiples plot
 plot <- ggplot(county_pm_df, aes(x=date, y= geo_smk_pm)) + 
   geom_point(color = "#00A08A", size = 0.5) +
