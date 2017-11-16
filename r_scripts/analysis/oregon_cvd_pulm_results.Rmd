@@ -18,9 +18,7 @@ We evaluated the association between smoke concentrations using the GWR method a
 
 This markdown document contains the code and results that were used to address this research question.
 
-**Note to Jingyang 11/3/17: I saw all the packages you used. How many do you actually need to run these analyses? It also looks like you need to run this markdown file on the server? I would like to avoid that and I can help you do this.**
-
-Packages used: tidyverse
+Packages used: tidyverse, survival.
 ```{r setup}
 library(tidyverse) # general data wrangle
 library(survival) # conditional logistic regression
@@ -165,14 +163,16 @@ CVD warning message on import. Have Jingyang check. Maybe why proportion of CVD 
 
 Descriptive table will go here. Jingyang, I'll have you add the other dataframes to analyze. I provided an example of Asthma and CVD. 
 
-```{r descriptive table}
+```{r descriptive table function}
 # creating a row calculation function
 table1_fun <- function(data_list){
   # output of total n
   total_n <- data_list %>% 
     filter(outcome == 1) %>%
-    summarise(total_n = n())
-  
+    # adding in a filter to remove NAs
+    filter(!is.na(geo_smk_pm_zip)) %>% 
+    summarise(total_n = n()) %>% 
+
   # output row of summary numbers
   age_cat_n <- data_list %>% 
     filter(outcome == 1) %>%
@@ -207,7 +207,11 @@ table1_fun <- function(data_list){
            age_over65, perc_65, F, perc_F, M, perc_M)
 return(outcome_n_row)
 } # end function
+```
 
+Table 1.
+
+```{r descritive table}
 # outcome names
 outcome <- outcome_names %>% 
   as_tibble() %>%
@@ -227,45 +231,42 @@ knitr::kable(descriptive_table,
 
 ##4. Same-day association results
 
-*Jingyang, add same day associations here using purrr map functions here. I want to compare them to the cumulative associations. You do not need to make an elaborate function like I did for the distributed lag. You should just be able to use clogit. Include the same day GWR smoke estimate and same day temperature as a covariate.*
-
 *Note from Jingyang on Nov 14:*
 *Just a little improvement advice for plot: Because the number (which labels the last disease's odds ratio) can only be seen one digital, I suggest to add more margin to the right side. Also for the DLM graph.*
+
+*Note to Jingyang on Nov 16:*
+*I still don't understand why the case n would be different from table 1 to the number of cases used in the models below? You should have identified all the cases in the time period of May to October, and then assigned them an exposure value. Referent values will be assigned at any other time point during that time as well. There should be no missing data in outcomes or exposure. You will have to tell me why cases are being included in the time-stratified dataframes, but excluded in analysis.*
 
 Create function to calculate same-day association (odds ratio) and 95% confidence interval between increasing smoke and outcomes.
 
 ```{r same day association fuction}
 same_day_fun <- function(data){
-
   # limit to complete cases
   complete_data <- data %>% 
     # filter to complete case for smoke
     filter(!is.na(geo_smk_pm_zip)) %>% 
     # create 10 unit smk variable 
     mutate(geo_smk10 = geo_smk_pm_zip/10)
-    
-  # fit model with basis ----
+
+    # fit conditional logistic regression model ----
   mod <- clogit(outcome ~ geo_smk10 + wrf_temp_zip + strata(personkey),
     data = complete_data)
-  
+
   # odds ratio
-  estimates <- round(exp(summary(mod)$coefficient[1,1]), 3) # sd stands for same day
-    
+  estimates <- round(exp(summary(mod)$coefficient[1,1]), 3) 
   # 95% lower bound
   lower95 <- round(exp((summary(mod)$coefficient[1,1]) -
                                     1.96*(summary(mod)$coefficient[1,3])), 3)
   # 95% upper bound
   upper95 <- round(exp((summary(mod)$coefficient[1,1]) +
                                     1.96*(summary(mod)$coefficient[1,3])), 3)
-  # standard error
-  sd_stderr <- round(summary(mod)$coefficient[1,3], 4)
-  # p val
-  sd_pvalue <- round(summary(mod)$coefficient[1,5], 4)
   
   return_estimate <- data_frame(estimates, lower95, upper95) 
   return(return_estimate) 
 } 
 ```
+
+Apply same-day function to each outcome dataframe.
 
 ```{r same day association table}
 sameday_results <- outcome_df_list %>% 
@@ -484,20 +485,95 @@ DL plot shows an effect with asthma even though the cumulative effect size is si
 
 Worth discussing with the group.
 
-##7. Stratified cumulative results
+##7. Stratified same-day results
 
+*Note to Jingyang: Nov 16*
+*I realized there is a better way to calculate stratified results than modifying the code. See below for example. There is a way to do it in one chunk rather than 2, but I was running in to errors.*
+
+### 7.a Sex
+
+
+Presenting same-day stratified results because the computations are easier. I'll use it to decide if we should present cumulative effects. We can use map and filter to subset to group of interest and apply our same-day function. We then bind the two strata together. 
+
+```{r same day association stratified by sex}
+# there is probably a better way to do this, but this will work.
+sameday_results_f <- outcome_df_list %>% 
+  # using gender because I forget which sex_ind is which
+  # filter to females
+  purrr::map(~filter(., gender == "F")) %>%  
+  map_dfr(~same_day_fun(.)) %>% 
+  bind_cols(., data_frame(outcome_names)) %>% 
+  mutate(sex = as.factor("Female")) %>% 
+  select(outcome_names, sex, estimates, lower95, upper95) %>% 
+  # preserve order of names
+  mutate(outcome_names = parse_factor(outcome_names, levels = outcome))
+
+sameday_results_m <- outcome_df_list %>% 
+  # filter to males
+  purrr::map(~filter(., gender == "M")) %>%  
+  map_dfr(~same_day_fun(.)) %>% 
+  bind_cols(., data_frame(outcome_names)) %>% 
+  mutate(sex = as.factor("Male")) %>% 
+  select(outcome_names, sex, estimates, lower95, upper95) %>% 
+  # preserve order of names
+  mutate(outcome_names = parse_factor(outcome_names, levels = outcome))
+
+# bind sex dataframes together
+sameday_results <- rbind(sameday_results_f, sameday_results_m)
+
+# print table
+knitr::kable(sameday_results, 
+  caption = "Same day odds ratio and 95% CI of pharmacy/ED/urgent care visits")
+```
+
+Plot.
+```{r sex strata plot}
+plot <- ggplot(data=sameday_results, aes(x=sex, y = estimates, color=sex)) +
+  scale_color_manual(name = "Sex", values = c("#00A08A", "#046C9A"),
+    guide = guide_legend(direction="horizontal", title.position = "top",
+                         title.hjust = 0.5)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=lower95, ymax=upper95), width = 0.2) +
+  facet_wrap(~outcome_names) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "#FF0000") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    # strip element
+    strip.background = element_rect(colour=NA, fill=NA),
+    panel.border = element_rect(fill = NA, color = "black")) +
+  ylab(expression("Odds ratio: 10 ug/m^3 increase smoke PM"[2.5])) +
+  xlab("Sex")
+
+plot  
+```
+
+### 7.b Age
 *Jingyang to complete using function*
+Color palette to use for the 3 age categories. c("#899DA4", "#35274A" "#F2300F").
+
+##8. SABA same-day results by underlying respiratory diagnosis
+*Jingyang to complete using function*
+Color palette to use for the 4 age categories.
+c("#E2D200" "#46ACC8" "#E58601" "#B40F20")
+
+##9. Stratified cumulative results
+Considering adding.
+
 Stratify cumulative effect by sex and age group.
 
-##8. SABA cumulative effect by underlying respiratory diagnosis
-*Jingyang to complete using function*
+##10. SABA cumulative effect by underlying respiratory diagnosis
+Considering adding.
 
-##9. Conculsions
+
+##11. Conculsions
 So far, it looks like SABA and Asthma are the only associtions. Furthermore, the cumulative 0-7 day relationship between asthma and smoke has wide error bars and overlaps 1, suggesting the association could be null. I think it's more likely that this is because we introduce some noise on lag days 4-7. It's possible that an adjustment like weekend may help. It may also make sense to do something similar to Anna Rappold or others and shorten our lagged response. I also think this is a produce of sample size too. 
 
 ### Comments:
 1. File structure needs to be cleaned up. There are way too many subdirectories.
 2. Remove r code files that are not useful. There are too many files with similar code inside.
-3. Variables in the casecross over datasets raise some questions.  
+3. Variables in the casecross over datasets raise some questions.
+4. Consider a cumulative effect that adds the preceding day and so on, i.e. 0, 0+1, 0+1+2, ...
 
 
