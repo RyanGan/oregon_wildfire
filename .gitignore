@@ -10,3 +10,5 @@
 # ignore the directory where data is kept 
 /data
 
+# ignore Figs subdirectory
+/Figs
