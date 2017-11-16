@@ -22,7 +22,12 @@ Packages used: tidyverse, survival.
 ```{r setup}
 library(tidyverse) # general data wrangle
 library(survival) # conditional logistic regression
+
+# knitr options
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
 ```
+
 
 ##2. Wildfire smoke descriptive characteristics
 
@@ -30,7 +35,7 @@ Importing ZIP code-level population-weighted PM~2.5~ daily data.
 
 ```{r smoke data import and wrangle}
 # pm path
-pm_path <- paste0("./data/pm/2013-oregon_county_pm25.csv")
+pm_path <- paste0("../../data/pm/2013-oregon_county_pm25.csv")
 # county pm
 county_pm_df <- read_csv(pm_path) %>% 
   mutate(county = stringr::str_replace(county, "[.]", ""))
@@ -130,7 +135,7 @@ Importing casecross over dataframes.
 
 ```{r health data import, message=F, warning=F}
 # path for health dataframe
-health_path <- "./data/health/"
+health_path <- "../../data/health/"
 # importing time-stratified case-crossover dataframe
 casecross_files <- list.files(path=health_path, pattern="*casecross*")
 
@@ -163,7 +168,7 @@ CVD warning message on import. Have Jingyang check. Maybe why proportion of CVD 
 
 Descriptive table will go here. Jingyang, I'll have you add the other dataframes to analyze. I provided an example of Asthma and CVD. 
 
-```{r descriptive table function}
+```{r descriptive table}
 # creating a row calculation function
 table1_fun <- function(data_list){
   # output of total n
@@ -171,7 +176,7 @@ table1_fun <- function(data_list){
     filter(outcome == 1) %>%
     # adding in a filter to remove NAs
     filter(!is.na(geo_smk_pm_zip)) %>% 
-    summarise(total_n = n()) %>% 
+    summarise(total_n = n()) 
 
   # output row of summary numbers
   age_cat_n <- data_list %>% 
@@ -213,19 +218,20 @@ Table 1.
 
 ```{r descritive table}
 # outcome names
-outcome <- outcome_names %>% 
+outcome <- outcome_names %>%
   as_tibble() %>%
   rename(outcome = value)
 
 # apply custom function to generate descriptive table
-table_vals <- outcome_df_list %>% 
+table_vals <- outcome_df_list %>%
   # map to dataframe
-  map_dfr(table1_fun) 
+  map_dfr(~table1_fun(.))
+
 # descriptive table, bind outcome names and values
 descriptive_table <- bind_cols(outcome, table_vals)
 
 # output table
-knitr::kable(descriptive_table, 
+knitr::kable(descriptive_table,
   caption = "Descriptive charactersitics of ED/urgent care visits")
 ```
 
@@ -450,7 +456,7 @@ That same function can be used to generate detailed estimates of the association
 # this approach will work that creates a list of dataframes with map then
 # binds the lists together in one dataframe
 dl_results <- outcome_df_list %>% 
-  purrr::map(~distributed_lag(., pm_df=3, temp_df=2, cumulative=F)) %>% 
+  purrr::map(~distributed_lag(., pm_df=3,temp_df=2,cumulative=F)) %>% 
   plyr::rbind.fill() %>% 
   bind_cols(., data_frame(rep(outcome_names, each=8))) %>% 
   rename(outcome_names = `rep(outcome_names, each = 8)`) %>% 
@@ -492,7 +498,6 @@ Worth discussing with the group.
 
 ### 7.a Sex
 
-
 Presenting same-day stratified results because the computations are easier. I'll use it to decide if we should present cumulative effects. We can use map and filter to subset to group of interest and apply our same-day function. We then bind the two strata together. 
 
 ```{r same day association stratified by sex}
@@ -506,7 +511,7 @@ sameday_results_f <- outcome_df_list %>%
   mutate(sex = as.factor("Female")) %>% 
   select(outcome_names, sex, estimates, lower95, upper95) %>% 
   # preserve order of names
-  mutate(outcome_names = parse_factor(outcome_names, levels = outcome))
+  mutate(outcome_names = parse_factor(outcome_names, levels = outcome_names))
 
 sameday_results_m <- outcome_df_list %>% 
   # filter to males
@@ -516,14 +521,14 @@ sameday_results_m <- outcome_df_list %>%
   mutate(sex = as.factor("Male")) %>% 
   select(outcome_names, sex, estimates, lower95, upper95) %>% 
   # preserve order of names
-  mutate(outcome_names = parse_factor(outcome_names, levels = outcome))
+  mutate(outcome_names = parse_factor(outcome_names, levels = outcome_names))
 
 # bind sex dataframes together
 sameday_results <- rbind(sameday_results_f, sameday_results_m)
 
 # print table
 knitr::kable(sameday_results, 
-  caption = "Same day odds ratio and 95% CI of pharmacy/ED/urgent care visits")
+  caption = "Same day odds ratio and 95% CI of pharmacy/ED/urgent care visits stratified by sex.")
 ```
 
 Plot.
@@ -550,30 +555,155 @@ plot
 ```
 
 ### 7.b Age
-*Jingyang to complete using function*
-Color palette to use for the 3 age categories. c("#899DA4", "#35274A" "#F2300F").
+
+Stratified by age category.
+
+```{r same day association stratified by age category}
+# subset outcomes evaluated for under 15
+under15_outcome <- outcome_names[1:7]
+
+# subset dataframes that won't have convergence issues
+sameday_results_under15 <- outcome_df_list[1:7] %>% 
+  # filter to children
+  purrr::map(~filter(., age_ind == 0)) %>%  
+  map_dfr(~same_day_fun(.)) %>% 
+  bind_cols(., data_frame(under15_outcome)) %>% 
+  rename(outcome_names = under15_outcome) %>% 
+  mutate(age_cat = as.factor("Under 15")) %>% 
+  select(outcome_names, age_cat, estimates, lower95, upper95) %>% 
+  # preserve order of names
+  mutate(outcome_names = parse_factor(outcome_names, levels = outcome_names))
+
+# age category 1
+sameday_results_15to65 <- outcome_df_list %>% 
+  # filter to males
+  purrr::map(~filter(., age_ind == "1")) %>%  
+  map_dfr(~same_day_fun(.)) %>% 
+  bind_cols(., data_frame(outcome_names)) %>% 
+  mutate(age_cat = as.factor("15 to 65")) %>% 
+  select(outcome_names, age_cat, estimates, lower95, upper95) %>% 
+  # preserve order of names
+  mutate(outcome_names = parse_factor(outcome_names, levels = outcome_names))
+
+# age category 2
+sameday_results_over65 <- outcome_df_list %>% 
+  purrr::map(~filter(., age_ind == "2")) %>%  
+  map_dfr(~same_day_fun(.)) %>% 
+  bind_cols(., data_frame(outcome_names)) %>% 
+  mutate(age_cat = as.factor("Over 65")) %>% 
+  select(outcome_names, age_cat, estimates, lower95, upper95) %>% 
+  # preserve order of names
+  mutate(outcome_names = parse_factor(outcome_names, levels = outcome_names))
+
+# bind sex dataframes together
+sameday_results <- rbind(sameday_results_under15, sameday_results_15to65,
+                         sameday_results_over65)
+
+# print table
+knitr::kable(sameday_results, 
+  caption = "Same day odds ratio and 95% CI of pharmacy/ED/urgent care visits stratified by age category.")
+```
+
+Stratified by age plot.
+```{r age strata plot}
+plot <- ggplot(data=sameday_results, 
+               aes(x=age_cat, y = estimates, color=age_cat)) +
+  scale_color_manual(name = "Age Category", 
+    values = c("#899DA4", "#35274A", "#F2300F"),
+    guide = guide_legend(direction="horizontal", title.position = "top",
+                         title.hjust = 0.5)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=lower95, ymax=upper95), width = 0.2) +
+  facet_wrap(~outcome_names, scales = "free_y") +
+  geom_hline(yintercept = 1, linetype = 2, colour = "#FF0000") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    # strip element
+    strip.background = element_rect(colour=NA, fill=NA),
+    panel.border = element_rect(fill = NA, color = "black")) +
+  ylab(expression("Odds ratio: 10 ug/m^3 increase smoke PM"[2.5])) +
+  xlab("Age Category")
+
+plot  
+```
+
+Under 15 unstable for CVD; consider removing. Heart failure is interesting for the over 65 group. That may agree with what Anna Rappold has seen.
 
 ##8. SABA same-day results by underlying respiratory diagnosis
-*Jingyang to complete using function*
-Color palette to use for the 4 age categories.
-c("#E2D200" "#46ACC8" "#E58601" "#B40F20")
+
+```{r saba underlying dx}
+# read in the index 
+saba_index <- read_csv("../../data/health/oregon_saba_index.csv") %>% 
+    mutate(underlying_dx = as.factor(ifelse(index == "copd",
+    stringr::str_to_upper(index),
+    stringr::str_to_title(index)))) %>% 
+    select(-index)
+
+# index vector
+underlying_dx <- unique(as.factor(saba_index$underlying_dx)) %>% 
+  data_frame() %>% 
+  rename(underlying_dx = ".") %>% 
+  mutate(underlying_dx = ) %>% 
+  # need to arrange since slice is going alphabetical
+  arrange(underlying_dx)
+
+# join index to saba
+# extract saba dataframe from list
+saba <- outcome_df_list[[1]] %>% 
+  left_join(saba_index, by = "personkey")
+
+# run function on each group
+sameday_results <- saba %>% 
+  split(.$underlying_dx) %>% 
+  map_dfr(~same_day_fun(.)) %>% 
+  bind_cols(., underlying_dx) %>% 
+  select(4,1:3)
+
+# table
+knitr::kable(sameday_results, 
+  caption = "Same day odds ratio and 95% CI for a SABA fill, stratified by underlying dx.")
+```
+
+*Jingyang, did I ask you to code "other" if a dx was missing? Maybe we should change other to "unknown or other" since I doubt we were able to link an underlying dx to everyone with a fill.*
+
+Plot of SABA underlying Dx categories.
+
+```{r plot saba underlying dx}
+plot <- ggplot(sameday_results, 
+   aes(x=underlying_dx, y = estimates, color = underlying_dx)) +
+   scale_color_manual(name = "Underlying Diagnosis", 
+    values = c("#0B775E","#46ACC8","#E58601","#B40F20"),
+    guide = guide_legend(direction="horizontal", title.position = "top",
+                         title.hjust = 0.5)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=lower95, ymax=upper95), width = 0.2) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "#FF0000") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+   panel.grid.major = element_blank(),
+   panel.grid.minor = element_blank(),
+   axis.title.x = element_blank(),
+   legend.position = "bottom") +
+  ylab(expression("Odds Ratio: 10 ug/m^3 increase smoke PM"[2.5])) 
+# plot
+plot
+```
 
 ##9. Stratified cumulative results
 Considering adding.
 
-Stratify cumulative effect by sex and age group.
-
 ##10. SABA cumulative effect by underlying respiratory diagnosis
 Considering adding.
-
 
 ##11. Conculsions
 So far, it looks like SABA and Asthma are the only associtions. Furthermore, the cumulative 0-7 day relationship between asthma and smoke has wide error bars and overlaps 1, suggesting the association could be null. I think it's more likely that this is because we introduce some noise on lag days 4-7. It's possible that an adjustment like weekend may help. It may also make sense to do something similar to Anna Rappold or others and shorten our lagged response. I also think this is a produce of sample size too. 
 
-### Comments:
+### Issues/Concerns (in order of time they popped in my head):
 1. File structure needs to be cleaned up. There are way too many subdirectories.
 2. Remove r code files that are not useful. There are too many files with similar code inside.
 3. Variables in the casecross over datasets raise some questions.
 4. Consider a cumulative effect that adds the preceding day and so on, i.e. 0, 0+1, 0+1+2, ...
+5. Plots need to have standard labels, ordering, scales, etc.
 
 
