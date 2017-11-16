@@ -8,7 +8,7 @@
 *.html
 
 # ignore the directory where data is kept 
-/data
+data/
 
 # ignore Figs subdirectory
-/Figs
+Figs/
