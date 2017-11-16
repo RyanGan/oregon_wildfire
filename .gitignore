@@ -10,5 +10,6 @@
 # ignore the directory where data is kept 
 data/
 
-# ignore Figs subdirectory
+# ignore subdirectory
 Figs/
+oregon_cvd_pulm_results_cache/
