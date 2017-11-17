@@ -24,7 +24,7 @@ library(tidyverse) # general data wrangle
 library(survival) # conditional logistic regression
 
 # knitr options
-knitr::opts_chunk$set(fig.width=12, fig.height=10, fig.path='Figs/',
+knitr::opts_chunk$set(fig.width=8, fig.height=6, fig.path='Figs/',
                       echo=FALSE, warning=FALSE, message=FALSE)
 ```
 
@@ -109,7 +109,7 @@ smoke_map <- ggplot(or_county_spatial_df, aes(x=long,y=lat, group=group)) +
 smoke_map
 ```
 
-Most of the heavy smoke days were in the south-west part of Oregon. I've added county names to map but some text aren't well placed. I should probably use centroid, but then I'll have to import a shapefile to do this. I'll fix this later; I plan to add in fire locations.
+Most of the heavy smoke days were in the south-west part of Oregon. Triangles are fires; had them in the legend, but the legend looked weird so I took them out.
 
 ### Time-series of geo-weighted regression estimates of smoke PM~2.5~ by county
 
@@ -304,7 +304,6 @@ class <- as_tibble(c(rep("Respiratory", times = 6),
   rename(class = value)
 # add a class indicator to table
 sameday_results_w_class <- sameday_results %>% bind_cols(class)
-  sameday_results_w_class
   
 # ggplot ----
 plot <- ggplot(data=sameday_results_w_class, 
@@ -439,7 +438,6 @@ cumulative_results <- outcome_df_list %>%
 
 # add a class indicator to table
 cumulative_results_w_class <- cumulative_results %>% bind_cols(class)
-  cumulative_results_w_class
 
 # ggplot ----
 plot <- ggplot(cumulative_results_w_class, 
