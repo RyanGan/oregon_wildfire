@@ -726,5 +726,6 @@ So far, it looks like SABA and Asthma are the only associtions. Furthermore, the
 3. Variables in the casecross over datasets raise some questions.
 4. Consider a cumulative effect that adds the preceding day and so on, i.e. 0, 0+1, 0+1+2, ...
 5. Plots need to have standard labels, ordering, scales, etc.
+6. I'd like to know n-cases and even effect estimates for SABA and asthma in the counties most impacted by smoke.
 
 
