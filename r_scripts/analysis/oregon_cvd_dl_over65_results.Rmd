@@ -1,0 +1,6 @@
+---
+title: Distributed lag effects of smoke on cardiovascular disease in persons over 65
+author: "Ryan Gan"
+date: "2017-11-20"
+output: html_document
+---
