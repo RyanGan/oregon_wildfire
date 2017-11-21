@@ -80,6 +80,9 @@ distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
     as.matrix()
   # part to remove------
   
+  # if degrees of freedom for pm is defined
+  if(length(pm_df)==1){
+  
   # calculation of basis ----
   # define basis using natural spline function from "splines"" package
   pm_b <- splines::ns(0:(ncol(pm_matrix)-1), df=pm_df, intercept=T)
@@ -92,6 +95,40 @@ distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
   # fit model with basis ----
   mod <- clogit(outcome ~ pm_basis + temp_basis + strata(personkey),
     data = complete_data)
+  
+  }
+  
+  # if degrees of freedom is a vector > 1
+  pm_df <- c(2:5)
+  
+  if(pm_df > 1){
+  # create temp basis
+    temp_b <- splines::ns(0:(ncol(temp_matrix)-1), df=temp_df, intercept=T)
+    temp_basis <- temp_matrix %*% temp_b
+  # create list of lengh pm_df
+  mod_aic <- sapply(pm_df, function(x){
+    pm_b <- splines::ns(0:(ncol(pm_matrix)-1), df=x, intercept=T)
+    # create pm basis
+    pm_basis <- pm_matrix %*% pm_b
+    # run model
+    mod <- clogit(outcome ~ pm_basis + temp_basis + strata(personkey),
+    data = complete_data)
+    aic <- AIC(mod)
+    return(aic)
+  })
+
+  # find minimum aic
+  pm_df_aic <- data.frame(pm_df, mod_aic)
+  min_df_aic <- as.numeric(subset(pm_df_aic, mod_aic == min(mod_aic), 
+                                  select=pm_df))
+  # run final best fit mod
+  pm_b <- splines::ns(0:(ncol(pm_matrix)-1), df=min_df_aic, intercept=T)
+  # create pm basis
+  pm_basis <- pm_matrix %*% pm_b
+  # run model
+  mod <- clogit(outcome ~ pm_basis + temp_basis + strata(personkey),
+    data = complete_data)
+  }
   
   # section to figure out model fit
   # 3 df
@@ -211,3 +248,50 @@ dl_plot
 
 
 ## Myocardial infarction in over 65 group
+
+```{r mi data}
+mi65 <- outcome_df_list[[6]] %>% 
+  filter(age_ind == 2)
+
+cumulative <- distributed_lag(mi65, pm_df = 2, temp_df = 2, cumulative = T)
+cumulative
+
+#plot 
+cumulative_plot <- ggplot(cumulative, aes(x=time, y=estimate)) +
+  geom_line(colour = "#046C9A", size = 1) +
+  geom_ribbon(aes(ymin = lower95, ymax = upper95), 
+              fill = "#ABDDDE", alpha = 0.5) + 
+  scale_y_continuous(limits = c(0.7, 1.2)) +
+  scale_x_continuous(breaks = c(seq(0,7, by=1))) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "red") +
+  ylab(expression("Odd ratio for a 10 ug/m^3 increase smoke PM"[2.5])) +
+  xlab("Lagged Days") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    strip.text = element_text(size = 10),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(colour=NA, fill=NA))
+
+cumulative_plot
+
+dl <- distributed_lag(mi65, pm_df = 3, temp_df = 2, cumulative = F)
+dl
+
+dl_plot <- ggplot(dl, aes(x=time, y=estimate)) +
+  geom_line(colour = "#046C9A", size = 1) +
+  geom_ribbon(aes(ymin = lower95, ymax = upper95), 
+              fill = "#ABDDDE", alpha = 0.5) + 
+  scale_y_continuous(limits = c(0.9, 1.25)) +
+  scale_x_continuous(breaks = c(seq(0,7, by=1))) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "red") +
+  ylab(expression("Odd ratio for a 10 ug/m^3 increase smoke PM"[2.5])) +
+  xlab("Lagged Days") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    strip.text = element_text(size = 10),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(colour=NA, fill=NA))
+
+dl_plot
+
+```
