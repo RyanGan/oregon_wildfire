@@ -141,6 +141,8 @@ plot
 
 Elevated levels of smoke in late July to early August in Curry, Josephine, Jackson, and Klamath counties.
 
+Jeff and Bonne suggest only presenting time-series of 4 counties affected, and send this figure to supplement.
+
 ##3. Descriptive table of number of health outcomes
 
 Importing time-stratified case-crossover dataframes. Like the Washington study, we used the time-stratified case-crossover where admissions/fills are identified by date, and then referent observations are created for each observation (assumed to be a unique person) from May to October 2013. We argue that this is a good referent period that allows for enough referent periods, without introducing seasonal variation in exposure/disease. We also subtract off background smoke.

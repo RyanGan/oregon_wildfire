@@ -4,3 +4,210 @@ author: "Ryan Gan"
 date: "2017-11-20"
 output: html_document
 ---
+
+## Overview
+
+Extensive look at possible distributed lag relationships for Cardiovascular endpoints in the over 65 age group.
+
+Packages used: tidyverse, survival. Setting markdown options.
+
+```{r setup, echo =F, warning=F, message=F}
+library(tidyverse) # general data wrangle
+library(survival) # conditional logistic regression
+
+# knitr options
+knitr::opts_chunk$set(fig.width=8, fig.height=6, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+Import CVD data.
+
+```{r health data import}
+# path for health dataframe
+health_path <- "../../data/health/"
+# importing time-stratified case-crossover dataframe
+casecross_files <- list.files(path=health_path, pattern="*casecross*")
+
+# reorder file names in way I'd like it to be analyzed and only importing cvd
+# also ditching broken arm
+casecross_order <- casecross_files[c(7,2,5,8,9,10)]
+
+# extract the name of the dataframe after study type
+file_names <- stringr::str_extract(casecross_order, 
+  pattern="(?<=casecross_)\\w+")
+
+# read in all the files in to a list
+outcome_df_list <- casecross_order %>%  
+  purrr::map(~read_csv(paste0(health_path, .)))
+
+# name dataframes
+names(outcome_df_list) <- file_names
+
+# name list elements in order I'd like to present in document
+outcome_names <- c("Cardiovascular Disease", "Arrhythmia", 
+  "Cerebrovascular Disease", "Heart Failure", "Ischemic Heart Disease", 
+  "Myocardial Infarction")
+```
+
+
+```{r distributed lag function}
+# custom distributed lag function 
+distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
+  # i want to remove this part eventually ------
+  # limit to complete cases
+  complete_data <- data %>% 
+    # filter to complete case for smoke
+    filter(!is.na(geo_smk_pm_lag7_zip))
+
+  # output matrix of gwr values
+  pm_matrix <- complete_data %>% 
+    select(contains("geo_smk_pm")) %>%
+    # remove anything with m in it; will go back in original code and not create 
+    # this to begin with
+    select(-contains("_m")) %>% 
+    # divide exposure values by 10 units to interpret on 10 ug/m^3 scale
+    mutate_all(funs(./10)) %>% 
+    # convert to matrix
+    as.matrix()
+  
+  # output temp matrix
+  temp_matrix <- complete_data %>% 
+    select(contains("wrf_temp")) %>%
+    # remove anything with m in it; will go back in original code and not create 
+    # this to begin with
+    select(-contains("_m")) %>% 
+    # convert to matrix
+    as.matrix()
+  # part to remove------
+  
+  # calculation of basis ----
+  # define basis using natural spline function from "splines"" package
+  pm_b <- splines::ns(0:(ncol(pm_matrix)-1), df=pm_df, intercept=T)
+  # create pm basis
+  pm_basis <- pm_matrix %*% pm_b
+  # create temp basis
+  temp_b <- splines::ns(0:(ncol(temp_matrix)-1), df=temp_df, intercept=T)
+  temp_basis <- temp_matrix %*% temp_b
+  
+  # fit model with basis ----
+  mod <- clogit(outcome ~ pm_basis + temp_basis + strata(personkey),
+    data = complete_data)
+  
+  # section to figure out model fit
+  # 3 df
+  # AIC(mod)
+
+  # calculate estimates ----
+  # output pm basis parameters
+  dl_parms <- broom::tidy(mod) %>% 
+    filter(stringr::str_detect(term, "pm")) %>% 
+    select(estimate) %>% 
+    as_vector()
+  # estimate distributed lag values for each day
+  estimate <-  pm_b %*% dl_parms
+  # covariance matrix for knots 
+  # fix the matrix
+  cov_matrix <- as.matrix(vcov(mod))[1:pm_df,1:pm_df]
+  
+  # estimate variance of spline
+  variance <- pm_b %*% cov_matrix %*% t(pm_b)
+  # estimate standard error
+  se <- sqrt(diag(dl_var))
+
+  # calculate lower and upper bound
+  lower95 <- estimate+(se*qnorm(1-0.975))
+  upper95 <- estimate+(se*qnorm(0.975))
+  
+  # time variable
+  time <- ((rep(1:length(estimate))-1))
+  
+    if(cumulative==T) {
+      type <- rep("cumulative", times = length(estimate))
+      # sequential cumulative estimate
+      cumulative_estimate <- sapply(seq_along(estimate), function(x){
+        sum(estimate[1:x])
+      })
+      
+      # stderr cumulative effect
+      cumulative_se <- sapply(seq_along(estimate), function(x){
+        sqrt(sum(dl_var[1:x,1:x]))
+      })
+
+      # cumulative 95CI
+      lower95 <- cumulative_estimate+(cumulative_se*qnorm(1-0.975))
+      upper95 <- cumulative_estimate+(cumulative_se*qnorm(0.975))
+     
+      # return dataframe
+      return_estimate <- data.frame(type, time, exp(cumulative_estimate), 
+                                    exp(lower95), exp(upper95)) 
+      # assign column names
+      colnames(return_estimate) <- c("type","time","estimate","lower95","upper95") 
+
+      return(return_estimate)
+    }
+    else { # if cumulative is not true, or false, return distributed lag est
+      type <- rep("lag", times = length(estimate))
+      
+      # return dataframe
+      return_estimate <- data.frame(type, time, exp(estimate), 
+                                    exp(lower95), exp(upper95)) 
+      # assign column names
+      colnames(return_estimate) <- c("type","time","estimate","lower95","upper95") 
+       # return estimate  
+      return(return_estimate)
+      }
+      # end of if
+} 
+```
+
+## Heart failure in over 65 group
+
+```{r subset data}
+hf65 <- outcome_df_list[[4]] %>% 
+  filter(age_ind == 2)
+
+cumulative <- distributed_lag(hf65, pm_df = 3, temp_df = 2, cumulative = T)
+cumulative
+
+#plot 
+cumulative_plot <- ggplot(cumulative, aes(x=time, y=estimate)) +
+  geom_line(colour = "#046C9A", size = 1) +
+  geom_ribbon(aes(ymin = lower95, ymax = upper95), 
+              fill = "#ABDDDE", alpha = 0.5) + 
+  scale_y_continuous(limits = c(0.9, 1.25)) +
+  scale_x_continuous(breaks = c(seq(0,7, by=1))) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "red") +
+  ylab(expression("Odd ratio for a 10 ug/m^3 increase smoke PM"[2.5])) +
+  xlab("Lagged Days") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    strip.text = element_text(size = 10),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(colour=NA, fill=NA))
+
+cumulative_plot
+
+dl <- distributed_lag(hf65, pm_df = 3, temp_df = 2, cumulative = F)
+dl
+
+dl_plot <- ggplot(dl, aes(x=time, y=estimate)) +
+  geom_line(colour = "#046C9A", size = 1) +
+  geom_ribbon(aes(ymin = lower95, ymax = upper95), 
+              fill = "#ABDDDE", alpha = 0.5) + 
+  scale_y_continuous(limits = c(0.9, 1.25)) +
+  scale_x_continuous(breaks = c(seq(0,7, by=1))) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "red") +
+  ylab(expression("Odd ratio for a 10 ug/m^3 increase smoke PM"[2.5])) +
+  xlab("Lagged Days") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    strip.text = element_text(size = 10),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(colour=NA, fill=NA))
+
+dl_plot
+
+```
+
+
+## Myocardial infarction in over 65 group
