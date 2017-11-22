@@ -51,7 +51,7 @@ outcome_names <- c("Cardiovascular Disease", "Arrhythmia",
 
 Creating a fit function to find the degrees of freedom for the pm spline
 
-```{r distributed lag functions}
+```{r custom distributed lag functions}
 
 # fit function
 dl_fit <- function(data, pm_df, temp_df){
@@ -104,7 +104,6 @@ dl_fit <- function(data, pm_df, temp_df){
     return(min_df_aic)
   } # end fit option
 
-dl_fit(data = hf65, pm_df = c(3:5), temp_df=2)
 
 # custom distributed lag function 
 distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
