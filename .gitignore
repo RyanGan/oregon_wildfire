@@ -8,5 +8,8 @@
 *.html
 
 # ignore the directory where data is kept 
-/data
+data/
 
+# ignore subdirectory
+Figs/
+oregon_cvd_pulm_results_cache/
