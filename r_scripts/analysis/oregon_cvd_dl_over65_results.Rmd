@@ -20,7 +20,7 @@ knitr::opts_chunk$set(fig.width=8, fig.height=6, fig.path='Figs/',
                       echo=FALSE, warning=FALSE, message=FALSE)
 ```
 
-Import CVD data.
+Importing the time-stratified case-crossover dataframes for the cardiovascular endpoints.
 
 ```{r health data import}
 # path for health dataframe
@@ -37,11 +37,13 @@ file_names <- stringr::str_extract(casecross_order,
   pattern="(?<=casecross_)\\w+")
 
 # read in all the files in to a list
-outcome_df_list <- casecross_order %>%  
-  purrr::map(~read_csv(paste0(health_path, .)))
+cvd_over65_list <- casecross_order %>%  
+  purrr::map(~read_csv(paste0(health_path, .))) %>% 
+  # filter to over 65 group
+  purrr::map(~filter(., age >= 65)) 
 
 # name dataframes
-names(outcome_df_list) <- file_names
+names(cvd_over65_list) <- file_names
 
 # name list elements in order I'd like to present in document
 outcome_names <- c("Cardiovascular Disease", "Arrhythmia", 
@@ -51,8 +53,7 @@ outcome_names <- c("Cardiovascular Disease", "Arrhythmia",
 
 Creating a fit function to find the degrees of freedom for the pm spline
 
-```{r custom distributed lag functions}
-
+```{r custom distributed lag fit function}
 # fit function
 dl_fit <- function(data, pm_df, temp_df){
   # i want to remove this part eventually ------
@@ -103,8 +104,10 @@ dl_fit <- function(data, pm_df, temp_df){
     min_df_aic <- subset(pm_df_aic, mod_aic == min(mod_aic))
     return(min_df_aic)
   } # end fit option
+```
 
 
+```{r custom distributed lag function}
 # custom distributed lag function 
 distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
   # i want to remove this part eventually ------
@@ -200,13 +203,41 @@ distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
 } 
 ```
 
+## Finding smoke distributed lag fit based on AIC
+
+This chunk of code uses the dl_fit function I created to find the degrees of freedom for the natural spline that has the lowest AIC for degrees of freem from 2 to 5 for the smoke lag function. I set temperature degrees of freedom to 2. 
+
+```{r smk aic fit}
+fit_df <- cvd_over65_list %>% 
+  purrr::map_df(~dl_fit(., pm_df = c(2:5), temp_df =2)) %>% 
+  cbind(names(cvd_over65_list), .) 
+
+# add degrees of freedom as a slot to the outcomes list
+degfreedom_list <- as.list(fit_df$pm_df)
+```
+
+## Distributed Lag Cumulative Effect
+
+Calculating the cumulative effect sequentially (0, 0+1, 0+1+2,....)
+
+```{r cumulative effect smooth}
+cumulative_cvd <- purrr::map2(.x = cvd_over65_list, .y = degfreedom_list, 
+  ~distributed_lag(data = .x, pm_df = .y, temp_df = 2, cumulative = T)) %>% 
+  plyr::rbind.fill() %>% 
+  bind_cols(., data_frame(rep(outcome_names, each=8))) %>% 
+  rename(outcome_names = `rep(outcome_names, each = 8)`) %>% 
+  select(outcome_names, type, time, estimate, lower95, upper95) %>% 
+  # preserve order of names
+  mutate(outcome_names = parse_factor(outcome_names, levels = outcome_names))
+```
+
 ## Heart failure in over 65 group
 
 ```{r subset data}
 hf65 <- outcome_df_list[[4]] %>% 
   filter(age_ind == 2)
 
-cumulative <- distributed_lag(hf65, pm_df = 4, temp_df = 2, cumulative = T)
+cumulative <- distributed_lag(hf65, pm_df = 2, temp_df = 2, cumulative = T)
 cumulative
 
 #plot 
@@ -246,15 +277,16 @@ dl_plot <- ggplot(dl, aes(x=time, y=estimate)) +
     strip.background = element_rect(colour=NA, fill=NA))
 
 dl_plot
-
 ```
-
 
 ## Myocardial infarction in over 65 group
 
 ```{r mi data}
 mi65 <- outcome_df_list[[6]] %>% 
   filter(age_ind == 2)
+
+check <- mi65 %>% filter(personkey == 1782923) %>% 
+  select(personkey, outcome, dx1, date, fromdate)
 
 cumulative <- distributed_lag(mi65, pm_df = 2, temp_df = 2, cumulative = T)
 cumulative
