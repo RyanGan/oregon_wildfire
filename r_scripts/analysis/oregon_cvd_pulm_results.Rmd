@@ -351,7 +351,7 @@ distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
     mutate_all(funs(./10)) %>% 
     # convert to matrix
     as.matrix()
- 
+  
   # output temp matrix
   temp_matrix <- complete_data %>% 
     select(contains("wrf_temp")) %>%
@@ -369,11 +369,11 @@ distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
   # create temp basis
   temp_b <- splines::ns(0:7, df=temp_df, intercept=T)
   temp_basis <- temp_matrix %*% temp_b
- 
+  
   # fit model with basis ----
   mod <- clogit(outcome ~ pm_basis + temp_basis + strata(personkey),
     data = complete_data)
- 
+  
   # calculate estimates ----
   # output pm basis parameters
   dl_parms <- broom::tidy(mod) %>% 
