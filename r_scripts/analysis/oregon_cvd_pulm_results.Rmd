@@ -18,7 +18,7 @@ We evaluated the association between smoke concentrations using the GWR method a
  
 This markdown document contains the code and results that were used to address this research question.
  
-Packages used: idyverse, survival.
+Packages used: tidyverse, survival.
 ```{r setup, echo =F, warning=F, message=F}
 library(tidyverse) # general data wrangle
 library(survival) # conditional logistic regression
