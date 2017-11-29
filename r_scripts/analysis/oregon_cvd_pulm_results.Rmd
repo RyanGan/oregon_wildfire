@@ -9,9 +9,9 @@ output: html_document
 
 In the summer of 2013, the Douglas-Complex fires occured in southwest Oregon. Oregonians in this part of the state were at risk of exposure to extreme levels of particulate matter (PM). This project aim is to determine if there is an association to smoke from the Douglas-Complex fires and acute cardiopulmonary morbidity in the state of Oregon.
 
-Data came from the Oregon All Payer All Claims Database (APAC) in the year 2013. The APAC records the health care billing data for Oregon's insured populations. APAC include individual billing records for both diagnoses codes (International Classification of Diseases, Clinical Modification (ICD-9-CM) diagnoses codes) and pharmacy codes (National Drug Codes (NDC)).
+Data came from the Oregon All Payer All Claims Database (APAC) in the year 2013. The APAC records the health care billing data for Oregon's insured populations. APAC include individual billing records for both diagnoses codes (International Classification of Diseases, Clinical Modification (ICD-9-CM) diagnoses codes) and pharmacy codes (National Drug Codes (NDC)). 
 
-Our previous research that found an association with wildfire smoke and respiratory outcomes in Washington state in 2012 wildfire season using a novel estimate of smoke concentration, geographically weighted ridge regression (GWR) guided the methodological approaches used in this project. As Oregon contains pharmacy records, we evaluate the association between smoke and respiratory rescue medications (beta 2 agonists) (abbreviate to SABA).
+Our previous research that found an association with wildfire smoke and respiratory outcomes in Washington state in 2012 wildfire season using a novel estimate of smoke concentration, geographically weighted ridge regression (GWR) guided the methodological approaches used in this project. As Oregon contains pharmacy records, we evaluate the association between smoke and respiratory rescue medications (beta 2 agonists) (abbreviate to SABA). 
 
 *Research question*
 We evaluated the association between smoke concentrations using the GWR method and cardiopulmonary morbidity, including ED/urgent care visits and SABA fills in Oregon state during the 2013 wildfire season.
@@ -351,7 +351,7 @@ distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
     mutate_all(funs(./10)) %>% 
     # convert to matrix
     as.matrix()
-
+ 
   # output temp matrix
   temp_matrix <- complete_data %>% 
     select(contains("wrf_temp")) %>%
@@ -369,11 +369,11 @@ distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
   # create temp basis
   temp_b <- splines::ns(0:7, df=temp_df, intercept=T)
   temp_basis <- temp_matrix %*% temp_b
-
+ 
   # fit model with basis ----
   mod <- clogit(outcome ~ pm_basis + temp_basis + strata(personkey),
     data = complete_data)
-
+ 
   # calculate estimates ----
   # output pm basis parameters
   dl_parms <- broom::tidy(mod) %>% 
@@ -384,12 +384,12 @@ distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
   dl_estimates <- data.frame(estimate = pm_b %*% dl_parms)
   # covariance matrix for knots
   cov_matrix <- as.matrix(vcov(mod))[1:3,1:3]
- 
+  
   # estimate variance of spline
   dl_var <- pm_b %*% cov_matrix %*% t(pm_b)
   # estimate standard error
   dl_estimates$stderr <- sqrt(diag(dl_var))
- 
+  
   # calculate lower and upper bound
   dl_estimates$lower95 <- dl_estimates$estimate-(dl_estimates$stderr*1.96)
   dl_estimates$upper95 <- dl_estimates$estimate+(dl_estimates$stderr*1.96)
@@ -421,7 +421,7 @@ distributed_lag <- function(data, pm_df, temp_df, cumulative=T){
       # end of if
 } 
 ```
- 
+
 Using the custom function to estimate cumulative effects for the list of dataframes. It will work on an individual dataframe, but I built it to use with the purrr map functions. 
 
 ```{r cumulative association}
@@ -456,7 +456,7 @@ plot <- ggplot(cumulative_results_w_class,
     panel.grid.minor = element_blank(),
     axis.text.x = element_text(angle=45, hjust = 1)) +
   ylab(expression("Cumulative odds ratio: 10 ug/m^3 increase smoke PM"[2.5])) +
-  xlab("NULL")
+  xlab(NULL)
 
 plot
 ```
