@@ -13,3 +13,6 @@ data/
 # ignore subdirectory
 Figs/
 oregon_cvd_pulm_results_cache/
+
+# ignore data elements workbook
+*.xls
