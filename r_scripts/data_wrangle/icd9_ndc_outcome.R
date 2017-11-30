@@ -26,18 +26,88 @@ stop_time <-  Sys.time() - start_time
 # time it took
 stop_time # 7 mins
 
-# basic cleaning ---------------------------------------------------------------
 
-oregon_df <- oregon_df %>% 
-  # filter(!is.na(dx1)) %>% 
-  # filter State is Oregon
-  filter(STATE=="OR") 
-# filter urgent or ED visits (pos = 20 or 23)
-# filter(pos=="20"|pos=="23") 
+## make SABA data set(ndc is beta-2-agonist; personkey) ------------------------
+read_path2 <- paste0("../../../data/data_original/2014-hedis_asthma_ndc.xlsx")
+beta2_ndc <- read_excel(read_path2)
 
-write_path <- paste0('../../../data/data_original/',
-                     '2013_oregon_epis_care.csv')
-write_csv(oregon_df, write_path)
+saba_ndc <- beta2_ndc %>%
+  filter(category == "short-acting inhaled beta-2 agonists")
+
+ndc_in_oregon_df <- oregon_df %>%
+  filter(ndc %in% saba_ndc$ndc_code) # 463265, unique personkey 164975
+
+oregon_saba_index <- ndc_in_oregon_df %>%
+  select(personkey) %>%
+  unique() # 164975
+
+saba_df <- oregon_df %>%
+  filter(personkey %in% oregon_saba_index$personkey) # 16254091
+
+write_path2 <- paste0('../../../data/data_new/health/2013_oregon_saba_index.csv')
+write_csv(oregon_saba_index, write_path2)
+
+write_path3 <- paste0('../../../data/data_new/health/2013_oregon_saba_claims.csv')
+write_csv(saba_df, write_path3)
+
+# ------------------------------------------------------------------------------
+
+# read in icd9 data and create lists of vectors of icd9 codes ----
+# read in xlsx icd9 codes and description
+icd9_df <- read_excel("../../../data/data_original/CMS32_DESC_LONG_SHORT_DX.xlsx") %>% 
+  # rename the terrible variable names
+  select(dx_code = 1, long_desc = 2, short_desc = 3)
+
+# look at the first 6 rows of the icd9 codes; comes in sorted
+head(icd9_df)
+glimpse(icd9_df)
+
+# Overall goal is to make a list of vectors for each outcome that contains the
+# character strings of icd9 codes that make up the outcome of interest.
+# Some outcomes like COPD, where icd9 codes are not sequential, will not work
+# and will need to be entered by hand.
+
+# Create a dataframe of the outcome name, start, and stop rows
+outcome_name <- c("respiratory", "asthma", "pneumonia", "acute_bronch",
+                  "cvd", "arrhythmia", "cerbrovas_dis", "heart_failure",
+                  "isch_heart_dis", "myocardial_infarc", "broken_arm")
+# first icd9 code of outcome
+start_icd9 <- c("460", "49300", "4800", "4660", "390", "4270", "430", "4280",
+                "41000", "41000", "81300")
+
+# last icd9 code of outcome
+stop_icd9 <- c("5199", "49392", "486", "46619", "4599", "4279", "4389", "4289",
+               "4139", "41092", "81393")
+
+# dataframe of outcomes and start stop of icd9 codes
+outcome_icd9_range <- data_frame(outcome_name, start_icd9, stop_icd9)
+
+# list of icd9 codes -----------------------------------------------------------
+outcome_icd9_list <- apply(outcome_icd9_range, 1, 
+                           function(x) { # start of function
+                             icd9_df %>% 
+                               slice(which(icd9_df$dx_code == x[2]): which(icd9_df$dx_code == x[3])) %>%
+                               select(1) %>%
+                               as_vector()
+                           } )
+
+# assign list names
+names(outcome_icd9_list) <- outcome_name
+
+# Add COPD ICD9 codes to the list
+# COPD, ICD9 490 to 492, 494, and 496 
+copd_icd9 <- c('490', '4910','4911','49120','49121','49122','4918','4919', '4920',
+               '4928', '4940', '4941', '496') 
+
+# append copd list to icd9 list
+outcome_icd9_list <- c(outcome_icd9_list, list(copd = copd_icd9))
+
+# I don't know if not having atomic/flat values for each element of the list
+# will matter, but I need to try it out before I'll know
+
+# save R file to use in other scripts
+save_path <- paste0("../../../data/data_original/outcome_list.RData")
+save(outcome_icd9_list, file = save_path)
 
 
 
@@ -46,43 +116,9 @@ write_csv(oregon_df, write_path)
 load_path <- paste0("../../../data/data_original/outcome_list.RData")
 load(load_path)
 
-# path and file name of data
-read_path <- paste0("../../../data/data_original/2013_oregon_epis_care.csv")
-start_time <- Sys.time()
-oregon_df <- fread(read_path, sep = ",", 
-                   colClasses = rep("character", 72)) 
-stop_time <-  Sys.time() - start_time 
-# time it took
-stop_time # 20 min
+oregon_df <- oregon_df %>% 
+  filter(STATE=="OR") 
 
-
-## make SABA data set(ndc is beta-2-agonist; personkey) ------------------------
-read_path2 <- paste0("../../../data/data_original/2013_ndc_beta2_agonists.csv")
-ndc_df <- read_csv(read_path2, col_names = FALSE)
-
-colnames(ndc_df) <- c("ndc_code", "brand_name", "generic_product_name", 
-                      "route", "category", "drug_id")
-
-# convert to vector
-ndc_codes <- as.vector(as.matrix(ndc_df$ndc_code))
-
-ndc_in_oregon_df <- oregon_df %>%
-  filter(ndc %in% ndc_codes) # 300752, unique personkey 109483
-
-oregon_saba_index <- ndc_in_oregon_df %>%
-  select(personkey) %>%
-  unique()
-
-write_path2 <- paste0('../../../data/data_new/health/2013_oregon_saba_index.csv')
-write_csv(oregon_saba_index, write_path2)
-
-saba_df <- oregon_df %>%
-  filter(personkey %in% oregon_saba_index$personkey) # 11358660
-
-write_path3 <- paste0('../../../data/data_new/health/2013_oregon_saba_claims.csv')
-write_csv(saba_df, write_path3)
-
-# ------------------------------------------------------------------------------
 
 # now try to work the two chunks together to identify records that contain icd9s
 # of a certain outcome and then output those rows in chunks of data.
@@ -144,4 +180,7 @@ for(i in 1:length(outcome_icd9_list)) { # start loop
 } # end of loop
 # stop time of clock
 stop_time <-  Sys.time() - start_time 
-stop_time # 10 mins
+stop_time 
+
+
+
