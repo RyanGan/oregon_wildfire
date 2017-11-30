@@ -12,13 +12,15 @@
 # https://www.cms.gov/Medicare/Coding/ICD9ProviderDiagnosticCodes/codes.html
 
 # load library -----------------------------------------------------------------
-library(tidyverse)
+library(dplyr)
+library(purrr)
+library(data.table)
 library(readxl) # read excel files
 
 
 # read in icd9 data and create lists of vectors of icd9 codes ----
 # read in xlsx icd9 codes and description
-icd9_df <- read_excel("./instructions/CMS32_DESC_LONG_SHORT_DX.xlsx") %>% 
+icd9_df <- read_excel("../../../data/data_original/CMS32_DESC_LONG_SHORT_DX.xlsx") %>% 
   # rename the terrible variable names
   select(dx_code = 1, long_desc = 2, short_desc = 3)
 
@@ -69,6 +71,19 @@ outcome_icd9_list <- c(outcome_icd9_list, list(copd = copd_icd9))
 # I don't know if not having atomic/flat values for each element of the list
 # will matter, but I need to try it out before I'll know
 
+## saba lists ------------------------------------------------------------------
+read_path2 <- paste0("../../../data/data_original/2014-hedis_asthma_ndc.xlsx")
+beta2_ndc <- read_excel(read_path2)
+
+saba_ndc <- beta2_ndc %>%
+  filter(category == "short-acting inhaled beta-2 agonists")
+
+saba_code <- saba_ndc %>%
+  select(ndc_code) %>%
+  as_vector()
+  
+outcome_icd9_list <- c(outcome_icd9_list, list(saba = saba_code))
+
 # save R file to use in other scripts
-save_path <- paste0("./data/outcome_list.RData")
+save_path <- paste0("../../../data/data_original/outcome_list.RData")
 save(outcome_icd9_list, file = save_path)
