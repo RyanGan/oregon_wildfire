@@ -26,30 +26,9 @@ stop_time <-  Sys.time() - start_time
 # time it took
 stop_time # 7 mins
 
-
-## make SABA data set(ndc is beta-2-agonist; personkey) ------------------------
-read_path2 <- paste0("../../../data/data_original/2014-hedis_asthma_ndc.xlsx")
-beta2_ndc <- read_excel(read_path2)
-
-saba_ndc <- beta2_ndc %>%
-  filter(category == "short-acting inhaled beta-2 agonists")
-
-ndc_in_oregon_df <- oregon_df %>%
-  filter(ndc %in% saba_ndc$ndc_code) # 463265, unique personkey 164975
-
-oregon_saba_index <- ndc_in_oregon_df %>%
-  select(personkey) %>%
-  unique() # 164975
-
-saba_df <- oregon_df %>%
-  filter(personkey %in% oregon_saba_index$personkey) # 16254091
-
-write_path2 <- paste0('../../../data/data_new/health/2013_oregon_saba_index.csv')
-write_csv(oregon_saba_index, write_path2)
-
-write_path3 <- paste0('../../../data/data_new/health/2013_oregon_saba_claims.csv')
-write_csv(saba_df, write_path3)
-
+# filter Oregon State
+oregon_df <- oregon_df %>% 
+  filter(STATE=="OR") 
 # ------------------------------------------------------------------------------
 
 
@@ -57,10 +36,6 @@ write_csv(saba_df, write_path3)
 # import r list of outcome-specific icd9 codes
 load_path <- paste0("../../../data/data_original/outcome_list.RData")
 load(load_path)
-
-oregon_df <- oregon_df %>% 
-  filter(STATE=="OR") 
-
 
 # now try to work the two chunks together to identify records that contain icd9s
 # of a certain outcome and then output those rows in chunks of data.
@@ -83,7 +58,7 @@ col_names <- colnames(df_col_names) # output column names
 # loop to output dataframes of outcomes ----------------------------------------
 start_time <- Sys.time() # start clock time
 
-for(i in 1:length(outcome_icd9_list)) { # start loop
+for(i in 1:(length(outcome_icd9_list)-1)) { # start loop
   
   outcome_name <- names(outcome_icd9_list)[i] # output the name of the list/outcome
   icd9_vector <- outcome_icd9_list[[i]] # output the icd9 codes of the list
@@ -120,6 +95,17 @@ for(i in 1:length(outcome_icd9_list)) { # start loop
   write_csv(outcome_df, save_name)
   
 } # end of loop
+
+## saba data set
+ndc_in_oregon_df <- oregon_df %>%
+  filter(ndc %in% outcome_icd9_list[[13]]) # 463265, unique personkey 164975
+
+saba_df <- oregon_df %>%
+  filter(personkey %in% unique(ndc_in_oregon_df$personkey)) # 16254091
+
+write_path3 <- paste0('../../../data/data_new/health/2013_oregon_saba_claims.csv')
+write_csv(saba_df, write_path3)
+
 # stop time of clock
 stop_time <-  Sys.time() - start_time 
 stop_time 
