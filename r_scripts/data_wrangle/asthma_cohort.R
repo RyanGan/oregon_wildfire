@@ -14,7 +14,7 @@ library(tidyverse)
 read_path <- paste0("./data/health/oregon_subset.txt")
 # read in with fread
 oregon_df <- data.table::fread(read_path, sep = "|",
-                               colClasses = c(rep("character", 72)), stringsAsFactors = FALSE)
+  colClasses = c(rep("character", 72)), stringsAsFactors = FALSE)
 
 head(oregon_df)
 tail(oregon_df)
