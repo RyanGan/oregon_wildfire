@@ -9,7 +9,7 @@
 library(tidyverse)
 
 # read in dataframe ----
-read_path <- paste0("./data/health/oregon_subset.txt")
+read_path <- paste0("./data/health/gan_episodes_of_care.txt")
 # read in with fread
 oregon_df <- data.table::fread(read_path, sep = "|",
   colClasses = c(rep("character", 72)), stringsAsFactors = FALSE)
