@@ -1,3 +1,4 @@
+
 # ------------------------------------------------------------------------------
 # Title: Creation of asthma and beta2 agonist cohort
 # Author: Ryan Gan
@@ -60,9 +61,3 @@ asthma_saba_at_risk <- oregon_df %>%
 # save file
 write_path <- paste0("./data/health/asthma_saba_cohort.csv")
 write_csv(asthma_saba_at_risk, write_path)
-
-
-
-
-
-
