@@ -22,17 +22,12 @@ oregon_df <- oregon_df %>%
   mutate_all(funs(replace(., .== "*NULL*" | . == "", NA)))
 
 # read in Rdata icd9 outcome vectors and limit to asthma
-outcome_icd9_list<- load("./data/health/outcome_list.RData")
+load("./data/health/outcome_list.RData")
+
 # subset to asthma icd9
 asthma_icd9 <- pluck(outcome_icd9_list, "asthma")
-
-beta2_ndc <- read_csv("./data/health/2014-hedis_asthma_code.csv")
-
-# limit to short-acting beta2 agonist vector
-saba_ndc <- beta2_ndc %>% 
-  filter(category == "short-acting inhaled beta-2 agonists") %>% 
-  select(ndc_code) %>% 
-  as_vector()
+# subset to ndc saba
+saba_ndc <- pluck(outcome_icd9_list, "saba")
 
 # filter oregon epidsodes of care to dx of asthma or ndc of saba ------
 # find ids with at least one dx of asthma
@@ -60,6 +55,7 @@ asthma_saba_at_risk <- oregon_df %>%
 # save file
 write_path <- paste0("./data/health/asthma_saba_cohort.csv")
 write_csv(asthma_saba_at_risk, write_path)
+
 
 
 
