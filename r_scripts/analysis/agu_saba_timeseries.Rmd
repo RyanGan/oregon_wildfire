@@ -215,7 +215,9 @@ pm_plot
 ### Figure 6: Binding truncated SABA counts and PM~2.5~
 
 ```{r trunc plot}
-cowplot::plot_grid(pm_plot, saba_plot,
+plot <- cowplot::plot_grid(pm_plot, saba_plot,
   #labels = c("PM2.5 Exposure", "Rescue Inhaler"), 
   nrow = 2, align = "v")
+
+plot
 ```
