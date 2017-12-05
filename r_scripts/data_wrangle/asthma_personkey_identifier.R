@@ -71,7 +71,7 @@ stop_time
 
 # create csv of personkey IDs with at least one diagnosis of asthma ----
 # unlist the list of personkeys with asthma and find the unique observations
-asthma_personkey <- as_data_frame(unique(unlist(personkey_id))) %>% 
+asthma_personkey <- as_data_frame(unique(unlist(personkey_list))) %>% 
   rename(personkey = value)
 
 # print first keys
