@@ -67,7 +67,7 @@ head(asthma_saba_at_risk)
 # save file
 write_path <- paste0("./data/health/2013-asthma_saba_cohort.csv")
 write_csv(asthma_saba_at_risk, write_path)
-list.files()
+list.files("./data/health/")
 
 
 
