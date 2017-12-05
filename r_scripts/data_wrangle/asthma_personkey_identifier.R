@@ -39,8 +39,9 @@ cl <- makeCluster(cores)
 # load packages on each processor of the node/cluster
 clusterCall(cl, function() library(tidyverse))
 # export read path to each core
-clusterExport(cl, c("read_path", "read_length", "n_start", "col_names"), 
-              envir = .GlobalEnv)
+clusterExport(cl, 
+  c("read_path", "read_length", "n_start", "col_names", "asthma_icd9"), 
+  envir = .GlobalEnv)
 
 start_time <- proc.time()
 # run in parallel -----
