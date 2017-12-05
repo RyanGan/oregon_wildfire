@@ -45,7 +45,7 @@ clusterExport(cl, c("read_path", "read_length", "n_start", "col_names"),
 start_time <- proc.time()
 # run in parallel -----
 # read in rows of the oregon file
-personkey_list <- parSapply(n_start, function(x){
+personkey_list <- parSapply(cl, n_start, function(x){
   df <- data.table::fread(read_path, sep = "|", header = F,
                           # read set number of rows and skip what has already been read
                           nrows=read_length, skip=x, 
