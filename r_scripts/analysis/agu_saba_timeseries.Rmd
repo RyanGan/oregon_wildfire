@@ -36,7 +36,8 @@ saba_ts <- saba %>%
     MSA == 41420 ~ "Salem",
     MSA == 41999 ~ "Not in MSA"),
     day = weekdays(date),
-    weekend = ifelse(day %in% c("Saturday", "Sunday"), "Weekend", "Weekday")) 
+    weekend = ifelse(day %in% c("Saturday", "Sunday"), "Weekend", "Weekday"),
+    week_n = lubridate::floor_date(date, unit = "week")) 
 
 # calulate median weekend and weekday value
 saba_center_stats <- saba_ts %>% 
@@ -57,6 +58,8 @@ Plot of SABA counts by metro areas in Oregon for 2013 wildfire season (May throu
 
 But, I think MSA works pretty well to illustrate variability in the SABA health outcome that may be linked with smoke.
 
+### Figure 1: Time-series of short-acting beta-2 agonists over the metropolitan statistical areas for the state of Oregon.
+
 ```{r msa plot}
 plot <- ggplot(saba_ts, 
     aes(x=date, y=saba_n, group = weekend, color = weekend)) +
@@ -67,7 +70,13 @@ plot <- ggplot(saba_ts,
   facet_wrap(~metroarea) +
   ylab("SABA Count") +
   xlab("Date") +
-  theme_minimal()
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    panel.grid.major = element_line(colour="grey"),
+    #panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    # strip element
+    strip.background = element_rect(colour=NA, fill=NA),
+    panel.border = element_rect(fill = NA, color = "black"))
 
 plot
 ```
@@ -77,6 +86,8 @@ I've produced plots of SABA counts by MSA area. If you look at the major MSA are
 Note I had a MSA code that I was not able to link with an MSA so I'm guessing it was not in a MSA; data key was not explicit about this but I'm pretty sure it's for fills for people not in MSA. Also note that there are some weekdays that have similar fill-counts as weekends; these are Memorial Day, July 4th, and Labor Day holidays.
 
 Limiting to MSA timeseries to Medford MSA, which is in Jackson county.
+
+### Figure 2: Time-series of SABA limited to Medford MSA.
 
 ```{r medford}
 medford_center_stats <- saba_center_stats %>% 
@@ -93,6 +104,8 @@ medford_ts <- saba_ts %>%
 
 Medford MSA SABA count time-series plot for Weekend and Workweek fills. Dotted verticle lines represent the start date of the Douglas-Complex fires and the date it was considered 100% contained.
 
+### Figure 3: Time-series of SABA Z-Score.
+
 ```{r medford count timeseries}
 # medford time series
 ts_plot <- ggplot(medford_ts, 
@@ -107,7 +120,10 @@ ts_plot <- ggplot(medford_ts,
   ylab("SABA Count") +
   xlab("Date") +
   #ggtitle("Medford SABA Counts by Date") +
-  theme_minimal()
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom")
 
 ts_plot
 ```
@@ -134,12 +150,51 @@ z_plot
 
 Limiting population-weighted PM~2.5~ time-series to Jackson county. Jackson county population-weighted geographically-weighted ridge regression PM~2.5~ time-series.
 
+### Figure 4: Truncated SABA count
+
+I'm truncating to July to October.
+
+```{r trunc saba ts}
+jul_oct_medford <- medford_ts %>% 
+  filter(date >= "2013-07-01" & date <= "2013-10-01")
+
+jul_oct_central_vals <- medford_ts %>% 
+  group_by(weekend) %>% 
+  summarise(saba_med = median(saba_n))
+
+# medford time series
+saba_plot <- ggplot(jul_oct_medford, 
+  aes(x=date, y=saba_n, group=weekend, color=weekend)) +
+  geom_point() +
+  #geom_hline(data=jul_oct_central_vals , aes(yintercept=saba_med, color=weekend)) +
+  scale_color_manual(name = "Days of Week", values = c("#ec38bc", "#7303c0")) +
+  geom_vline(xintercept = as.numeric(as.Date(c("2013-07-26", "2013-09-03"), 
+      "%Y-%m-%d")),
+    linetype=3, color = "#191654") +
+  ylim(0, 40) +
+  ylab("SABA Count") +
+  xlab("Date") +
+  #ggtitle("Medford SABA Counts by Date") +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    # strip element
+    strip.background = element_rect(colour=NA, fill=NA),
+    panel.border = element_rect(fill = NA, color = "black"))
+
+saba_plot
+```
+
+### Figure 5: Time-series of GWR PM~2.5~ values.
+
 ```{r gwr smk timeseries}
 # jackson plot
 jackson_pm <- county_pm_df %>% 
   filter(county == "Jackson") %>% 
   mutate(smk10 = ifelse(geo_wt_pm > 10, 1, 0),
-    fire_period = ifelse(date >= "2013-07-26" & date <= "2013-09-03",1,0))
+    fire_period = ifelse(date >= "2013-07-26" & date <= "2013-09-03",1,0)) %>% 
+  filter(date >= "2013-07-01" & date <= "2013-10-01")
 
 # plot 
 pm_plot <- ggplot(jackson_pm, aes(x=date, y=geo_wt_pm)) +
@@ -150,7 +205,17 @@ pm_plot <- ggplot(jackson_pm, aes(x=date, y=geo_wt_pm)) +
   ylab(expression(paste("PM"[2.5], "  ", mu, "g/", m^3, sep=""))) +
   xlab("Date") +
   #ggtitle("Medford SABA Counts by Date") +
-  theme_minimal()
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
 
 pm_plot  
+```
+
+### Figure 6: Binding truncated SABA counts and PM~2.5~
+
+```{r trunc plot}
+cowplot::plot_grid(pm_plot, saba_plot,
+  #labels = c("PM2.5 Exposure", "Rescue Inhaler"), 
+  nrow = 2, align = "v")
 ```
