@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N ryan_rjob
-#PBS -l nodes=1:ppn=1
+#PBS -l nodes=1:ppn=16
 #PBS -W group_list=pierce_group
 #PBS -q batch
 #PBS -M rgan@colostate.edu
