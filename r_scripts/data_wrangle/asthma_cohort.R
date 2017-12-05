@@ -9,10 +9,16 @@
 library(tidyverse)
 
 # read in dataframe ----
-read_path <- paste0("./data/health/gan_episodes_of_care.txt")
+getwd()
+#read_path <- paste0("./data/health/gan_episodes_of_care.txt")
+# test path
+read_path <- paste0("./data/health/oregon_subset.txt")
 # read in with fread
 oregon_df <- data.table::fread(read_path, sep = "|",
   colClasses = c(rep("character", 72)), stringsAsFactors = FALSE)
+
+# print first 6 rows as check
+head(oregon_df)
 
 # set *NULL* and blank to NA
 # i may be able to integrate this to the first part
@@ -22,6 +28,8 @@ oregon_df <- oregon_df %>%
 
 # read in Rdata icd9 outcome vectors and limit to asthma
 load("./data/health/outcome_list.RData")
+# print outcomes list as check
+outcome_list
 
 # subset to asthma icd9
 asthma_icd9 <- pluck(outcome_icd9_list, "asthma")
@@ -40,8 +48,15 @@ saba_id <- oregon_df %>%
   select(personkey) %>% 
   as_vector()
 
+# print 6 obs of ids
+head(asthma_id)
+tail(saba_id)
+
 # bind two id vectors together
 asthma_saba_personkey <- unique(c(asthma_id, saba_id))
+
+head(asthma_saba_personkey)
+tail(asthma_saba_personkey)
 
 # filter large dataset to persons with asthma or saba fills ------
 # creating persons at risk (with asthma or a saba fill) for adverse events
@@ -51,10 +66,12 @@ asthma_saba_at_risk <- oregon_df %>%
   mutate(visit_type = ifelse(dx1 %in% asthma_icd9, "asthma", 
     ifelse(ndc %in% saba_ndc, "saba", "other")))
 
+head(asthma_saba_at_risk)
+
 # save file
 write_path <- paste0("./data/health/2013-asthma_saba_cohort.csv")
 write_csv(asthma_saba_at_risk, write_path)
-
+list.files()
 
 
 
