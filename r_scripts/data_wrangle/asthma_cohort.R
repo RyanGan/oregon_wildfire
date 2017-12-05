@@ -10,9 +10,11 @@ library(tidyverse)
 
 # read in dataframe ----
 getwd()
-#read_path <- paste0("./data/health/gan_episodes_of_care.txt")
+
+# path 
+read_path <- paste0("./data/health/gan_episodes_of_care.txt")
 # test path
-read_path <- paste0("./data/health/oregon_subset.txt")
+#read_path <- paste0("./data/health/oregon_subset.txt")
 # read in with fread
 oregon_df <- data.table::fread(read_path, sep = "|",
   colClasses = c(rep("character", 72)), stringsAsFactors = FALSE) %>% 
@@ -65,8 +67,10 @@ asthma_saba_at_risk <- oregon_df %>%
 head(asthma_saba_at_risk)
 
 # save file
-write_path <- paste0("./data/health/2013-asthma_saba_cohort.csv")
+write_path <- paste0("./data/health/2013-oregon_asthma_cohort.csv")
 write_csv(asthma_saba_at_risk, write_path)
+
+# list files as final check
 list.files("./data/health/")
 
 
