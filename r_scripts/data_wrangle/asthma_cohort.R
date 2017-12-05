@@ -15,21 +15,17 @@ getwd()
 read_path <- paste0("./data/health/oregon_subset.txt")
 # read in with fread
 oregon_df <- data.table::fread(read_path, sep = "|",
-  colClasses = c(rep("character", 72)), stringsAsFactors = FALSE)
+  colClasses = c(rep("character", 72)), stringsAsFactors = FALSE) %>% 
+  # replace *NULL* with NA
+  mutate_all(funs(replace(., .== "*NULL*" | . == "", NA)))
 
 # print first 6 rows as check
 head(oregon_df)
 
-# set *NULL* and blank to NA
-# i may be able to integrate this to the first part
-oregon_df <- oregon_df %>% 
-  # replace *NULL* with NA
-  mutate_all(funs(replace(., .== "*NULL*" | . == "", NA)))
-
 # read in Rdata icd9 outcome vectors and limit to asthma
 load("./data/health/outcome_list.RData")
 # print outcomes list as check
-outcome_list
+class(outcome_icd9_list)
 
 # subset to asthma icd9
 asthma_icd9 <- pluck(outcome_icd9_list, "asthma")
