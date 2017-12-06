@@ -1,0 +1,19 @@
+---
+title: "Asthma Cohort Descriptive Epidemiology"
+author: "Ryan Gan"
+date: "2017-12-06"
+output: html_document
+---
+
+## Overview
+
+Descriptive statistics of the assembled asthma cohort. This cohort is made up of all billing records for procedures or pharamacy fills for anyone in the Oregon APAC data that had been billed for a diagnosis of asthma at any visit in 2013.
+
+```{r setup, echo =F, warning=F, message=F}
+library(tidyverse) # general data wrangle
+library(survival) # conditional logistic regression
+
+# knitr options
+knitr::opts_chunk$set(fig.width=8, fig.height=6, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
