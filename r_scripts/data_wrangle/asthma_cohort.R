@@ -12,7 +12,6 @@ library(parallel)
 library(tidyverse)
 
 # setup ----
-
 # read vector of personkeys with asthma
 vector_path <- paste0("./data/health/2013-oregon_asthma_personkey.csv")
 asthma_personkey <- data.table::fread(vector_path, 
@@ -22,7 +21,9 @@ asthma_personkey_v <- asthma_personkey %>%
   as_vector()
 
 # read path for APAC dataframe
-read_path <- paste0("./data/health/oregon_subset.txt")
+read_path <- paste0("./data/health/gan_episodes_of_care.txt")
+# test path
+#read_path <- paste0("./data/health/oregon_subset.txt")
 
 # read sections dataframe -------
 # there are 77069321 rows (including header) in the Oregon APAC
@@ -30,7 +31,7 @@ read_path <- paste0("./data/health/oregon_subset.txt")
 # with an asthma icd9 code in any of the dx variables
 # define number of lines
 read_length <- 200000
-n_start <- seq(from=1, to=77069321, by = read_length)
+n_start <- seq(from=1, to=77069321, by=read_length)
 
 # test set
 # read_length <- 100
@@ -89,9 +90,4 @@ head(asthma_cohort[,1:10])
 # save as csv ----
 write_path <- paste0("./data/health/2013-oregon_asthma_cohort.csv")
 data.table::fwrite(asthma_cohort, write_path)
-
-
-
-
-
 
