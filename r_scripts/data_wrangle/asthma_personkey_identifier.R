@@ -1,3 +1,9 @@
+# ------------------------------------------------------------------------------
+# Title: Finding unique persons with a diagnosis of asthma in Oregon APAC
+# Author: Ryan Gan
+# Date Created: 2017-12-05
+# R Version: 3.4
+# ------------------------------------------------------------------------------
 
 # load libraries -----
 # parallel pacakges
@@ -7,8 +13,6 @@ library(tidyverse)
 
 # assign read_path for oregon data and load asthma icd9 -----
 read_path <- paste0("./data/health/gan_episodes_of_care.txt")
-# test path
-#read_path <- paste0("./data/health/oregon_subset.txt")
 
 # read in Rdata icd9 outcome vectors and limit to asthma icd9s and saba ndcs
 load("./data/health/outcome_list.RData")
