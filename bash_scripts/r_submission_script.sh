@@ -16,5 +16,5 @@ cd /home/ryangan/local_git_repo/oregon_wildfire/
 export R_LIB=~/R/x86_64-pc-linux-gnu-library/3.3
 
 # run rscript
-Rscript --vanilla ./r_scripts/data_wrangle/asthma_personkey_identifier.R
+Rscript --vanilla ./r_scripts/data_wrangle/asthma_cohort.R
 
