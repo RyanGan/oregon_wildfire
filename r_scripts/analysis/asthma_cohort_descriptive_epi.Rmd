@@ -11,9 +11,45 @@ Descriptive statistics of the assembled asthma cohort. This cohort is made up of
 
 ```{r setup, echo =F, warning=F, message=F}
 library(tidyverse) # general data wrangle
-library(survival) # conditional logistic regression
+
+# load outcomes vectors
+load("./data/health/outcome_list.RData")
+# subset asthma and saba vector
+asthma_icd9 <- pluck(outcome_icd9_list, "asthma")
+saba_ndc <- pluck(outcome_icd9_list, "saba")
 
 # knitr options
 knitr::opts_chunk$set(fig.width=8, fig.height=6, fig.path='Figs/',
                       echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+Read cohort dataset (reading in a small chunk for now.)
+
+```{r cohort_import}
+# read path
+read_path <- "./data/health/2013-oregon_asthma_cohort.csv"
+# read in asthma cohort (reading a million rows for now)
+asthma_cohort <- data.table::fread(read_path, 
+  # read options
+  header = T, nrows = 10000, colClasses = rep("character", 72)) %>% 
+  # replace *NULL* with NA
+  mutate_all(funs(replace(., .== "*NULL*" | . == "", NA))) %>% 
+  # create visit type indicator 
+  mutate(visit_type = as.factor(
+    case_when((dx1 %in% asthma_icd9) ~ "dx_asthma_primary",
+    # asthma but not as a primary
+    !(dx1 %in% asthma_icd9) & (dx2 %in% asthma_icd9 | dx3 %in% asthma_icd9 | 
+      dx4 %in% asthma_icd9 | dx5 %in% asthma_icd9 | dx6 %in% asthma_icd9 | 
+      dx7 %in% asthma_icd9 | dx8 %in% asthma_icd9 | dx9 %in% asthma_icd9 | 
+      dx10 %in% asthma_icd9 | dx11 %in% asthma_icd9 | dx12 %in% asthma_icd9 | 
+      dx13 %in% asthma_icd9) ~ "dx_asthma_not_primary",
+    # other dx 
+    !(dx1 %in% asthma_icd9 | dx2 %in% asthma_icd9 | dx3 %in% asthma_icd9 | 
+      dx4 %in% asthma_icd9 | dx5 %in% asthma_icd9 | dx6 %in% asthma_icd9 | 
+      dx7 %in% asthma_icd9 | dx8 %in% asthma_icd9 | dx9 %in% asthma_icd9 | 
+      dx10 %in% asthma_icd9 | dx11 %in% asthma_icd9 | dx12 %in% asthma_icd9 | 
+      dx13 %in% asthma_icd9) & is.na(ndc) ~ "dx_other",
+    # ndc code
+    (ndc %in% saba_ndc) ~ "pharm_saba",
+    !is.na(ndc) & !(ndc %in% saba_ndc) ~ "pharm_other")))
 ```
