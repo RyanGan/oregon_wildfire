@@ -35,6 +35,8 @@ read_path <- "./data/health/2013-oregon_asthma_cohort.csv"
 asthma_cohort <- data.table::fread(read_path, 
   # read options
   header = T, nrows = 10000, colClasses = rep("character", 72)) %>% 
+  # filter to oregon
+  filter(STATE == "OR") %>% 
   # replace *NULL* with NA
   mutate_all(funs(replace(., .== "*NULL*" | . == "", NA))) %>% 
   # create visit type indicator 
@@ -126,7 +128,6 @@ plot <- ggplot(pos_visit_type, aes(x=pos_simple, y=percent)) +
 
 plot
 ```
-
 
 #### Distribution of Dates 
 
