@@ -97,7 +97,11 @@ asthma_cohort <- data.table::fread(read_path,
     pos == "41" | pos == "42" ~ "Ambulance",
     pos == "71" | pos == "72" ~ "Public Health Clinic",
     pos == "49" ~ "Independent Clinic", 
-    TRUE ~ "Other")))
+    TRUE ~ "Other"))) %>% 
+  # filter todate to 2013 to avoid some weird issues with dates
+  filter(todate >= "2013-01-01" & todate <= "2013-12-31")
+
+
 ```
 
 ### Observation Types
