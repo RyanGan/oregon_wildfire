@@ -57,11 +57,17 @@ asthma_cohort <- data.table::fread(read_path,
       dx13 %in% asthma_icd9) & is.na(ndc) ~ "dx_other",
     # ndc code
     (ndc %in% saba_ndc) ~ "pharm_saba",
-    !is.na(ndc) & !(ndc %in% saba_ndc) ~ "pharm_other"))) %>% 
-  # convert date variables to dates
-  mutate_at(vars(contains("date")), funs(as.Date(.,format="%Y-%m-%d"))) %>%
-  # adding and converting some variables
-  mutate(los = as.numeric(los),
+    !is.na(ndc) & !(ndc %in% saba_ndc) ~ "pharm_other")),
+    # adding names of metro area
+    metroarea = case_when(
+      MSA == 13460 ~ "Bend-Redmond",
+      MSA == 18700 ~ "Corvallis",
+      MSA == 21660 ~ "Eugene-Springfield",
+      MSA == 32780 ~ "Medford",
+      MSA == 38900 ~ "Portland-Vancouver-Beaverton",
+      MSA == 41420 ~ "Salem",
+      MSA == 41999 ~ "Not in MSA"),
+    los = as.numeric(los),
          # create age variable
          age = 2013 - as.numeric(yob),
          # code in race text to numeric race
@@ -76,6 +82,8 @@ asthma_cohort <- data.table::fread(read_path,
          ethnicity = case_when(ethn == "1" ~ "Hispanic",
                                ethn == "2" ~ "Not Hispanic",
                                ethn == "3" ~ "Unknown")) %>% 
+  # convert date variables to dates
+  mutate_at(vars(contains("date")), funs(as.Date(.,format="%Y-%m-%d"))) %>%
   # join in place of service text
   left_join(place_of_service, by = "pos") %>% 
   # simpler place of service grouping
@@ -259,6 +267,14 @@ Ethnicity n and percentage. Same deal. A lot of persons did not report ethnicity
 ```{r ethn_stat}
 xtabs(~ethnicity, asthma_demographic)
 round(prop.table(xtabs(~ethnicity, asthma_demographic)),3)*100
+```
+
+#### Metropolitan Statistical Area
+
+MSA n and percentage.
+```{r msa}
+xtabs(~metroarea, asthma_demographic)
+round(prop.table(xtabs(~metroarea, asthma_demographic)),3)*100
 ```
 
 ### Conclusions
