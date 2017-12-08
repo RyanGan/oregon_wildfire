@@ -14,16 +14,16 @@ library(tidyverse)
 
 # read asthma cohort dataset and affiliated files ------
 # read path
-read_path <- "../../data/health/2013-oregon_asthma_cohort.csv"
+read_path <- "./data/health/2013-oregon_asthma_cohort.csv"
 
 # load outcomes vectors
-load("../../data/health/outcome_list.RData")
+load("./data/health/outcome_list.RData")
 # subset asthma and saba vector
 asthma_icd9 <- pluck(outcome_icd9_list, "asthma")
 saba_ndc <- pluck(outcome_icd9_list, "saba")
 
 # read in place of service csv file
-place_of_service <- read_csv("../../data/health/2013-oregon_pos.csv")
+place_of_service <- read_csv("./data/health/2013-oregon_pos.csv")
 
 # read in asthma cohort (reading a million rows for now)
 asthma_fire_season_cohort <- data.table::fread(read_path, 
