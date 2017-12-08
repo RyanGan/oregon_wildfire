@@ -13,13 +13,13 @@ Descriptive statistics of the assembled asthma cohort. This cohort is made up of
 library(tidyverse) # general data wrangle
 
 # load outcomes vectors
-load("./data/health/outcome_list.RData")
+load("../../data/health/outcome_list.RData")
 # subset asthma and saba vector
 asthma_icd9 <- pluck(outcome_icd9_list, "asthma")
 saba_ndc <- pluck(outcome_icd9_list, "saba")
 
 # read in place of service csv file
-place_of_service <- read_csv("./data/health/2013-oregon_pos.csv")
+place_of_service <- read_csv("../../data/health/2013-oregon_pos.csv")
 
 # knitr options
 knitr::opts_chunk$set(fig.width=8, fig.height=6, fig.path='Figs/',
@@ -30,11 +30,12 @@ Read cohort dataset (reading in a small chunk for now.)
 
 ```{r cohort_import}
 # read path
-read_path <- "./data/health/2013-oregon_asthma_cohort.csv"
+read_path <- "../../data/health/2013-oregon_asthma_cohort.csv"
 # read in asthma cohort (reading a million rows for now)
 asthma_cohort <- data.table::fread(read_path, 
   # read options
-  header = T, nrows = 10000, colClasses = rep("character", 72)) %>% 
+  header = T, #nrows = 10000, # removing nrows read 
+  colClasses = rep("character", 72)) %>% 
   # filter to oregon
   filter(STATE == "OR") %>% 
   # replace *NULL* with NA
@@ -58,8 +59,23 @@ asthma_cohort <- data.table::fread(read_path,
     (ndc %in% saba_ndc) ~ "pharm_saba",
     !is.na(ndc) & !(ndc %in% saba_ndc) ~ "pharm_other"))) %>% 
   # convert date variables to dates
-  mutate_at(vars(contains("date")), funs(as.Date(.,format="%Y-%m-%d"))) %>% 
-  mutate(los = as.numeric(los)) %>% 
+  mutate_at(vars(contains("date")), funs(as.Date(.,format="%Y-%m-%d"))) %>%
+  # adding and converting some variables
+  mutate(los = as.numeric(los),
+         # create age variable
+         age = 2013 - as.numeric(yob),
+         # code in race text to numeric race
+         race_factor = case_when(race == 1 ~ "White",
+                                 race == 2 ~ "Black",
+                                 race == 3 ~ "American Indian",
+                                 race == 4 ~ "Asian",
+                                 race == 5 ~ "Pacific Islander",
+                                 race == 6 ~ "Other", 
+                                 race == 7 ~ "Two or more",
+                                 race == 9 ~ "Unknown"),
+         ethnicity = case_when(ethn == "1" ~ "Hispanic",
+                               ethn == "2" ~ "Not Hispanic",
+                               ethn == "3" ~ "Unknown")) %>% 
   # join in place of service text
   left_join(place_of_service, by = "pos") %>% 
   # simpler place of service grouping
@@ -191,6 +207,67 @@ plot <- ggplot(person_obs, aes(x=n_obs)) +
 plot
 ```
 
-I think the observations that are dx_other or pharm_other make the dataset too large and for the analyses I'm considering, may have no practical value. But they are probably worth retaining for now. 
+#### Age Distribution
 
+To understand the distribution of demographic factors, I'm going to subset the first (by date) diagnosis of asthma visit observed to look at age, gender, and race/ethnicity distributions. When you subset out the NDC and other diagnoses types, the cohort is reduced drastically. I believe this would be fine and actually create a more well-defined cohort if it's subsetted to just asthma.
+
+Here is a count of number of persons with either a primary or other diagnosis of asthma in the cohort dataset. 
+```{r age_n}
+asthma_demographic <- asthma_cohort %>% 
+  filter(visit_type == "dx_asthma_primary" | 
+         visit_type == "dx_asthma_not_primary") %>% 
+  group_by(personkey) %>% 
+  arrange(todate) %>% 
+  filter(row_number()==1)
+
+nrow(asthma_demographic)
+```
+
+Summary statistics of age in persons with a medical visit related to asthma.
+```{r age_sum}
+summary(asthma_demographic$age)
+```
+
+Age distribution plot in persons with a medical visit related to asthma..
+```{r age_dist}
+# asthma age distribution plot
+plot <- ggplot(asthma_demographic, aes(x=age)) +
+  geom_density(color = "#19547b") +
+  theme_minimal()
+plot
+```
+
+#### Gender Distribution
+
+Gender n and percentage.
+```{r gender_stat}
+# count
+xtabs(~gender, asthma_demographic) 
+# percentage
+round(prop.table(xtabs(~gender, asthma_demographic)),3)*100
+```
+
+#### Race/Ethnicity Distribution
+
+Race n and percentage. A lot of persons did not report race.
+```{r race_stat}
+xtabs(~race_factor, asthma_demographic)
+round(prop.table(xtabs(~race_factor, asthma_demographic)),3)*100
+```
+
+Ethnicity n and percentage. Same deal. A lot of persons did not report ethnicity.
+```{r ethn_stat}
+xtabs(~ethnicity, asthma_demographic)
+round(prop.table(xtabs(~ethnicity, asthma_demographic)),3)*100
+```
+
+### Conclusions
+
+Overall, I think this cohort approach could work.I think the observations that are dx_other or pharm_other make the dataset too large, and may have no practical value for the analyses I'm considering. But they are probably worth retaining for now. 
+
+Some ideas are we could further limit the study population to those with at least 2 visits of asthma to further increase our specificity that a person has asthma. We could then look at the range of severity of outcomes in these people, where the most severe would be an inpatient hospital stay for a primary diagnosis of asthma. Second-most severe could be an ER/urgent care admission or ambulance visit. Least-severe could be a SABA fill in a cohort time-to-event manner. I was thinking we could start time at either the start of the wildfire period or July, and could include people who have asthma dx for some time that year, but have been without a medical bill for at least a month prior to start of study date.
+
+For this cohort approach, I'd like to try out VanderWeele's E-value measure, which estimates the impact unmeasured confounders would have to have to explain the association. 
+
+We could also look at time-series and case-cross over study designs too like Sheryl suggested. I think this is a good idea too, and hopefully these results would agree with our general hypotheses that smoke is bad.
 

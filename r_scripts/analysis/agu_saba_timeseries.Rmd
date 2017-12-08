@@ -35,6 +35,7 @@ saba_ts <- saba %>%
     MSA == 38900 ~ "Portland-Vancouver-Beaverton",
     MSA == 41420 ~ "Salem",
     MSA == 41999 ~ "Not in MSA"),
+    date = as.Date(date, format = "Y%-%m-%d"),
     day = weekdays(date),
     weekend = ifelse(day %in% c("Saturday", "Sunday"), "Weekend", "Weekday"),
     week_n = lubridate::floor_date(date, unit = "week")) 
@@ -136,7 +137,7 @@ z_plot <-ggplot(medford_ts,
   aes(x=date, y=saba_z, group=weekend, color=weekend)) +
   geom_point() +
   geom_hline(yintercept=0, color="red") +
-  scale_color_manual(name = "Days of Week", values = c("#ec38bc", "#7303c0")) +
+  scale_color_manual(name = "Days of Week", values=c("#ec38bc", "#7303c0")) +
   geom_vline(xintercept = as.numeric(as.Date(c("2013-07-26", "2013-09-03"), 
       "%Y-%m-%d")),
     linetype=3, color = "#191654") +
@@ -156,18 +157,22 @@ I'm truncating to July to October.
 
 ```{r trunc saba ts}
 jul_oct_medford <- medford_ts %>% 
-  filter(date >= "2013-07-01" & date <= "2013-10-01")
+  filter(date >= "2013-07-01" & date <= "2013-10-01") %>% 
+  # removing weekend group
+  filter(weekend == "Weekday")
 
 jul_oct_central_vals <- medford_ts %>% 
   group_by(weekend) %>% 
-  summarise(saba_med = median(saba_n))
+  summarise(saba_med = median(saba_n)) %>% 
+  # removing weekend group
+  filter(weekend == "Weekday")
 
 # medford time series
-saba_plot <- ggplot(jul_oct_medford, 
-  aes(x=date, y=saba_n, group=weekend, color=weekend)) +
-  geom_point() +
-  #geom_hline(data=jul_oct_central_vals , aes(yintercept=saba_med, color=weekend)) +
-  scale_color_manual(name = "Days of Week", values = c("#ec38bc", "#7303c0")) +
+saba_plot <- ggplot(jul_oct_medford, aes(x=date, y=saba_n)) +
+  geom_point(color="#7303c0") +
+  #geom_hline(data=jul_oct_central_vals,
+    #aes(yintercept=saba_med, color=weekend)) +
+  #scale_color_manual(name="Days of Week", values=c("#ec38bc", "#7303c0")) +
   geom_vline(xintercept = as.numeric(as.Date(c("2013-07-26", "2013-09-03"), 
       "%Y-%m-%d")),
     linetype=3, color = "#191654") +
