@@ -23,12 +23,12 @@ asthma_icd9 <- pluck(outcome_icd9_list, "asthma")
 saba_ndc <- pluck(outcome_icd9_list, "saba")
 
 # read in place of service csv file
-place_of_service <- read_csv("./data/health/2013-oregon_pos.csv")
+place_of_service <- read_csv("../../data/health/2013-oregon_pos.csv")
 
 # read in asthma cohort (reading a million rows for now)
-asthma_cohort <- data.table::fread(read_path, 
+asthma_fire_season_cohort <- data.table::fread(read_path, 
   # read options
-  header = T, nrows = 100000, # removing nrows read 
+  header = T, #nrows = 100000, # removing nrows read after testing
   colClasses = rep("character", 72)) %>% 
   # filter to oregon
   filter(STATE == "OR") %>% 
@@ -97,14 +97,20 @@ asthma_cohort <- data.table::fread(read_path,
   # filter to asthma or saba observations
   filter(visit_type == "dx_asthma_primary" | 
          visit_type == "dx_asthma_not_primary" |
-         visit_type == "pharm_saba") %>% 
-  # coding outcomes classified
-  mutate(outcome_class = as.factor(case_when(
-    visit_type == "dx_asthma_primary" & pos == 23 ~ "asthma_emergency",
-    visit_type == "dx_asthma_primary" & pos == 20 ~ "asthma_urgentcare",
-    visit_type == "dx_asthma_primary" & pos == 21 ~ "asthma_inpatient",
-    visit_type == "dx_asthma_primary" & pos == 41 ~ "asthma_ambulance",
-    visit_type == "pharm_saba" ~ "inhaler_fill")))
+         visit_type == "pharm_saba") 
 
-summary(asthma_cohort$outcome_class)
-summary(asthma_cohort$pos_simple)
+# write csv ----
+write_path <- paste0("./data/health/2013-oregon_asthma_fireseason_cohort.csv")
+data.table::fwrite(asthma_fire_season_cohort, write_path)
+
+
+# saving this code for prep in analysis script
+  # # coding outcomes classified
+  # mutate(outcome_class = as.factor(case_when(
+  #   visit_type == "dx_asthma_primary" & pos == 23 ~ "asthma_emergency",
+  #   visit_type == "dx_asthma_primary" & pos == 20 ~ "asthma_urgentcare",
+  #   visit_type == "dx_asthma_primary" & pos == 21 ~ "asthma_inpatient",
+  #   visit_type == "dx_asthma_primary" & pos == 41 ~ "asthma_ambulance",
+  #   visit_type == "pharm_saba" ~ "inhaler_fill")))
+
+
