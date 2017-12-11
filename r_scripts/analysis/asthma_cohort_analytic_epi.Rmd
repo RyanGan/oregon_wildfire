@@ -1,0 +1,172 @@
+---
+title: "Asthma Cohort Analytic Epidemiology"
+author: "Ryan Gan"
+date: "12/11/2017"
+output: html_document
+---
+
+### Document Purpose
+
+Descriptive statistics of the assembled asthma cohort. This cohort is made up of all billing records for procedures or pharamacy fills related to cariopulmonary outcomes for anyone in the Oregon APAC data that had been billed for a diagnosis of asthma at any visit in 2013. I have limited the dataframe further to include only asthma related diagnoses claims or SABA fills between May 1, 2013 to September 30, 2013.
+
+```{r setup, echo =F, warning=F, message=F}
+library(tidyverse) # general data wrangle
+
+# load outcomes vectors
+load("./data/health/outcome_list.RData")
+# subset asthma and saba vector
+asthma_icd9 <- pluck(outcome_icd9_list, "asthma")
+saba_ndc <- pluck(outcome_icd9_list, "saba")
+
+# knitr options
+knitr::opts_chunk$set(fig.width=8, fig.height=6, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+Read in PM~2.5~ data and create binary smoke variables.
+
+Binary smoke variables are based on the following criteria:
+- Geoweighted smoke is the ZIPCODE population-weighted geoweighted ridge-regression estimate of PM~2.5~, subtracting off the background PM ~2.5~ value (period median without smoke in the column). 
+- Smoke0 through Smoke15 indicators are simply a cutoff value of geo_smoke above 0, 5, 10, and 15 ug/m^3. 
+- Smoke Wave indicators are based on Coco Liu's smoke wave, where I've sent the indicator as two days where population-weighted ZIPCODE PM~2.5~ estimated via geoweighted ridge-regression is above the 98th percentile for Oregon over this period (which is roughly 15 ug/m^3).
+
+I just noticed I haves some negative values in the GWR and Krig values, which cannot happen. Need to check in to this. For now, setting values below 0 to 1. It could have happened during the population-weighting.
+
+```{r pm_import}
+# read in pm2.5 data
+pm_path <- "./data/pm/2013-oregon_zip_pm25.csv"
+pm <- read_csv(pm_path) %>% 
+  mutate(ZIPCODE = as.character(ZIPCODE),
+    geo_wt_pm = ifelse(geo_wt_pm < 0, 1, geo_wt_pm),
+  # creating binary smoke indicators 
+    smoke0 = ifelse(geo_smk_pm > 0, 1, 0),
+    smoke5 = ifelse(geo_smk_pm > 5, 1, 0),
+    smoke10 = ifelse(geo_smk_pm > 10, 1, 0),
+    smoke15 = ifelse(geo_smk_pm > 15, 1, 0)) %>% 
+  # create smoke wave (98%tile for 2 days) 
+  group_by(ZIPCODE) %>% 
+  arrange(ZIPCODE, date) %>% 
+  # 98% is 15 in Oregon
+  mutate(high_pm_day = ifelse(geo_wt_pm >= 15, 1, 0),
+    smoke_wave = ifelse(lag(high_pm_day, oreder_by = ZIPCODE)==1 & 
+                        high_pm_day==1, 1, 0))
+```
+
+Read in asthma cohort data and join to PM~2.5~ data.
+
+```{r cohort_import}
+# read path
+read_path <- "./data/health/2013-oregon_asthma_fireseason_cohort.csv"
+# read in asthma cohort (reading a million rows for now)
+asthma_cohort <- read_csv(read_path, col_types = cols(.default = "c")) %>% 
+  mutate(date = as.Date(todate, format = "%Y-%m-%d")) %>% 
+  rename(ZIPCODE = ZIP) %>% 
+  left_join(pm, by = c("ZIPCODE", "date"))
+```
+
+### Smoke Distributions
+
+Before I look at associations between smoke PM~2.5~ and outcomes in persons with asthma, I want to understand our PM~2.5~ data.
+
+First thing I want to do is look at the distribution of geoweighted PM~2.5~ by the various smoke indicators. I've log-transformed PM~2.5~ values to fit a log-normal distribution.
+
+#### Plot: GWR PM by smoke classifier distribution
+```{r pm_distribution}
+# small multiples dataframe
+geo_smoke_pm <- pm %>% 
+  select(date, ZIPCODE, geo_wt_pm, smoke0, 
+         smoke5, smoke10, smoke15, smoke_wave) %>% 
+  gather("smoke_classifier", "smoke", smoke0:smoke_wave) %>% 
+  mutate(smoke = as.factor(smoke),
+    smoke_classifier = parse_factor(smoke_classifier, 
+      levels = c("smoke0", "smoke5", "smoke10", "smoke15", "smoke_wave")))
+
+# plot
+ggplot(geo_smoke_pm, aes(x=log(geo_wt_pm), group=smoke, fill=smoke)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~smoke_classifier) +
+  theme_minimal()
+```
+
+It would be great to check these classifiers with areas we know were impacted by smoke to see how accurate each classifier is, but I think it would be fair to say that smoke10, smoke15, and smoke_wave all likely distinguish smoke events with relatively high sensitivity. There could be a whole paper on accuracy of these binary classifiers I think. I have thoughts on how to do this.
+
+### Cross-Sectional Comparison of PM2.5
+
+Before any advanced analyses, I'll take a look at the cross-sectional relationship between PM~2.5~ and potential outcomes.
+
+#### Plot: GWR PM by smoke > 10 ug/m^3 by place of service for asthma as a primary diagnosis
+```{r dist_pos}
+# subset to asthma dx primary
+asthma_primary <- asthma_cohort %>% 
+  # filter to asthma primary and not in a pharmacy
+  filter(visit_type == "dx_asthma_primary" & 
+        !is.na(geo_wt_pm) & pos_simple != "Pharmacy")
+
+# ggplot
+ggplot(asthma_primary, aes(x=log(geo_wt_pm), group=as.factor(smoke10), 
+    fill=as.factor(smoke10))) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~pos_simple) +
+  theme_minimal()
+```
+
+There may be some difference in distributions depending on visit type. For example, ER visit or inpatient hospital visits. 
+
+#### Plot: GWR PM by smoke > 10 ug/m^3 by SABA (all SABA fills are at the pharmacy)
+```{r dist_saba}
+# subset to asthma dx primary
+saba <- asthma_cohort %>% 
+  # filter to asthma primary and not in a pharmacy
+  filter(visit_type == "pharm_saba")
+
+# ggplot
+ggplot(saba, aes(x=log(geo_wt_pm), group=as.factor(smoke10), 
+    fill=as.factor(smoke10))) +
+  geom_density(alpha = 0.5) +
+  theme_minimal()
+```
+
+SABA fills may have different distributions of PM~2.5~ as well. 
+
+```{r saba_pm, eval=F}
+saba_bin <- saba %>% 
+  mutate(bin = cut(geo_wt_pm, breaks = seq(0,220, by = 10)),
+    geo_bin = as.numeric(stringr::str_sub(
+      stringr::str_extract(bin, "[^,]*"), start = 2L))) %>% 
+  group_by(geo_bin) %>% 
+  summarise(n=n()) %>% 
+  mutate(p = n/nrow(saba)) %>% 
+  filter(geo_bin > 10)
+
+
+ggplot(data=saba_bin, aes(x=geo_bin, y=p)) +
+  geom_point()
+# this wasn't a helpful figure (and took too much time)
+```
+
+
+### Time-Stratified Case-Crossover
+
+```{r general tscc function}
+ed_cases <- asthma_cohort %>% 
+  # filter to asthma primary and not in a pharmacy
+  filter(visit_type == "dx_asthma_primary" & pos == "23") %>% 
+  # filter to one observation per person (first obs)
+  arrange(personkey, date) %>% 
+  group_by(personkey) %>% 
+  filter(row_number()==1)
+
+
+# time stratified function; sets up referent observations
+ts_casecross <- function(data, start_date, end_date, id, 
+                         admit_date, interval){
+ data <- ed_cases 
+ sym
+ # extract id and admit date
+ if(id == T){
+   
+ }
+
+}
+
+```
