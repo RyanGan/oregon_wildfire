@@ -158,71 +158,43 @@ ed_cases <- asthma_cohort %>%
 
 
 # time stratified function; sets up referent observations
-casecross <- function(data, id, admit_date, start_date, end_date, interval){
+time.stratified <- function(data, id, covariate=F, admit_date, 
+                            start_date, end_date, interval){
   # if id value is given
   if(is.character(id)){
     # vector of ids
   id_vec <- data[,id]
-
     } else { # else if no value provided, create an id variable
       id_vec <- seq(1, nrow(data), by=1)
   }
   # vector of admit dates joined to the id vector
   admit_date <- data[,admit_date]
-  id_date <- cbind(id_vec, admit_date)
+  id_date <- data.frame(id_vec, admit_date)
   
   # create list of vectors of referent dates and admission date
   referent_date_list <- apply(id_date, 1, function(x){
     date_prior <- as.character(seq(as.Date(x[2]), as.Date(start_date), by = (-interval)))
     date_posterior <- as.character(seq(as.Date(x[2]), as.Date(end_date), by = (interval)))
-    date_ref <- sort(unique(c(date_prior, date_posterior)))
-    id_rep <- rep(x[1], length(date_ref))
-    id_date_vec <- cbind(id_rep, date_ref)
+    date <- sort(unique(c(date_prior, date_posterior)))
+    identifier <- rep(x[1], length(date))
     # outcome
-    data_list$outcome <- data_list[data_list$date_vec]
+    outcome <- ifelse(date %in% x[2], 1, 0)
+    id_date_vec <- cbind(identifier, date, outcome)
     return(id_date_vec)
   }) # end apply
     # timestrat dataframe
-  ts_data <- do.call(rbind, referent_date_list)
-  
-  # stuff below still needs to be figured out.
-  
- 
-  
-
-  names(referent_date_list) <- id_vec
-  head(referent_date_list)
-  test_list <- referent_date_list[1]
-
-  casecross_data <- sapply(test_list, function(x){
-    id_vec <- rep(names(x), lengths(x))
-    date_vec <- unlist(x)
-    cc_data <- cbind(id_vec, date_vec)
-    return(cc_data)
-  })
-  
-  do.call
-  rep(names(test_list), lengths(test_list))
+    ts_data <- do.call(rbind, referent_date_list)
+    rownames(ts_data) <- NULL
+    ts_data <- as.data.frame(ts_data)
+    # if covariates provided, join to the dataframe
+    if(is.character(covariate)){
+      cov_data <- data[,c(id,covariate)]
+      ts_data <- merge(ts_data, cov_data, by.x = "identifier", by.y = id[])
+    }
+  # return dataframe
+  return(ts_data) 
 }
 
-lengths(test_list)
 
-expand.grid(height = seq(60, 80, 5), weight = seq(100, 300, 50),
-            sex = c("Male","Female"))
-
-
-
-
-test <- casecross(data = test_ed, id="personkey", admit_date = "todate", 
-                  start_date = "2013-05-01", end_date = "2013-10-1", interval = 7)
-
-
-
-
-
-
-  
-  date_prior
-  date_posterior
 
 ```
