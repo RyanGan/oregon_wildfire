@@ -11,9 +11,10 @@ Descriptive statistics of the assembled asthma cohort. This cohort is made up of
 
 ```{r setup, echo =F, warning=F, message=F}
 library(tidyverse) # general data wrangle
+library(survival)
 
 # load outcomes vectors
-load("./data/health/outcome_list.RData")
+load("../../data/health/outcome_list.RData")
 # subset asthma and saba vector
 asthma_icd9 <- pluck(outcome_icd9_list, "asthma")
 saba_ndc <- pluck(outcome_icd9_list, "saba")
@@ -34,7 +35,7 @@ I just noticed I haves some negative values in the GWR and Krig values, which ca
 
 ```{r pm_import}
 # read in pm2.5 data
-pm_path <- "./data/pm/2013-oregon_zip_pm25.csv"
+pm_path <- "../../data/pm/2013-oregon_zip_pm25.csv"
 pm <- read_csv(pm_path) %>% 
   mutate(ZIPCODE = as.character(ZIPCODE),
     geo_wt_pm = ifelse(geo_wt_pm < 0, 1, geo_wt_pm),
@@ -56,10 +57,13 @@ Read in asthma cohort data and join to PM~2.5~ data.
 
 ```{r cohort_import}
 # read path
-read_path <- "./data/health/2013-oregon_asthma_fireseason_cohort.csv"
+read_path <- "../../data/health/2013-oregon_asthma_fireseason_cohort.csv"
 # read in asthma cohort (reading a million rows for now)
 asthma_cohort <- read_csv(read_path, col_types = cols(.default = "c")) %>% 
-  mutate(date = as.Date(todate, format = "%Y-%m-%d")) %>% 
+  mutate(date = as.Date(todate, format = "%Y-%m-%d"),
+         age_cat = case_when(age < 15 ~ "age_15_under",
+                             age >= 15 & age < 65 ~ "age_15to65",
+                             age >= 65 ~ "age_65_over")) %>% 
   rename(ZIPCODE = ZIP) %>% 
   left_join(pm, by = c("ZIPCODE", "date"))
 ```
@@ -147,16 +151,10 @@ ggplot(data=saba_bin, aes(x=geo_bin, y=p)) +
 
 ### Time-Stratified Case-Crossover
 
-```{r general tscc function}
-ed_cases <- asthma_cohort %>% 
-  # filter to asthma primary and not in a pharmacy
-  filter(visit_type == "dx_asthma_primary" & pos == "23") %>% 
-  # filter to one observation per person (first obs)
-  arrange(personkey, date) %>% 
-  group_by(personkey) %>% 
-  filter(row_number()==1)
-
-
+```{r general functions}
+# function (add to custom package) ----
+# built this package without using dplyr, considering turning this in to a 
+# real r package
 # time stratified function; sets up referent observations
 time.stratified <- function(data, id, covariate=F, admit_date, 
                             start_date, end_date, interval){
@@ -173,8 +171,10 @@ time.stratified <- function(data, id, covariate=F, admit_date,
   
   # create list of vectors of referent dates and admission date
   referent_date_list <- apply(id_date, 1, function(x){
-    date_prior <- as.character(seq(as.Date(x[2]), as.Date(start_date), by = (-interval)))
-    date_posterior <- as.character(seq(as.Date(x[2]), as.Date(end_date), by = (interval)))
+    date_prior <- as.character(seq(as.Date(x[2]),as.Date(start_date),
+                                   by = (-interval)))
+    date_posterior <- as.character(seq(as.Date(x[2]),as.Date(end_date),
+                                       by = (interval)))
     date <- sort(unique(c(date_prior, date_posterior)))
     identifier <- rep(x[1], length(date))
     # outcome
@@ -195,6 +195,131 @@ time.stratified <- function(data, id, covariate=F, admit_date,
   return(ts_data) 
 }
 
-
-
+# same day association function
+same_day_fun <- function(data){
+    # fit conditional logistic regression model ----
+  mod <- clogit(outcome ~ geo_smk_pm + wrf_temp + strata(identifier),
+    data = data)
+  # n events
+  n <- mod$nevent
+  # odds ratio
+  estimates <- round(exp(summary(mod)$coefficient[1,1]), 3) 
+  # 95% lower bound
+  lower95 <- round(exp((summary(mod)$coefficient[1,1]) -
+    1.96*(summary(mod)$coefficient[1,3])), 3)
+  # 95% upper bound
+  upper95 <- round(exp((summary(mod)$coefficient[1,1]) +
+    1.96*(summary(mod)$coefficient[1,3])), 3)
+  
+  return_estimate <- data_frame(n,estimates, lower95, upper95) 
+  return(return_estimate) 
+} 
 ```
+
+#### Asthma Primary Medical Claims by Place of Service
+
+Same-day associations with asthma place of service outcomes. 
+
+```{r medical_outcome}
+outcome_names <- c("Ambulance", "Emergency Room Hospital",
+                           "Inpatient Hospital", "Urgent Care")
+
+asthma_ts_list <- asthma_primary %>% 
+  filter(pos_simple %in% c("Ambulance", "Emergency Room Hospital",
+                           "Inpatient Hospital", "Urgent Care")) %>% 
+  # split to seperate dataframes
+  split(.$pos_simple) %>% 
+  # filter to one observation per person (first obs)
+  map(function(x) {
+    arrange(x, personkey, date) %>% 
+    group_by(personkey) %>% 
+    # filter to first observation
+    filter(row_number()==1)}) %>% 
+  # create time stratified dataframes  
+  map(~time.stratified(data=.x, id = "personkey", 
+    covariate = c("ZIPCODE", "age_cat", "age", "gender"), 
+    admit_date = "todate", start_date = "2013-05-01", end_date = "2013-09-30",
+    interval = 7) %>% 
+    # convert date to date format
+    mutate(date = as.Date(date),
+         outcome = as.numeric(outcome)-1) %>% 
+    left_join(pm, by = c("ZIPCODE", "date")) %>% 
+    # limit to subjects assigned a smoke value
+    filter(!is.na(geo_wt_pm)) %>% 
+    mutate_at(vars(contains("pm")), funs(./10)))
+
+# apply clogit model
+sameday_results <- asthma_ts_list %>% 
+  map_dfr(~same_day_fun(.)) %>% 
+  bind_cols(., data_frame(outcome_names)) %>% 
+  select(outcome_names, n, estimates, lower95, upper95) %>% 
+  # preserve order of names
+  mutate(outcome_names = parse_factor(outcome_names, levels=outcome_names)) %>%
+  rename(odds_ratio = estimates)
+
+knitr::kable(sameday_results, 
+  caption="Same day association for 10ug/m^3 increase in smoke PM2.5")
+```
+
+#### SABA Fills
+
+SABA fills are a little more complicated as there are a lot more of them, which gives the clogit model some problems. Jingyang had a stack-overflow on the server when trying to run over the same period as the medical outcomes (May to end of September), and I stopped the task since it was clear it would be very slow. This is likely probably how the variance is calculated in clogit. There may be a matrix inversion or something somewhere that makes this an issue.
+
+I think an easy solution is to limit the study period for SABA fills to a shorter period (since we have the sample size) to 2013-07-20 to 2013-08-10, and then to further reduce to just the first fill observation per person during this time period as well. Below I've run two scenarios: each fill by a person in the time period is used, only the first fill during this period is used. In both cases, I consider the person as the strata, so scenario 1 will have multiple observations per person and there could be a case where someone's observed fill date was overwritten by my time-stratified function. The solution to this would be to stratify on each unique fill. I will need to think about this more.
+
+```{r saba_fills}
+# limited period but all obs in that period
+saba_lim_ts <- saba %>% 
+  filter(todate >= "2013-07-20" & todate <= "2013-08-10") %>% 
+  time.stratified(data = ., id="personkey", 
+    covariate = c("ZIPCODE", "age_cat", "age", "gender"), 
+    admit_date = "todate", start_date = "2013-07-20", end_date = "2013-08-10",
+    interval = 7) %>% 
+     mutate(date = as.Date(date),
+         outcome = as.numeric(outcome)-1) %>% 
+    left_join(pm, by = c("ZIPCODE", "date")) %>% 
+    # limit to subjects assigned a smoke value
+    filter(!is.na(geo_wt_pm)) %>% 
+    mutate_at(vars(contains("pm")), funs(./10))
+
+
+# first fill from may to september
+saba_first_fill_ts <- saba %>% 
+    filter(todate >= "2013-07-20" & todate <= "2013-08-10") %>% 
+    arrange(personkey, date) %>% 
+    group_by(personkey) %>% 
+    # filter to first observation
+    filter(row_number()==1) %>%
+  time.stratified(data = ., id="personkey", 
+    covariate = c("ZIPCODE", "age_cat", "age", "gender"), 
+    admit_date = "todate", start_date = "2013-07-20", end_date = "2013-08-10",
+    interval = 7) %>% 
+     mutate(date = as.Date(date),
+         outcome = as.numeric(outcome)-1) %>% 
+    left_join(pm, by = c("ZIPCODE", "date")) %>% 
+    # limit to subjects assigned a smoke value
+    filter(!is.na(geo_wt_pm)) %>% 
+    mutate_at(vars(contains("pm")), funs(./10))
+
+# bind these two ts dataframes in a list
+saba_ts_list <- list(saba_lim_ts, saba_first_fill_ts)
+
+# saba outcome names
+saba_outcomes <- c("SABA all obs", "SABA first obs")
+
+# apply clogit model
+sameday_results <- saba_ts_list %>% 
+  map_dfr(~same_day_fun(.)) %>% 
+  bind_cols(., data_frame(saba_outcomes)) %>% 
+  select(saba_outcomes, n, estimates, lower95, upper95) %>% 
+  # preserve order of names
+  mutate(saba_outcomes = parse_factor(saba_outcomes, levels=saba_outcomes)) %>%
+  rename(odds_ratio = estimates)
+
+knitr::kable(sameday_results, 
+  caption="Same day association for 10ug/m^3 increase in smoke PM2.5")
+```
+
+For both scenarios, there is a signal. The SABA all observation fill is closer to what we found initially. 
+
+We've taken advantage of the Oregon APAC dataset to a greater extent than we have before by considering different outcomes. Somethoughts on the inpatient stay would be how much of an overlap is there with the persons who go to an ER and are then admitted to inpatient? We could figure this out.
