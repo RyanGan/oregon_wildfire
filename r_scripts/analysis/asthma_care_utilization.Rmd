@@ -1,0 +1,21 @@
+---
+title: "Multiple visits in persons likely to have asthma"
+author: "Ryan Gan"
+date: "1/9/2018"
+output: html_document
+---
+
+## Document Purpose
+
+This document attempts to describe utilization of healthcare in persons who are likely to have asthma. It will eventually see if wildfire smoke may influence utilization.
+
+First step is to read in the persons with asthma in the fireseason. I may end up doing this for the entire year, but that dataset is much larger and would take a bit.
+
+```{r setup, echo = F, warning = F, message = F}
+# libraries.
+library(tidyverse)
+
+# knitr options
+knitr::opts_chunk$set(fig.width=8, fig.height=6, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
