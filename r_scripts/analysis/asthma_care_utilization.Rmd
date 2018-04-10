@@ -50,7 +50,7 @@ pm <- read_csv(pm_path) %>%
 Reading in asthma cohort data for wildfire season and joinin to asthma cohot observations.
 
 ```{r read_data}
-read_path <- paste0("./data/health/",
+read_path <- paste0("../../data/health/",
   "2013-oregon_asthma_fireseason_cohort.csv")
 
 asthma_cohort <- read_csv(read_path, col_types = cols(.default = "c")) %>% 
@@ -218,23 +218,14 @@ glimpse(asthma_n_visits)
 
 ```
 
-Generalized Poisson model to see if the counts of ED visits a person might have might be greater on smoke periods compared to non-smoke periods.
+Generalized Poisson model to see if the counts of ED visits a person might have might be greater on smoke periods compared to non-smoke periods.I adjust for gender and age and account for within subject variability.
 
 ```{r poisson_mod}
-mod <- glmer(EmergencyRoomHospital ~ smoke15 + (1|personkey) + 
-          offset(n_days), family="poisson"(link=log),
-          data = asthma_n_visits)
-
-lm_mod2 <- lmer(EmergencyRoomHospital_rate10days ~ smoke15 + (1|personkey) +
+lm_mod <- lmer(EmergencyRoomHospital_rate10days ~ smoke15 + (1|personkey) +
              gender + age, 
              data = asthma_n_visits)
 
 summary(lm_mod)
-summary(lm_mod2)
-
-ggplot(asthma_n_visits, aes(x=log(EmergencyRoomHospital_rate10days*1000+0.1), 
-    group = as.factor(smoke15), color=as.factor(smoke15))) +
-  geom_density()
 ```
 
 ### Note for Sheryl: 2018-01-11
