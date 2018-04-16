@@ -57,16 +57,18 @@ clusterExport(cl, c("asthma_list"),
 # start time
 start <- Sys.time()
 
-asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
+#asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
+asthma_cc_pos_list <- lapply(asthma_list, function(x){
     pos_df <- x %>% 
     # find the first observation and first claim line of each person 
     group_by(personkey) %>%
     arrange(fromdate, line) %>%
     filter(row_number()==1) %>% 
-    ungroup()
+    ungroup() %>% 
+    mutate(age = 2013 - yob)
     
     ts_df <- time_stratified(data = pos_df, id = "personkey", 
-      covariate = c("patid", "gender", "yob", "MSA", "ZIP", "pos", "dx1",
+      covariate = c("patid", "gender", "age", "MSA", "ZIP", "pos", "dx1",
                   "service_place"), 
       admit_date = "fromdate", 
       start_date = "2013-05-01", end_date = "2013-09-30", interval = 7)
@@ -75,6 +77,7 @@ asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
 stop <- Sys.time()
 time <- stop - start
 print(time)
+
 
 # close cores 
 stopCluster(cl)
