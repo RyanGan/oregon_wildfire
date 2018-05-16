@@ -107,6 +107,8 @@ smoke_map <- ggplot(or_county_spatial_df, aes(x=long,y=lat, group=group)) +
   legend.position = "bottom")
 
 smoke_map
+# save figure
+ggsave(filename = "./smoke_map.png", plot = smoke_map)
 ```
 
 Most of the heavy smoke days were in the south-west part of Oregon. Triangles are fires; had them in the legend, but the legend looked weird so I took them out.
@@ -119,8 +121,9 @@ Using the geofacet package to organize small-multiples by geography.
 
 ```{r geofacet time series of pm}
 # use or_counties_grid from geo_facet 
-or_grid <- geofacet::or_counties_grid1 %>% 
+or_grid <- geofacet::us_or_counties_grid1 %>% 
   mutate(name = ifelse(name == "HoodRiver", "Hood River", name))
+
 
 # small multiples plot
 plot <- ggplot(county_pm_df, aes(x=date, y= geo_smk_pm)) + 
