@@ -108,7 +108,7 @@ smoke_map <- ggplot(or_county_spatial_df, aes(x=long,y=lat, group=group)) +
 
 smoke_map
 # save figure
-ggsave(filename = "./smoke_map.png", plot = smoke_map)
+#ggsave(filename = "./smoke_map.png", plot = smoke_map)
 ```
 
 Most of the heavy smoke days were in the south-west part of Oregon. Triangles are fires; had them in the legend, but the legend looked weird so I took them out.
@@ -139,7 +139,9 @@ plot <- ggplot(county_pm_df, aes(x=date, y= geo_smk_pm)) +
     strip.background = element_rect(colour=NA, fill=NA),
     legend.position = "bottom")
 # plot 
-plot  
+plot
+# save figure
+ggsave(filename = "./county_smoke_timeseries.png", plot = plot)
 ```
 
 Elevated levels of smoke in late July to early August in Curry, Josephine, Jackson, and Klamath counties.
