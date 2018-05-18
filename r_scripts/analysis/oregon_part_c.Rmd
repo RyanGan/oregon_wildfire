@@ -333,9 +333,6 @@ fit <- glm(n_visit ~ 0 + month*NAME, offset = log(POPESTIMATE2013), family = poi
 fit_group <- glm(n_visit ~ 0 + group, offset = log(POPESTIMATE2013), family = poisson, data = summary_table_pharmacy)
 # summary(fit_group)
 
-fit_no <- glm(n_visit ~ month + NAME + month:NAME - 1, offset = log(POPESTIMATE2013), family = poisson, data = summary_table_pharmacy)
-# summary(fit_no)
-
 contr_msa_jul_to_sep <- rbind(
   "Bend: Aug vs Jul" = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0), # 8-7
   "Bend: Sep vs Aug" = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,1,0,0,0,0,0),
