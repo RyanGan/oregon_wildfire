@@ -50,7 +50,8 @@ Use the population table from
 https://www.census.gov/data/datasets/2017/demo/popest/total-metro-and-micro-statistical-areas.html#tables  
 (The table offers Portland-Vancouver-Hillsboro area population, not separate.)
 
-```{r load ER data set and zip smoke, message=FALSE, warning=FALSE} 
+*Ryan: Setting Eval to False and importing timeseries rather than recreating.*
+```{r load ER data set and zip smoke, message=FALSE, warning=FALSE, eval=F} 
 
 ## saba data set
 read_path_ndc <- paste0("../data_new/health/2013_oregon_saba_ndc_claims.csv")
@@ -98,7 +99,7 @@ From the total visits plot, the Portland have most visits, which can be refered 
 
 For pharmacy in Medford during 2013. June is lowest while July and August shows pretty sharp increase. (and July to August has the sharpest slope, which may indicate the wildfire's effect.)
 
-```{r saba, message=FALSE, warning=FALSE}
+```{r saba, message=FALSE, warning=FALSE, eval=F}
 pharmacy_df <- saba_df %>%
   mutate(age = 2013 - year) %>%
   mutate(age_cat = case_when(age < 15 ~ "Age < 15",
@@ -249,6 +250,12 @@ saba_count
 
 1. Barchart of SABA counts by MSA by month.
 
+```{r read_counts}
+saba_count <- read_csv("../../data/health/saba_month_counts.csv")
+ed_count <- read_csv("../../data/health/asthma_er_month_counts.csv")
+```
+
+
 Medford in August has higher visits.
 
 ```{r}
@@ -322,15 +329,17 @@ contrast statement:
 2. Each MSA's September visits - This MSA's August visits
 
 ```{r message=FALSE, warning=FALSE}
-
-summary_table_pharmacy$group <- factor(paste0(summary_table_pharmacy$month, summary_table_pharmacy$NAME))
-X <- model.matrix(~ 0 + group, data=summary_table_pharmacy)
+saba_count
+saba_count$group <- factor(paste0(saba_count$month, saba_count$NAME))
+X <- model.matrix(~ 0 + group, data=saba_count)
 # colnames(X)
 
-fit <- glm(n_visit ~ 0 + month*NAME, offset = log(POPESTIMATE2013), family = poisson, data = summary_table_pharmacy)
+fit <- glm(n_saba ~ 0 + month*NAME, offset = log(POPESTIMATE2013), 
+           family = poisson, data = saba_count)
 # summary(fit)
 
-fit_group <- glm(n_visit ~ 0 + group, offset = log(POPESTIMATE2013), family = poisson, data = summary_table_pharmacy)
+fit_group <- glm(n_saba ~ 0 + group, offset = log(POPESTIMATE2013), 
+                 family = poisson, data = saba_count)
 # summary(fit_group)
 
 contr_msa_jul_to_sep <- rbind(
@@ -455,17 +464,20 @@ contrast statement:
 ```{r message=FALSE, warning=FALSE}
 
 # change the numeric variable as factor
-summary_table_er$month <- as.factor(summary_table_er$month)
-summary_table_er$MSA <- as.factor(summary_table_er$MSA)
+ed_count$month <- as.factor(ed_count$month)
+ed_count$MSA <- as.factor(ed_count$MSA)
 
-summary_table_er$group <- factor(paste0(summary_table_er$month, summary_table_er$NAME))
-X <- model.matrix(~ 0 + group, data=summary_table_er)
+ed_count$group <- factor(paste0(ed_count$month, ed_count$NAME))
+X <- model.matrix(~ 0 + group, data=ed_count)
 # colnames(X)
 
-fit <- glm(n_visit ~ 0 + month*NAME, offset = log(POPESTIMATE2013), family = poisson, data = summary_table_er)
+fit <- glm(n_ed ~ 0 + month*NAME, 
+           offset = log(POPESTIMATE2013), family = poisson, 
+           data = ed_count)
 # summary(fit)
 
-fit_group <- glm(n_visit ~ 0 + group, offset = log(POPESTIMATE2013), family = poisson, data = summary_table_er)
+fit_group <- glm(n_ed ~ 0 + group, offset = log(POPESTIMATE2013), 
+                 family = poisson, data = summary_table_er)
 # summary(fit_group)
 
 fit_no <- glm(n_visit ~ month + NAME + month:NAME - 1, offset = log(POPESTIMATE2013), family = poisson, data = summary_table_er)
