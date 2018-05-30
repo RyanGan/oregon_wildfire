@@ -650,9 +650,9 @@ result_plot <- ggplot(results, aes(x = outcome, y = odds_ratio, color = Group)) 
 result_plot
 
 # print plot
-ggsave(filename = "./r_scripts/analysis/Figs/cardiopulmonary_er_result.tiff", 
-       plot = result_plot, 
-       units="in", width=8, height=6, dpi=300)
+#ggsave(filename = "./r_scripts/analysis/Figs/cardiopulmonary_er_result.tiff", 
+#       plot = result_plot, 
+#       units="in", width=8, height=6, dpi=300)
 
 ```
 
