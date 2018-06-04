@@ -185,7 +185,7 @@ fit2 <- glm(n_visit ~ month, family = poisson, data = summary_medford)
 Looking and different counts and rates for asthma ED visits and SABA fills in Oregon by metropolitan statistical area (MSA) and month.   
 Ryan hypothesize that the Douglas-Complex fire that took place in the south-west part of Oregon impacted the MSA of Medford,
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, eval =F}
 
 asthma_er_df <- asthma_er %>%
   mutate(age = 2013 - year) %>%
@@ -226,7 +226,7 @@ p2 <- ggplot(data = summary_table_er, aes(x = month, y = n_visit/POPESTIMATE2013
 ```
 
 
-```{r}
+```{r eval=F}
 ed_count <- summary_table_er %>% 
   rename(n_ed = n_visit) %>% 
   mutate(rate_per10k = (n_ed/POPESTIMATE2013)*10000,

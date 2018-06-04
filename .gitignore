@@ -19,3 +19,5 @@ oregon_cvd_pulm_results_cache/
 
 # ignore png
 *.png
+
+*.ipynb_checkpoints
