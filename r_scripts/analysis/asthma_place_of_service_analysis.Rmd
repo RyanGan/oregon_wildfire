@@ -237,7 +237,8 @@ sex_result <- asthma_pos_list %>%
       unnest(est_df)
   }) %>% 
   mutate(strata = ifelse(gender == "M", "Male", "Female")) %>% 
-  dplyr::select(strata, service_place:conf.high)
+  dplyr::select(strata, service_place:conf.high) %>% 
+  filter(n_events > 30)
 
 # table
 sex_result
@@ -272,7 +273,7 @@ age_results <- asthma_pos_list %>%
   }) %>% 
   rename(strata = age_cat) %>% 
   dplyr::select(strata, service_place:conf.high) %>%
-   filter(n_events > 20) %>%
+   filter(n_events > 30) %>%
    filter(conf.high < 5)
 
 # print table
@@ -288,32 +289,33 @@ results <- bind_rows(sameday_result, sex_result, age_results) %>%
                             TRUE ~ strata),
          # shorten names of pos
          service_place = case_when(service_place=="Ambulance-Land"~"Ambulance",
-          service_place == "Emergency Room – Hospital" ~ "Emergency Room",
+          service_place == "Emergency Room – Hospital" ~ "Emergency Department",
           service_place == "Urgent Care Facility" ~ "Urgent Care",
           TRUE ~ service_place),
          # set order of strata
           strata = factor(strata, 
             levels = c("All Strata", "Female", "Male", "Age < 15", 
-                       "Age 15-65", "Age > 65")),
+                       "Age 15-65", "Age > 65"))) %>% 
     # set order of service place
-          service_place = factor(service_place, 
-            levels = c("SABA Fill", "Office", "Outpatient Hospital", 
-                       "Urgent Care", "Ambulance", "Emergency Room", 
-                       "Inpatient Hospital"))) %>% 
+          # service_place = factor(service_place, 
+          #   levels = c("SABA Fill", "Office", "Outpatient Hospital", 
+          #              "Urgent Care", "Ambulance", "Emergency Room", 
+          #              "Inpatient Hospital"))) %>% 
   # remove ambulance since it has so few observations
-  filter(service_place %in% c("SABA Fill", "Office", "Urgent Care",
-                              "Outpatient Hospital", "Inpatient Hospital"))
+  filter(service_place %in% c("SABA Fill", "Office", "Urgent Care", "Ambulance",
+                              "Emergency Department", "Outpatient Hospital", 
+                              "Inpatient Hospital"))
 ```
 
 Plotting results.
 
 ```{r plot}
 plot <- ggplot(results, aes(x = strata, y = odds_ratio)) +
-  geom_point(color = "#7f00ff") + 
-  geom_errorbar(aes(ymin=lower95, ymax=upper95), color = "#7f00ff",width = 0.2) +
+  geom_point(color = "#3c1053") + 
+  geom_errorbar(aes(ymin=lower95, ymax=upper95), color = "#3c1053",width = 0.2) +
   geom_hline(yintercept = 1, linetype=2) +
-  facet_wrap(~service_place) +
-  ylab(expression(paste("Odds Ratio for 10µg/m"^3, " Increase in PM"[2.5]))) +
+  facet_wrap(~service_place, scales = "free_y", ncol = 2) +
+  ylab(expression(paste("Odds Ratio for 10µg/m"^3, " Increase in WFS PM"[2.5]))) +
   xlab("Stratum") +
    # plot theme
     theme(panel.background = element_rect(fill = 'white', colour = 'black'),
@@ -325,7 +327,7 @@ plot <- ggplot(results, aes(x = strata, y = odds_ratio)) +
     # facet text size
     strip.text = element_text(size = 10),
     # axis element (tilt)
-    axis.text.x = element_text(angle = 45, vjust =0.9),
+    axis.text.x = element_text(angle = 45, hjust = 0.9, vjust = 0.7),
     #axis.title.x = element_blank(),
     #axis.ticks.x = element_blank(),
     axis.title.y = element_text(angle = 90))
