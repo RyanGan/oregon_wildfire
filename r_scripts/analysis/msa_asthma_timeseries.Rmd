@@ -1,0 +1,183 @@
+---
+title: "MSA Asthma Place of Service Timeseries"
+author: "Ryan Gan"
+date: "6/7/2018"
+output: html_document
+---
+
+
+Libraries.
+
+```{r library}
+# libraries
+library(tidyverse) # for ggplot and general data wrangle
+```
+
+Loading case-crossover dataframe list and SABA fill list.
+
+```{r load_data}
+# load asthma casecross place of service list
+load("../../data/health/asthma_cc_pos_list.RData")
+# extract names
+vars_keep <- names(asthma_cc_pos_list[[4]])
+```
+
+Load SABA DF.
+
+```{r saba_df}
+saba = read_csv("../../data/health/2013-oregon_casecross_saba.csv") %>% 
+  rename(identifier = personkey, ZIP = ZIPCODE) %>% 
+  mutate(service_place = "SABA Fill",
+         dx1 = ndc) %>% 
+  # keeping only vars in the other casecrossover dataframes
+  dplyr::select(vars_keep, ndc) %>% 
+  # turn in to list
+  list()
+
+# assign name
+names(saba) = "saba"
+```
+
+Load Jingyang's mothly count to extract populations for MSA.
+```{r msa_pop}
+# read saba and asthma ed count# read  
+population <- read_csv("./data/health/saba_month_counts.csv") %>% 
+  select(msa_name, POPESTIMATE2013) %>% 
+  rename(metroarea = msa_name,
+         pop = POPESTIMATE2013) %>% 
+  unique()
+```
+
+
+Subset to only outcomes and add metroarea MSA.
+
+```{r list_subset}
+# adding in age category to each dataframe in list 
+# (i should have done this earlier)
+asthma_pos_count <- c(asthma_cc_pos_list, saba) %>% 
+  map_dfr(., function(df){
+    return_df <- df %>% 
+      # remove unknown gender
+      filter(outcome ==1 ) %>% 
+      mutate(metroarea = case_when(MSA == 13460 ~ "Bend",
+                                MSA == 18700 ~ "Corvallis",
+                                MSA == 21660 ~ "Eugene",
+                                MSA == 32780 ~ "Medford",
+                                MSA == 38900 ~ "Portland",
+                                MSA == 41420 ~ "Salem",
+                                MSA == 41999 ~ "Not in MSA"),
+        service_place = case_when(service_place == "Emergency Room – Hospital" ~ 
+                                    "Emergency Department", 
+          TRUE ~ service_place)) %>% 
+      # group by date, metroarea, and service place
+      group_by(date, metroarea, service_place) %>% 
+      summarise(n_events = sum(outcome))
+  })
+```
+
+
+```{r medford_plot}
+check_ts <- asthma_pos_count %>% 
+  filter(metroarea == 'Medford')
+
+ggplot(check_ts, aes(x=date, y=n_events, group = metroarea, color=metroarea)) +
+  geom_point() +
+  facet_wrap(~service_place, scales = "free_y")
+```
+
+Weekly sum.
+
+```{r weekly_count}
+asthma_weekly_count <- asthma_pos_count %>% 
+  mutate(week_date = lubridate::ceiling_date(date, unit = 'week')) %>% 
+  group_by(week_date, metroarea, service_place) %>% 
+  summarise(n_events = sum(n_events)) %>% 
+  left_join(population, by = 'metroarea') %>% 
+  mutate(rate_100k = (n_events/pop)*100000) %>% 
+  filter(service_place != 'Ambulance-Land') %>% 
+  filter(week_date != '2013-10-06') %>% 
+  filter(!is.na(pop))
+```
+
+Weekly count plot.I actually like this plot more I think.
+
+```{r pos_plot}
+pos_plot = ggplot(asthma_weekly_count, 
+  aes(x=week_date, y=rate_100k, group = service_place, color=service_place)) +
+  geom_point(size = .7) +
+  scale_color_manual('Care Utilization', 
+    values = c("#3c1053", "#7f00ff", "#e100ff", "#00b09b", "#0ed2f7", "#c31432")) +
+  facet_wrap(~metroarea, ncol=1) +
+    ylab("Weekly Rate per 100,000 Persons") +
+    xlab("Date") +
+    ggtitle('B. Asthma Care Utilization') +
+    theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # strip element
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = elemnt_text(vjust= -1),
+        # facet text size
+        strip.text = element_text(size = 10),
+        axis.title.y = element_text(angle = 90))
+
+pos_plot
+```
+
+Read PM2.5 and create MSA PM
+
+```{r}
+# read saba
+path = paste0('../../data/health/or_respiratory_may_to_sep_time_strat_casecross_er.csv')
+
+# read respiratory casecross and find unique zipcodes by MSA values
+zip_msa = read_csv(path, col_types = cols(.default = "c")) %>% 
+    select(ZIPCODE, MSA) %>% 
+    unique()
+
+# read zip pm; join with msa
+msa_pm = read_csv('./data//pm/2013-oregon_zip_pm25.csv', 
+                  col_types = cols(ZIPCODE = 'c')) %>% 
+    # join with unique MSA vector
+    left_join(zip_msa, by = 'ZIPCODE') %>%
+    # mutate
+    mutate(ZIPCODE = as.factor(ZIPCODE),
+        MSA = as.factor(MSA),
+        # assign metro name to number
+        metroarea = case_when(MSA == 13460 ~ "Bend",
+                              MSA == 18700 ~ "Corvallis",
+                              MSA == 21660 ~ "Eugene",
+                              MSA == 32780 ~ "Medford",
+                              MSA == 38900 ~ "Portland",
+                              MSA == 41420 ~ "Salem"))  %>% 
+    # filter to zips in an MSA only
+    filter(!is.na(metroarea)) 
+```
+
+Plot of PM2.5 by MSA.
+
+```{r pm_plot}
+# plot of pm by msa
+pm_msa_plot = ggplot(data = msa_pm, aes(x = date, y = geo_smk_pm, group = ZIPCODE)) +
+    geom_line(color = '#e94057') +
+    # facet by metro area
+    facet_wrap(~metroarea, ncol = 1) +
+    # y label
+    ylab(expression(paste("Wildfire Smoke PM"[2.5]," 10µg/m"^3))) +
+    # x label
+    xlab("Date") +
+    ggtitle(expression(paste('A. Wildfire Smoke PM'[2.5]))) +
+    theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # strip element
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.border = element_rect(fill = NA, color = "black"),
+        # facet text size
+        strip.text = element_text(size = 10),
+        axis.title.y = element_text(angle = 90))
+
+pm_msa_plot
+```
+
