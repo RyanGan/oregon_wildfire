@@ -104,7 +104,7 @@ Weekly count plot.I actually like this plot more I think.
 ```{r pos_plot}
 pos_plot = ggplot(asthma_weekly_count, 
   aes(x=week_date, y=rate_100k, group = service_place, color=service_place)) +
-  geom_point(size = .7) +
+  geom_point(size = 1.25) +
   scale_color_manual('Care Utilization', 
     values = c("#3c1053", "#7f00ff", "#e100ff", "#00b09b", "#0ed2f7", "#c31432")) +
   facet_wrap(~metroarea, ncol=1) +
@@ -112,22 +112,23 @@ pos_plot = ggplot(asthma_weekly_count,
     xlab("Date") +
     ggtitle('B. Asthma Care Utilization') +
     theme(panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_blank(),
+        panel.grid.major = element_line(color = 'grey', linetype = 'dotted',
+                                        size = 0.5),
         panel.grid.minor = element_blank(),
         # strip element
         strip.background = element_rect(colour=NA, fill=NA),
         panel.border = element_rect(fill = NA, color = "black"),
-        strip.text = elemnt_text(vjust= -1),
         # facet text size
         strip.text = element_text(size = 10),
-        axis.title.y = element_text(angle = 90))
+        axis.title.y = element_text(angle = 90),
+        legend.key = element_blank())
 
 pos_plot
 ```
 
 Read PM2.5 and create MSA PM
 
-```{r}
+```{r msa_pm}
 # read saba
 path = paste0('../../data/health/or_respiratory_may_to_sep_time_strat_casecross_er.csv')
 
@@ -169,7 +170,8 @@ pm_msa_plot = ggplot(data = msa_pm, aes(x = date, y = geo_smk_pm, group = ZIPCOD
     xlab("Date") +
     ggtitle(expression(paste('A. Wildfire Smoke PM'[2.5]))) +
     theme(panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_blank(),
+        panel.grid.major = element_line(color = 'grey', linetype = 'dotted',
+                                        size = 0.5),
         panel.grid.minor = element_blank(),
         # strip element
         strip.background = element_rect(colour=NA, fill=NA),
@@ -180,4 +182,23 @@ pm_msa_plot = ggplot(data = msa_pm, aes(x = date, y = geo_smk_pm, group = ZIPCOD
 
 pm_msa_plot
 ```
+
+Bind plots together.
+
+```{r final_plot}
+# save plot
+#tiff('./r_scripts/analysis/Figs/msa_smoke_asthma.tiff', width = 600, height = 650)
+gridExtra::grid.arrange(pm_msa_plot, pos_plot, ncol=2, widths = c(1,1))
+#dev.off()
+```
+
+Saving dataframe to plot in python.
+
+```{r save_df}
+# write asthma weekly count
+#write_csv(asthma_weekly_count, './data/health/asthma_weekly_count.csv')
+# write pm msa
+#write_csv(msa_pm, './data/pm/msa_pm.csv')
+```
+
 
