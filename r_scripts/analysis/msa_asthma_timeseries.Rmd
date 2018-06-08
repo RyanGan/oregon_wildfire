@@ -194,11 +194,22 @@ gridExtra::grid.arrange(pm_msa_plot, pos_plot, ncol=2, widths = c(1,1))
 
 Saving dataframe to plot in python.
 
-```{r save_df}
+```{r save_df, eval=F}
 # write asthma weekly count
 #write_csv(asthma_weekly_count, './data/health/asthma_weekly_count.csv')
 # write pm msa
 #write_csv(msa_pm, './data/pm/msa_pm.csv')
 ```
+
+Overlap plot.
+
+```{r eval=F}
+grid::grid.newpage()
+vp1 <- grid::viewport(width = 1, height = 1, x = 0.5, y = 0.5)
+vp2 <- grid::viewport(width = 1, height = 1, x = 0.5, y = 0.5)
+print(pm_msa_plot, vp = vp1)
+print(pos_plot, vp = vp2)
+```
+
 
 
