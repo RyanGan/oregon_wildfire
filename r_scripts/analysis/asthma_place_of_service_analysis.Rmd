@@ -419,25 +419,32 @@ medford_result
 ## Other MSAs (not Medford or outside of MSA)
 
 ```{r other_msa}
-other_msa_result <- asthma_pos_list[c(1,3:5,7)] %>% 
+msa <- unique(asthma_pos_list[[1]]$metroarea)
+
+msa_result <- asthma_pos_list[c(1,3:5,7)] %>% 
   map_dfr(., function(df){
+
     service_place <- as.character(df$service_place[1])
     # complete case
-    df <- df %>% filter(!is.na(geo_smk10)) %>% 
-      filter(metroarea != "Medford") %>% 
-      filter(metroarea != "Not in MSA")
-    # model
-    mod <- clogit(outcome ~ geo_smk10 + wrf_temp + strata(identifier), 
-                  data = df)
-    # n events
-    n_events <- mod$nevent
-    # odds ratio and 95% CI
-    estimates <- broom::tidy(mod) %>% 
-      filter(term == "geo_smk10") %>% 
-      dplyr::select(term, estimate, conf.low, conf.high) %>% 
-      mutate_at(2:4, funs(round(exp(.),3))) %>% 
-      cbind(service_place, n_events, .) %>% 
-      mutate(service_place = as.character(service_place))
+    pos_list <- df %>% filter(!is.na(geo_smk10)) %>% 
+      filter(metroarea != "Not in MSA") %>% 
+      split(.$metroarea) %>% 
+      map_dfr(., function(df2){
+        # find msa
+        msa <- as.character(df2$metroarea[[1]])
+        # runm odel
+        mod <- clogit(outcome ~ geo_smk10 + wrf_temp + strata(identifier), 
+                      data = df2)
+      # n events
+      n_events <- mod$nevent
+      # odds ratio and 95% CI
+      estimates <- broom::tidy(mod) %>% 
+        filter(term == "geo_smk10") %>% 
+        dplyr::select(term, estimate, conf.low, conf.high) %>% 
+        mutate_at(2:4, funs(round(exp(.),3))) %>% 
+        cbind(service_place, msa, n_events, .) %>% 
+        mutate(service_place = as.character(service_place),
+               msa = as.character(msa))})
   }) %>% 
   mutate(strata = "Total") %>% 
   dplyr::select(strata, service_place:conf.high) %>% 
@@ -452,19 +459,19 @@ other_msa_result <- asthma_pos_list[c(1,3:5,7)] %>%
                        "Emergency Room", "Inpatient Hospital")))
 
 # table
-other_msa_result
+msa_result
 ```
 
 ## Plot of Same-Day Association by MSA
 
 ```{r medford_plot}
-msa_results <- bind_rows(medford_result, other_msa_result)
+
 # plot total results
-med_plot <- ggplot(msa_results, aes(x = service_place, y = odds_ratio)) +
+med_plot <- ggplot(msa_result, aes(x = service_place, y = odds_ratio)) +
   geom_point(color = "purple") + 
   geom_errorbar(aes(ymin=lower95, ymax=upper95), color = "purple",width = 0.2) +
   geom_hline(yintercept = 1, linetype=2) +
-  facet_wrap(~MSA) +
+  facet_wrap(~msa, scales = 'free_y') +
   ylab(expression(paste("Odds Ratio for 10µg/m"^3, " Increase in PM"[2.5]))) +
   xlab("Place of Service") +
    # plot theme

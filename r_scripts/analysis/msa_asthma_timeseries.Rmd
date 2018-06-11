@@ -102,7 +102,7 @@ asthma_weekly_count <- asthma_pos_count %>%
 Weekly count plot.I actually like this plot more I think.
 
 ```{r pos_plot}
-pos_plot = ggplot(asthma_weekly_count, 
+pos_plot <- ggplot(asthma_weekly_count, 
   aes(x=week_date, y=rate_100k, group = service_place, color=service_place)) +
   geom_point(size = 1.25) +
   scale_color_manual('Care Utilization', 
@@ -138,7 +138,7 @@ zip_msa = read_csv(path, col_types = cols(.default = "c")) %>%
     unique()
 
 # read zip pm; join with msa
-msa_pm = read_csv('./data//pm/2013-oregon_zip_pm25.csv', 
+msa_pm <- read_csv('./data//pm/2013-oregon_zip_pm25.csv', 
                   col_types = cols(ZIPCODE = 'c')) %>% 
     # join with unique MSA vector
     left_join(zip_msa, by = 'ZIPCODE') %>%
@@ -160,7 +160,7 @@ Plot of PM2.5 by MSA.
 
 ```{r pm_plot}
 # plot of pm by msa
-pm_msa_plot = ggplot(data = msa_pm, aes(x = date, y = geo_smk_pm, group = ZIPCODE)) +
+pm_msa_plot <- ggplot(data = msa_pm, aes(x = date, y = geo_smk_pm, group = ZIPCODE)) +
     geom_line(color = '#e94057') +
     # facet by metro area
     facet_wrap(~metroarea, ncol = 1) +
@@ -192,6 +192,336 @@ gridExtra::grid.arrange(pm_msa_plot, pos_plot, ncol=2, widths = c(1,1))
 #dev.off()
 ```
 
+### Monthly Rate and Sum by MSA
+
+```{r monthly_counts_msa}
+monthly_msa_counts <- asthma_pos_count %>% 
+  mutate(month = lubridate::month(date)) %>% 
+  group_by(month, metroarea, service_place) %>% 
+  summarise(n_events = sum(n_events)) %>% 
+  left_join(population, by = 'metroarea') %>% 
+  mutate(rate_100k = (n_events/pop)*100000,
+         month_name = factor(case_when(month == 5 ~ 'May',
+                                       month == 6 ~ 'Jun',
+                                       month == 7 ~ 'Jul',
+                                       month == 8 ~ 'Aug', 
+                                       month == 9 ~ 'Sep'),
+                        levels = c('May', 'Jun', 'Jul', 'Aug', 'Sep'))) %>% 
+  filter(service_place != 'Ambulance-Land') %>% 
+  filter(service_place != 'Urgent Care Facility') %>% 
+  filter(!is.na(pop)) %>% 
+  arrange(service_place, metroarea, month)
+```
+
+Plot montly rate by MSA.
+
+ED Rate
+
+```{r ed_plot}
+ed_count <- monthly_msa_counts %>% filter(service_place == 'Emergency Department')
+
+# plot
+ed_plot <- ggplot(ed_count, aes(x = month_name, group = metroarea,
+                                        fill = metroarea)) +
+  geom_bar(aes(weight = rate_100k)) +
+  scale_fill_manual("Metro Area", values = c("#3c1053", "#7f00ff", "#e100ff", 
+                                             "#4389a2", "#0ed2f7", "#74ebd5"),
+                    guide = F) +
+  facet_wrap(~metroarea, ncol =1) +
+  ylab("Monthly Rate per 100,000 Persons") +
+  xlab("Date") +
+  ggtitle('A. ED') +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(color = 'grey', linetype = 'dotted',
+                                        size = 0.5),
+        panel.grid.minor = element_blank(),
+        # strip element
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.border = element_rect(fill = NA, color = "black"),
+        # facet text size
+        strip.text = element_text(size = 10),
+        axis.title.y = element_text(angle = 90),
+        legend.key = element_blank(),
+        axis.text.x=element_text(angle = 45, hjust = 1))
+
+ed_plot
+```
+
+Outpatient.
+
+```{r outpat}
+out_count <- monthly_msa_counts %>% 
+  filter(service_place == 'Outpatient Hospital')
+# plot
+out_plot <- ggplot(out_count, aes(x = month_name, group = metroarea,
+                                        fill = metroarea)) +
+  geom_bar(aes(weight = rate_100k)) +
+  scale_fill_manual("Metro Area", values = c("#3c1053", "#7f00ff", "#e100ff", 
+                                             "#4389a2", "#0ed2f7", "#74ebd5"),
+                    guide = F) +
+  facet_wrap(~metroarea, ncol =1) +
+  xlab("Date") +
+  ggtitle('B. Outpatient') +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(color = 'grey', linetype = 'dotted',
+                                        size = 0.5),
+        panel.grid.minor = element_blank(),
+        # strip element
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.border = element_rect(fill = NA, color = "black"),
+        # facet text size
+        strip.text = element_text(size = 10),
+        axis.title.y = element_blank(),
+        legend.key = element_blank(),
+        axis.text.x=element_text(angle = 45, hjust = 1))
+
+out_plot
+```
+
+Inpatient.
+
+```{r outpat}
+inpat_count <- monthly_msa_counts %>% 
+  filter(service_place == 'Inpatient Hospital')
+# plot
+inpat_plot <- ggplot(inpat_count, aes(x = month_name, group = metroarea,
+                                        fill = metroarea)) +
+  geom_bar(aes(weight = rate_100k)) +
+  scale_fill_manual("Metro Area", values = c("#3c1053", "#7f00ff", "#e100ff", 
+                                             "#4389a2", "#0ed2f7", "#74ebd5"),
+                    guide = F) +
+  facet_wrap(~metroarea, ncol =1) +
+  ylab("Monthly Rate per 100,000 Persons") +
+  xlab("Date") +
+  ggtitle('C. Inpatient') +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(color = 'grey', linetype = 'dotted',
+                                        size = 0.5),
+        panel.grid.minor = element_blank(),
+        # strip element
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.border = element_rect(fill = NA, color = "black"),
+        # facet text size
+        strip.text = element_text(size = 10),
+        axis.title.y = element_blank(),
+        axis.text.x=element_text(angle = 45, hjust = 1))
+
+inpat_plot
+```
+
+Office.
+
+```{r office}
+off_count <- monthly_msa_counts %>% 
+  filter(service_place == 'Office')
+# plot
+off_plot <- ggplot(off_count, aes(x = month_name, group = metroarea,
+                                        fill = metroarea)) +
+  geom_bar(aes(weight = rate_100k)) +
+  scale_fill_manual("Metro Area", values = c("#3c1053", "#7f00ff", "#e100ff", 
+                                             "#4389a2", "#0ed2f7", "#74ebd5"),
+                    guide = F) +
+  facet_wrap(~metroarea, ncol =1) +
+  ylab("Monthly Rate per 100,000 Persons") +
+  xlab("Date") +
+  ggtitle('D. Office') +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(color = 'grey', linetype = 'dotted',
+                                        size = 0.5),
+        panel.grid.minor = element_blank(),
+        # strip element
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.border = element_rect(fill = NA, color = "black"),
+        # facet text size
+        strip.text = element_text(size = 10),
+        axis.title.y = element_blank(),
+        legend.key = element_blank(),
+        axis.text.x=element_text(angle = 45, hjust = 1))
+
+off_plot
+```
+
+SABA fill.
+
+```{r saba}
+saba_count <- monthly_msa_counts %>% 
+  filter(service_place == 'SABA Fill')
+# plot
+saba_plot <- ggplot(saba_count, aes(x = month_name, group = metroarea,
+                                        fill = metroarea)) +
+  geom_bar(aes(weight = rate_100k)) +
+  scale_fill_manual("Metro Area", values = c("#3c1053", "#7f00ff", "#e100ff", 
+                                             "#4389a2", "#0ed2f7", "#74ebd5")) +
+  facet_wrap(~metroarea, ncol =1) +
+  ylab("Monthly Rate per 100,000 Persons") +
+  xlab("Date") +
+  ggtitle('E. SABA') +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(color = 'grey', linetype = 'dotted',
+                                        size = 0.5),
+        panel.grid.minor = element_blank(),
+        # strip element
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.border = element_rect(fill = NA, color = "black"),
+        # facet text size
+        strip.text = element_text(size = 10),
+        axis.title.y = element_blank(),
+        legend.key = element_blank(),
+        axis.text.x=element_text(angle = 45, hjust = 1))
+
+saba_plot
+```
+
+
+Join all plots.
+
+```{r msa_rate_plot}
+# save plot
+#tiff('./r_scripts/analysis/Figs/msa_month_rate.tiff', width = 800, height = 600)
+gridExtra::grid.arrange(ed_plot, out_plot, inpat_plot, off_plot, saba_plot, 
+                        ncol=5, widths = c(0.2, 0.2, 0.2, 0.2, 0.3))
+#dev.off()
+```
+
+Compare August to July and September for each MSA.
+
+Model
+```{r rate_compare}
+metro <- unique(monthly_msa_counts$metroarea)
+service_place <- unique(monthly_msa_counts$service_place)
+month <- seq(5,9,by=1)
+# expand grid
+month_msa <- expand.grid(metro, service_place, month) %>% 
+  rename(metroarea = Var1, service_place = Var2, month = Var3) 
+
+summary(outcome_list)
+# create outcome list
+outcome_list <- month_msa %>% 
+  left_join(monthly_msa_counts, by = c("metroarea", "service_place", "month")) %>% 
+  mutate(n_events = ifelse(is.na(n_events), 0, n_events),
+         pop = ifelse(is.na(pop), 85934, pop),
+         month_name = factor(case_when(month == 5 ~ 'May',
+            month == 6 ~ 'Jun',
+            month == 7 ~ 'Jul',
+            month == 8 ~ 'Aug', 
+            month == 9 ~ 'Sep'),
+            levels = c('May', 'Jun', 'Jul', 'Aug', 'Sep'))) %>% 
+  split(.$service_place)
+
+# function list
+compare_df <- outcome_list %>% 
+  map_dfr(., function(df){
+    df <- outcome_list[[5]]
+    serv_pl <- unique(df$service_place)
+    serv_pl
+    # model
+    mod <- glm(n_events ~ 0 + metroarea*month_name + offset(log(pop)), 
+                family = poisson, data = df)
+    
+    summary(mod)
+    contr_msa_jul_to_sep <- rbind(
+      #'Bend: Aug to Jul' = c(0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+      #'Bend: Aug to Sept' = c(0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+      #'Cor: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0,0,0,0,0),
+      #'Cor: Aug to Sept' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0),
+      #'Eug: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0,0,0,0),
+      #'Eug: Aug to Sept' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0),
+      'Med: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0,0,0),
+      'Med: Aug to Sept' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0),
+      'Port vs Med: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-.5,-.5,0,0,0,.5,.5,0,0,0,0,0,0)
+      #'Port: Aug to Sept' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0),
+      #'Sal: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0),
+      #'Sal: Aug to Sept' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1)
+      )
+
+    # multicomp comparison of contrasts
+    jul_sep_contrast <- multcomp::glht(mod, contr_msa_jul_to_sep)
+    # summary of adjusted
+    compare_df <- data.frame(broom::tidy(
+      summary(jul_sep_contrast, test = multcomp::adjusted('none')))) %>% 
+      mutate(service_place = serv_pl) %>% 
+      select(service_place, lhs:p.value)
+  })
+compare_df
+```
+
+
+Test change by MSA.
+
+```{r}
+print(saba_count)
+```
+
+
+
+Fitting a time-series model to predict the observed across MSAs. I need the spline package.
+
+```{r spline}
+library(splines)
+```
+
+I want to map across each outcome and metroarea to fit splines I think. I'll first try an interaction spline by MSA for saba fills.
+
+```{r weekly_pm}
+weekly_pm = msa_pm %>% 
+  mutate(week_date = lubridate::ceiling_date(date, unit = 'week')) %>% 
+  group_by(metroarea, week_date) %>% 
+  summarise(mu_gwr_smk = mean(geo_smk_pm), mu_gwr = mean(geo_wt_pm))
+
+summary(weekly_pm)
+```
+
+
+```{r}
+glimpse(asthma_weekly_count)
+
+# vector of outcomes
+out_vec = unique(asthma_weekly_count$service_place)
+
+# list of metroareas
+msa_list = asthma_weekly_count %>% 
+  split(., list(.$metroarea,.$service_place))
+
+# map to get estiamtes of counts for each 
+exp_n = msa_list %>% 
+  map_dfr(., function(data){
+    service_place = as.character(data$service_place[1])
+    metroarea = as.character(data$metroarea[1])
+    # vector of dates
+    week_date = as.character(data$week_date)
+    # spline with 4 degrees of freedom fits msas pretty well
+    spl = ns(data$week_date, df = 4)
+    # fit spline to counts
+    mod = glm(n_events ~  spl, family = 'poisson'(link='identity'), 
+          data = data)
+    # estimated outcomes
+    est = predict(mod, newdata=data, type = 'response') 
+    # dataframe of estimates by msa and place of service
+    est_df = data.frame(cbind(service_place, metroarea, week_date, est)) %>% 
+      mutate(week_date = as.Date(week_date, format = "%Y-%m-%d"),
+             est = as.numeric(as.character(est)),
+             metroarea = as.character(metroarea),
+             service_place = as.character(service_place)) 
+  }) %>% 
+  left_join(asthma_weekly_count, ., 
+            by = c('metroarea', 'service_place', 'week_date')) %>% 
+  mutate(diff = est - n_events,
+         est_rate = (est/pop)*100000,
+         diff_rate = rate_100k - est_rate)
+
+# plot of expected over observed
+ggplot(data=exp_n, aes(x=week_date, y=diff_rate, 
+    group = service_place, color = service_place)) +
+  geom_point() +                 
+  facet_wrap(~metroarea)
+```
+
+
 Saving dataframe to plot in python.
 
 ```{r save_df, eval=F}
@@ -199,6 +529,7 @@ Saving dataframe to plot in python.
 #write_csv(asthma_weekly_count, './data/health/asthma_weekly_count.csv')
 # write pm msa
 #write_csv(msa_pm, './data/pm/msa_pm.csv')
+#write_csv(monthly_msa_counts, './data/monthly_counts.csv')
 ```
 
 Overlap plot.
@@ -212,4 +543,7 @@ print(pos_plot, vp = vp2)
 ```
 
 
+```{r}
+exp(-0.295)
+```
 
