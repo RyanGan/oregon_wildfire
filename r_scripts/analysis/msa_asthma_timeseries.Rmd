@@ -514,8 +514,19 @@ exp_n = msa_list %>%
          est_rate = (est/pop)*100000,
          diff_rate = rate_100k - est_rate)
 
+# find mean and standard deviation for each difference rate by place of service
+# and metroarea
+normalize_val <- exp_n %>% 
+  group_by(metroarea, service_place) %>% 
+  summarise(mu_diff = mean(diff_rate), sd_diff = sd(diff_rate))
+
+# join sd to diff and calcualte normalized difference
+estimated_n <- exp_n %>% 
+  left_join(normalize_val, by = c("metroarea", "service_place")) %>% 
+  mutate(diff_rate_sd = (diff_rate - mu_diff)/sd_diff)
+
 # plot of expected over observed
-ggplot(data=exp_n, aes(x=week_date, y=diff_rate, 
+ggplot(data=estimated_n, aes(x=week_date, y=diff_rate_sd, 
     group = service_place, color = service_place)) +
   geom_point() +                 
   facet_wrap(~metroarea)
