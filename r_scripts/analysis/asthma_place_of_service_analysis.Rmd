@@ -375,6 +375,88 @@ total_plot
 
 I will probably color-code this. Interesting take-away would be that all types of asthma events were associated with a 10 ug/m^3^ increase in PM~2.5~ we are attributed to smoke. The only events not associated would be urgent care and ambulance visits. However, ambulance visits goes in the direction I'd expect if smoke were to be hazardous. Urgent care shows and inverse association, but it's not associated. SABA fill is any SABA fill, while we only take the first visit for each person, over the time period, which may or may not be appropriate. I can't decide.
 
+## Lagged Associations
+
+```{r lag_association}
+# itterate over each geosmk
+pm_vec <- c('geo_smk10', paste0('geo_smk10_lag', seq(1,5,1)))
+temp_vec <- c('wrf_temp', paste0('wrf_temp_lag', seq(1,5,1)))
+
+# map lag
+lag_result <- asthma_pos_list %>% 
+  map_dfr(., function(df){
+    service_place <- as.character(df$service_place[1])
+    # complete case up to lag day 5
+    df <- df %>% filter(!is.na(geo_smk10_lag5))
+    # lag map
+    result <- map2_dfr(pm_vec, temp_vec, function(.x, .y){
+      # model
+      mod <- clogit(as.formula(paste0('outcome ~', 
+             paste(.x, .y, 'strata(identifier)', sep = '+'))),
+             data = df)
+      # n events
+      n_events <- mod$nevent
+      # lag var
+      lag_var <- pm_vec
+      # odds ratio and 95% CI
+        estimates <- broom::tidy(mod) %>% 
+          #filter(term == lag_var) %>% 
+          dplyr::select(term, estimate, conf.low, conf.high) %>% 
+          mutate_at(2:4, funs(round(exp(.),3))) %>% 
+          cbind(service_place, n_events, .) %>% 
+          mutate(service_place = as.character(service_place))
+    }) %>% filter(grepl('geo_smk10', term))
+  }) %>% 
+  mutate(strata = "Total",
+         Lag = case_when(term == 'geo_smk10' ~ 'Lag 0',
+                         term == 'geo_smk10_lag1' ~ 'Lag 1',
+                         term == 'geo_smk10_lag2' ~ 'Lag 2',
+                         term == 'geo_smk10_lag3' ~ 'Lag 3',
+                         term == 'geo_smk10_lag4' ~ 'Lag 4',
+                         term == 'geo_smk10_lag5' ~ 'Lag 5'))
+
+# table
+lag_result
+```
+
+Plot for lag.
+
+```{r lag_plot}
+glimpse(lag_result)
+
+lag_result <- lag_result %>% 
+  mutate(service_place = ifelse(service_place == 'Emergency Room – Hospital',
+                                'Emergency Department', service_place))
+
+lag_plot <- ggplot(lag_result, aes(x = Lag, y = estimate)) +
+  geom_point(color = "#3c1053") + 
+  geom_errorbar(aes(ymin=conf.low, ymax=conf.high), color = "#3c1053",width = 0.2) +
+  geom_hline(yintercept = 1, linetype=2) +
+  facet_wrap(~service_place, scales = "free_y", ncol = 2) +
+  ylab(expression(paste("Odds Ratio for 10µg/m"^3, " Increase in WFS PM"[2.5]))) +
+  xlab("Lag") +
+   # plot theme
+    theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # strip element
+    strip.background = element_rect(colour=NA, fill=NA),
+    panel.border = element_rect(fill = NA, color = "black"),
+    # facet text size
+    strip.text = element_text(size = 10),
+    # axis element (tilt)
+    axis.text.x = element_text(angle = 45, hjust = 0.9, vjust = 0.7),
+    #axis.title.x = element_blank(),
+    #axis.ticks.x = element_blank(),
+    axis.title.y = element_text(angle = 90))
+
+lag_plot
+# save plot
+# ggsave("./Figs/asthma_pos_lag_plot.tiff", lag_plot, 
+#        units="in", width=8, height=6, dpi=300)
+```
+
+
 ## Medford-Specific Results
 
 Limiting to MSA of Medford to see if I see signals with smoke for the specific places of service. I've excluded ambulance and urgent care since their 95% CI CIs were wide, suggesting poor model fits.
