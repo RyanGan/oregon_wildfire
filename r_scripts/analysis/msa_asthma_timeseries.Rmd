@@ -25,7 +25,7 @@ vars_keep <- names(asthma_cc_pos_list[[4]])
 Load SABA DF.
 
 ```{r saba_df}
-saba = read_csv("../../data/health/2013-oregon_casecross_saba.csv") %>% 
+saba <- read_csv("./data/health/2013-oregon_casecross_saba.csv") %>% 
   rename(identifier = personkey, ZIP = ZIPCODE) %>% 
   mutate(service_place = "SABA Fill",
          dx1 = ndc) %>% 
@@ -42,10 +42,12 @@ Load Jingyang's mothly count to extract populations for MSA.
 ```{r msa_pop}
 # read saba and asthma ed count# read  
 population <- read_csv("./data/health/saba_month_counts.csv") %>% 
-  select(msa_name, POPESTIMATE2013) %>% 
+  dplyr::select(msa_name, POPESTIMATE2013) %>% 
   rename(metroarea = msa_name,
          pop = POPESTIMATE2013) %>% 
   unique()
+
+
 ```
 
 
@@ -130,11 +132,11 @@ Read PM2.5 and create MSA PM
 
 ```{r msa_pm}
 # read saba
-path = paste0('../../data/health/or_respiratory_may_to_sep_time_strat_casecross_er.csv')
+path = paste0('./data/health/or_respiratory_may_to_sep_time_strat_casecross_er.csv')
 
 # read respiratory casecross and find unique zipcodes by MSA values
 zip_msa = read_csv(path, col_types = cols(.default = "c")) %>% 
-    select(ZIPCODE, MSA) %>% 
+    dplyr::select(ZIPCODE, MSA) %>% 
     unique()
 
 # read zip pm; join with msa
@@ -424,12 +426,6 @@ compare_df <- outcome_list %>%
                 family = poisson, data = df)
     
     contr_msa_jul_to_sep <- rbind(
-      #'Bend: Aug to Jul' = c(0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
-      #'Bend: Aug to Sept' = c(0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
-      #'Cor: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0,0,0,0,0),
-      #'Cor: Aug to Sept' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0),
-      #'Eug: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0,0,0,0),
-      #'Eug: Aug to Sept' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0),
       'Med: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0,0,0),
       'Med: Aug to Sept' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0),
       'M v B: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,1,0,-1,0,0,1,0,0,0,0,0,0,0),
@@ -437,9 +433,6 @@ compare_df <- outcome_list %>%
       'M v E: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,-1,1,0,0,0,0,0,0,0),
       'M v P: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,-1,1,0,0,0,0,0,0),
       'M v S: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,1,0,0,-1,0,1,0,0,0,0,0)
-      #'Port: Aug to Sept' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0),
-      #'Sal: Aug to Jul' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0),
-      #'Sal: Aug to Sept' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1)
       )
 
     # multicomp comparison of contrasts
@@ -448,18 +441,100 @@ compare_df <- outcome_list %>%
     compare_df <- data.frame(broom::tidy(
       summary(jul_sep_contrast, test = multcomp::adjusted('none')))) %>% 
       mutate(service_place = serv_pl) %>% 
-      select(service_place, lhs:p.value)
+      dplyr::select(service_place, lhs:p.value)
   })
 compare_df
 ```
 
+Difference in difference test model.
+```{r diff_in_diff}
+saba_count <- monthly_msa_counts %>% 
+  # filter to SABA fill
+  filter(service_place == 'SABA Fill') %>% 
+  # filter to portland and medford to test
+  filter(metroarea %in% c('Portland', 'Medford'))
 
-Test change by MSA.
+# diff in rate is 49.24 from july to aug for medford and -2.47 for portland
 
-```{r}
-print(saba_count)
+# running linear model to figure out rate
+mod <- glm(n_events ~ 0 + metroarea*month_name, 
+              family = poisson(link='identity'), data = saba_count)
+  
+summary(mod)
 ```
 
+Contrast on model.
+
+```{r diff_in_diff_contrast}
+city_cont <- rbind(
+      'Med: Aug to Jul' = c(0,0,0,-1,1,0,0,0,0,0),
+      'Port: Aug to Jul' = c(0,0,0,0,0,0,0,-1,1,0)
+      )
+
+# multicomp comparison of contrasts
+within_contrast <- multcomp::glht(mod, city_cont)
+
+summary(within_contrast)
+
+city_cont
+diff_cont <- rbind(
+  'diff' = (city_cont['Med: Aug to Jul',] - city_cont['Port: Aug to Jul', ])
+  )
+
+diff <- multcomp::glht(mod, diff_cont)
+# expecting 261 difference
+summary(diff)
+```
+
+261 diff.
+
+City difference in difference from July to August in cities compared to Medford.
+
+```{r diff_in_diff_final}
+# function list
+diff_df <- outcome_list %>% 
+  map_dfr(., function(df){
+
+    serv_pl <- unique(df$service_place)
+    serv_pl
+    # model
+    mod <- glm(n_events ~ 0 + metroarea*month_name + offset(log(pop)), 
+                family = poisson, data = df)
+    
+    city_cont <- rbind(
+      'Med: Jul to Aug' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0,0,0),
+      'Bend: Jul to Aug' = c(0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+      'Cor: Jul to Aug' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0,0,0,0,0),
+      'Eug: Jul to Aug' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0,0,0,0),
+      'Port: Jul to Aug' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0,0),
+      'Salem: Jul to Aug' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,0)
+      )
+    
+    diff_cont <- rbind(
+      'Med to Port diff' = (city_cont['Med: Jul to Aug',] - city_cont['Port: Jul to Aug', ]),
+      'Med to Bend diff' = (city_cont['Med: Jul to Aug',] - city_cont['Bend: Jul to Aug', ]),
+      'Med to Cor diff' = (city_cont['Med: Jul to Aug',] - city_cont['Cor: Jul to Aug', ]),
+      'Med to Eug diff' = (city_cont['Med: Jul to Aug',] - city_cont['Eug: Jul to Aug', ]),
+      'Med to Sal diff' = (city_cont['Med: Jul to Aug',] - city_cont['Salem: Jul to Aug', ])
+    )
+    
+    # multicomp comparison of contrasts
+    diff_contrast <- multcomp::glht(mod, diff_cont)
+
+    # summary of adjusted
+    diff_df <- data.frame(broom::tidy(
+      summary(diff_contrast, test = multcomp::adjusted('none')))) %>% 
+      mutate(service_place = serv_pl) %>% 
+      dplyr::select(service_place, lhs:p.value)
+  })
+easy_read_p <- diff_df %>% 
+  mutate(p = round(p.value, 3))
+easy_read_p
+```
+
+```{r}
+
+```
 
 
 Fitting a time-series model to predict the observed across MSAs. I need the spline package.
