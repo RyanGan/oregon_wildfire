@@ -532,10 +532,6 @@ easy_read_p <- diff_df %>%
 easy_read_p
 ```
 
-```{r}
-
-```
-
 
 Fitting a time-series model to predict the observed across MSAs. I need the spline package.
 
