@@ -17,7 +17,7 @@ Loading case-crossover dataframe list and SABA fill list.
 
 ```{r load_data}
 # load asthma casecross place of service list
-load("../../data/health/asthma_cc_pos_list.RData")
+load("./data/health/asthma_cc_pos_list.RData")
 # extract names
 vars_keep <- names(asthma_cc_pos_list[[4]])
 ```
