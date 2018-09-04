@@ -208,6 +208,42 @@ sameday_result <- asthma_pos_list %>%
 sameday_result
 ```
 
+Plot for job talk presentation.
+
+```{r total_strata_plot}
+# filter out amublance since the values are skewed
+plot_df <- sameday_result %>% filter(service_place != 'Ambulance-Land')
+
+plot <- ggplot(plot_df, aes(x = service_place, y = estimate)) +
+  geom_point(color = "#3c1053") + 
+  geom_errorbar(aes(ymin=conf.low, ymax=conf.high), 
+                color = "#3c1053",width = 0.2) +
+  geom_hline(yintercept = 1, linetype=2) +
+  ylab(expression(paste("Odds Ratio for 10µg/m"^3, 
+                        " Increase in WFS PM"[2.5]))) +
+  xlab("Place of Service") +
+   # plot theme
+    theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # strip element
+    strip.background = element_rect(colour=NA, fill=NA),
+    panel.border = element_rect(fill = NA, color = "black"),
+    # facet text size
+    strip.text = element_text(size = 10),
+    # axis element (tilt)
+    axis.text.x = element_text(angle = 45, hjust = 0.9, vjust = 0.7),
+    #axis.title.x = element_blank(),
+    #axis.ticks.x = element_blank(),
+    axis.title.y = element_text(angle = 90))
+
+# print plot
+plot
+#ggsave("./Figs/asthma_pos_total.tiff", plot, 
+#       units="in", width=8, height=6, dpi=300)
+```
+
+
 ## Sex-Specific Same-Day Association 
 
 Feeding in asthma place of service list, applying a series of map functions to first nest the dataframes by sex, then run the clogit model, and finally to extract the results. I think this approach is faster than a loop approach or other methods.
