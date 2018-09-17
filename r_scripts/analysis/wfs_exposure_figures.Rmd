@@ -42,9 +42,10 @@ fire_locations <- read_csv("../../data/pm/2013-oregon_firelocations.csv") %>%
 # estimate county smoke 
 county_smk_count <- county_pm_df %>% 
   # binary smoke variable at >10 ug/m^3
-  mutate(gwr_smk10 = ifelse(geo_smk_pm >= 10, 1, 0)) %>% 
+  mutate(gwr_smk10 = ifelse(geo_smk_pm >= 10, 1, 0),
+         gwr_smk15 = ifelse(geo_smk_pm >= 15, 1, 0)) %>% 
   group_by(county) %>% 
-  summarise(smk_day10 = sum(gwr_smk10)) %>% 
+  summarise(smk_day10 = sum(gwr_smk10), smk_day15 = sum(gwr_smk15)) %>% 
   # lower case county name and remove "." to match spatial df
   mutate(subregion = tolower(stringr::str_replace(county, "[.]", " ")))
 
@@ -89,26 +90,31 @@ msa_text <- msa_text %>%
                                 T ~ MSA))
 ```
 
-We summarize smoke exposure two ways: as a count of days where smoke PM~2.5~ is > 10 ug/m^3 (to increase the specificity to identify areas impacted by smoke) at the county level, and time-series of county-population weighted PM~2.5~ over May to October 2013. 
+We summarize smoke exposure two ways: as a count of days where smoke PM~2.5~ is > 15 ug/m^3 (to increase the specificity to identify areas impacted by smoke) at the county level, and time-series of county-population weighted PM~2.5~ over May to October 2013. 
 
-### Number of days in Oregon where smoke PM~2.5~ exceeded 10 ug/m^3. 
+### Number of days in Oregon where smoke PM~2.5~ exceeded 15 ug/m^3. 
 
 ```{r smoke days map}
 smoke_map <- ggplot(or_county_spatial_df, aes(x=long,y=lat, group=group)) +
   # fill with number of smoke days
-  geom_polygon(aes(fill =smk_day10)) +
-  scale_fill_gradient2(expression("Smoke Days > 10 µg/m"^3),
+  geom_polygon(aes(fill = smk_day15)) +
+  scale_fill_gradient2(expression("Smoke Days > 15 µg/m"^3),
                        low = "white", mid= "#00dbde", high="#6a3093", 
-                       midpoint = 15,
-    guide = guide_colorbar(direction="horizontal", title.position = "top",
-                          title.hjust = 0.5, barwidth = 20)) +
+                       midpoint = 10,
+    guide = guide_colorbar(direction = "horizontal", title.position = "top",
+                          title.vjust = 2, title.hjust = 0.5, barwidth = 15)) +
   # add county path on top
   geom_path(colour="#4ac29a") +
   # adding fire locations in
   geom_point(data=fire_locations, 
              aes(x=lon, y=lat, size = sqrt(area/2)), 
              color = "red", shape = 17, alpha = 0.7, 
-             show.legend = F, inherit.aes = FALSE) +
+             show.legend = T, inherit.aes = FALSE) +
+  # legend for firsts for fires
+  scale_size('Wildfire Acres Burned', breaks = c(0.8, 1, 1.6), 
+             labels = c(1600, 4000, 26000),
+             guide = guide_legend(title.position = "top", direction = "horizontal",
+                                  title.hjust = 0.5, barwidth = 10)) +
   # add county text 
   geom_text(data = county_text, 
             aes(x=long, y=lat, label = county, group="county"), 
@@ -116,7 +122,7 @@ smoke_map <- ggplot(or_county_spatial_df, aes(x=long,y=lat, group=group)) +
   # add metropolitan
   geom_point(data = msa_location, 
     aes(x=Longitude, y=Latitude), 
-    size = 1, color = '#ff0084', shape = 19, alpha = 0.7,
+    size = 1, color = '#ff0084', shape = 19, alpha = 0.7, 
     show.legend = F, inherit.aes = FALSE) +
   # add metro text
   geom_text(data = msa_text, 
@@ -130,7 +136,8 @@ smoke_map <- ggplot(or_county_spatial_df, aes(x=long,y=lat, group=group)) +
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         strip.background = element_rect(colour=NA, fill=NA),
-        legend.position = "bottom") 
+        legend.position = "bottom",
+        legend.key = element_rect(fill = NA, colour = NA, size = 0.25)) 
 
 smoke_map
 
