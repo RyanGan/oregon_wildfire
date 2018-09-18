@@ -46,15 +46,15 @@ asthma_claims <- read_csv('./data/health/2013-oregon_asthma_fireseason_cohort.cs
 
 
 # count of each place of service for each patient
-service_utilization <- asthma_claims %>% 
-  group_by(personkey, pos_simple) %>% 
-  summarize(count = n())
-
-# write event counts
-event_stats <- service_utilization %>% 
-  group_by(pos_simple) %>% 
-  summarize(n = n(), total_vis = sum(count), mean_vis = mean(count), 
-            med_vis = median(count), min_vis = min(count), max_vis = max(count))
+# service_utilization <- asthma_claims %>% 
+#   group_by(personkey, pos_simple) %>% 
+#   summarize(count = n())
+# 
+# # write event counts
+# event_stats <- service_utilization %>% 
+#   group_by(pos_simple) %>% 
+#   summarize(n = n(), total_vis = sum(count), mean_vis = mean(count), 
+#             med_vis = median(count), min_vis = min(count), max_vis = max(count))
 
 # write_csv(event_stats, './data/health/asthma_saba_event_sum_stats.csv')
 
@@ -81,7 +81,7 @@ clusterExport(cl, c("asthma_list"),
 start <- Sys.time()
 
 #asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
-asthma_cc_pos_list <- lapply(asthma_list[[1]], function(x){
+asthma_cc_pos_list <- lapply(asthma_list, function(x){
     pos_df <- x %>% 
     # find the first observation and first claim line of each person 
     group_by(clmid) %>%
