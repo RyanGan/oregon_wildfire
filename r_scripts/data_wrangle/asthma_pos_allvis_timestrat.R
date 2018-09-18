@@ -12,8 +12,17 @@
 library(tidyverse)
 library(case.crossover)
 library(parallel)
+library(lubridate)
+library(survival) # for clogit
 
 # asthma place of service ----
+# read in pm2.5 data
+pm <- read_csv("./data/pm/2013-oregon_zip_pm25.csv") %>% 
+  # create 10 unit variables
+  mutate(geo_pm10 = geo_wt_pm/10,
+         geo_smk10 = geo_smk_pm/10,
+         ZIPCODE = as.character(ZIPCODE)) %>% 
+  rename(ZIP = ZIPCODE)
 
 # read in asthma claims
 asthma_claims <- read_csv('./data/health/2013-oregon_asthma_fireseason_cohort.csv',
@@ -60,7 +69,8 @@ asthma_list <- asthma_claims %>%
 cl <- makeCluster(6)
 
 # load packages on each processor of the node/cluster
-clusterCall(cl, function() c(library(tidyverse), library(case.crossover)))
+clusterCall(cl, function() c(library(tidyverse), library(case.crossover),
+                             library(survival), library(lubridate)))
 
 # export new set of objects to global objects to cluster
 clusterExport(cl, c("asthma_list"), 
@@ -71,19 +81,67 @@ clusterExport(cl, c("asthma_list"),
 start <- Sys.time()
 
 asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
-#asthma_cc_pos_list <- lapply(asthma_list, function(x){
-  pos_df <- x %>% 
-      # find the first observation and first claim line of each person 
-      group_by(clmid) %>%
-      arrange(fromdate, line) %>%
-      ungroup() 
-    
-    ts_df <- time_stratified(data = x, id = "clmid", 
+#asthma_cc_pos_list <- lapply(asthma_list[1:2], function(x){
+    pos <- unique(x$pos_simple)
+    # set up full period timestrat df
+    fullperiod_df <- time_stratified(data = x, id = "clmid", 
       covariate = c("personkey", "gender", "age", "MSA", "ZIP", 
-                    "pos", "dx1", "service_place"), 
+                    "pos", "dx1", "pos_simple"), 
       admit_date = "fromdate", 
-      start_date = "2013-05-01", end_date = "2013-09-30", interval = 7)
+      start_date = "2013-05-01", end_date = "2013-09-30", interval = 7) %>% 
+      left_join(pm, by = c("date", "ZIP")) %>% 
+      filter(!is.na(geo_smk10))
+    
+    # conditional logistic model
+    fullperiod_mod <- clogit(outcome ~ geo_smk10 + wrf_temp + strata(identifier), 
+                  data = fullperiod_df)
+    
+    # n events
+    n_events <- fullperiod_mod$nevent
+    # odds ratio and 95% CI
+    estimate_full <- broom::tidy(fullperiod_mod) %>% 
+      filter(term == "geo_smk10") %>% 
+      dplyr::select(term, estimate, conf.low, conf.high) %>% 
+      mutate_at(2:4, funs(round(exp(.),3))) %>% 
+      cbind(pos, n_events, .) %>% 
+    mutate(ref_period = "Wildfire Season") %>% 
+    dplyr::select(ref_period, pos:conf.high)
+    
+    # remove fullperiod_df to save space
+    rm(fullperiod_df, fullperiod_mod)
+
+    # month timestrat
+    month_df <- casecross(data = x, id = 'clmid', date = "date", 
+                          covariate = c("personkey", "gender", "age", "MSA", "ZIP", 
+                                        "pos", "dx1", "pos_simple"), 
+                          period = 'month') %>% 
+      mutate(date = as.Date(date),
+             outcome = as.numeric(outcome)) %>% 
+      left_join(pm, by = c("date", "ZIP")) %>% 
+      filter(!is.na(geo_smk10))
+    
+    # conditional logistic model
+    month_mod <- clogit(outcome ~ geo_smk10 + wrf_temp + strata(id), 
+                             data = month_df)
+    
+    # n events
+    n_events <- month_mod$nevent
+    # odds ratio and 95% CI
+    estimate_month <- broom::tidy(month_mod) %>% 
+      filter(term == "geo_smk10") %>% 
+      dplyr::select(term, estimate, conf.low, conf.high) %>% 
+      mutate_at(2:4, funs(round(exp(.),3))) %>% 
+      cbind(pos, n_events, .) %>% 
+      mutate(ref_period = "Month") %>% 
+      dplyr::select(ref_period, pos:conf.high)
+    
+    # bind full and month mods together
+    estimates <- rbind(estimate_full, estimate_month)
+
 })
+
+# bind final list to results csv
+results <- map_dfr(asthma_cc_pos_list, rbind)
 
 stop <- Sys.time()
 time <- stop - start
@@ -93,5 +151,5 @@ print(time)
 # close cores 
 stopCluster(cl)
 
-# save casecross list as r data object
-save(asthma_cc_pos_list, file = "./data/health/asthma_cc_pos_allobs_list.RData")
+# save results as csv
+save(results, file = "./data/health/asthma_care_results_sensitivity.csv")
