@@ -15,16 +15,6 @@ library(parallel)
 
 # asthma place of service ----
 
-# read in place of service csv file
-place_of_service <- read_csv("./data/health/2013-oregon_pos.csv")
-
-pos_subset <- c("11", "20", "21", "22", "23", "41")
-
-# read in asthma icd9 vector
-load("./data/health/outcome_list.RData")
-
-asthma_icd9 <- outcome_icd9_list$asthma
-
 # read in asthma claims
 asthma_claims <- read_csv('./data/health/2013-oregon_asthma_fireseason_cohort.csv',
                           col_types = cols(.default = "c")) %>% 
@@ -80,17 +70,17 @@ clusterExport(cl, c("asthma_list"),
 # start time
 start <- Sys.time()
 
-#asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
-asthma_cc_pos_list <- lapply(asthma_list, function(x){
-    pos_df <- x %>% 
-    # find the first observation and first claim line of each person 
-    group_by(clmid) %>%
-    arrange(fromdate, line) %>%
-    ungroup() 
+asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
+#asthma_cc_pos_list <- lapply(asthma_list, function(x){
+  pos_df <- x %>% 
+      # find the first observation and first claim line of each person 
+      group_by(clmid) %>%
+      arrange(fromdate, line) %>%
+      ungroup() 
     
-    ts_df <- time_stratified(data = pos_df, id = "personkey", 
-      covariate = c("patid", "gender", "age", "MSA", "ZIP", "pos", "dx1",
-                  "service_place"), 
+    ts_df <- time_stratified(data = x, id = "clmid", 
+      covariate = c("personkey", "gender", "age", "MSA", "ZIP", 
+                    "pos", "dx1", "service_place"), 
       admit_date = "fromdate", 
       start_date = "2013-05-01", end_date = "2013-09-30", interval = 7)
 })
