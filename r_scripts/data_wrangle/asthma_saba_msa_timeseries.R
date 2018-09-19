@@ -70,6 +70,12 @@ event_count <- asthma_saba_unique_visit %>%
                            'Pharmacy', 'Urgent Care'))
          
 event_count
+
+event_stats <- event_count %>% 
+  group_by(pos_simple) %>% 
+  summarize(total_vis = sum(count), mean_vis = mean(count), med_vis = median(vis),
+            min_vis = min(count), max_vis = max(count))
+
 # write event counts to csv file
 write_csv(event_count, './data/health/2013-fireseason_asthma_counts.csv')
 

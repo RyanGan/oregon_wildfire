@@ -70,13 +70,17 @@ head(asthma_list[[1]])
 # set up cores
 cl <- makeCluster(6)
 
-# load packages on each processor of the node/cluster
-clusterCall(cl, function() c(library(tidyverse), library(case.crossover),
-                             library(survival), library(lubridate)))
-
 # export new set of objects to global objects to cluster
 clusterExport(cl, c("asthma_list"), 
               envir = .GlobalEnv)
+
+# load packages on each processor of the node/cluster
+clusterEvalQ(cl, {
+  library(tidyverse)
+  library(case.crossover)
+  library(survival)
+  library(lubridate)
+})
 
 # parallel creation of casecrossover list -----
 # start time
