@@ -86,7 +86,7 @@ clusterEvalQ(cl, {
 # start time
 start <- Sys.time()
 
-asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
+asthma_cc_pos_list <- parLapply(cl, asthma_list[1:2], function(x){
 #asthma_cc_pos_list <- lapply(asthma_list[1:2], function(x){
 
     pos <- unique(x$pos_simple)
