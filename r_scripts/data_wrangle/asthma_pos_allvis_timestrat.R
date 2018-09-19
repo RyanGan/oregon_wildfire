@@ -80,9 +80,10 @@ clusterExport(cl, c("asthma_list"),
 # start time
 start <- Sys.time()
 
-asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
-#asthma_cc_pos_list <- lapply(asthma_list[1:2], function(x){
+#asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
+asthma_cc_pos_list <- lapply(asthma_list[1:2], function(x){
     pos <- unique(x$pos_simple)
+    print(pos)
     # set up full period timestrat df
     fullperiod_df <- time_stratified(data = x, id = "clmid", 
       covariate = c("personkey", "gender", "age", "MSA", "ZIP", 
@@ -92,10 +93,12 @@ asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
       left_join(pm, by = c("date", "ZIP")) %>% 
       filter(!is.na(geo_smk10))
     
+    head(fullperiod_df)
     # conditional logistic model
     fullperiod_mod <- clogit(outcome ~ geo_smk10 + wrf_temp + strata(identifier), 
                   data = fullperiod_df)
     
+    summary(fullperiod_mod)
     # n events
     n_events <- fullperiod_mod$nevent
     # odds ratio and 95% CI
