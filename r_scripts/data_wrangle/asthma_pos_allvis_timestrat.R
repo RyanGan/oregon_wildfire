@@ -84,6 +84,7 @@ start <- Sys.time()
 
 #asthma_cc_pos_list <- parLapply(cl, asthma_list, function(x){
 asthma_cc_pos_list <- lapply(asthma_list[1:2], function(x){
+
     pos <- unique(x$pos_simple)
     print(pos)
     # set up full period timestrat df
@@ -94,13 +95,11 @@ asthma_cc_pos_list <- lapply(asthma_list[1:2], function(x){
       start_date = "2013-05-01", end_date = "2013-09-30", interval = 7) %>% 
       left_join(pm, by = c("date", "ZIP")) %>% 
       filter(!is.na(geo_smk10))
-    # check
-    head(fullperiod_df)
+
     # conditional logistic model
     fullperiod_mod <- clogit(outcome ~ geo_smk10 + wrf_temp + strata(identifier), 
                   data = fullperiod_df)
     
-    summary(fullperiod_mod)
     # n events
     n_events <- fullperiod_mod$nevent
     # odds ratio and 95% CI
@@ -109,7 +108,8 @@ asthma_cc_pos_list <- lapply(asthma_list[1:2], function(x){
       dplyr::select(term, estimate, conf.low, conf.high) %>% 
       mutate_at(2:4, funs(round(exp(.),3))) %>% 
       cbind(pos, n_events, .) %>% 
-    mutate(ref_period = "Wildfire Season") %>% 
+    mutate(ref_period = "Wildfire Season",
+           pos = as.character(pos)) %>% 
     dplyr::select(ref_period, pos:conf.high)
     
     # remove fullperiod_df to save space
@@ -137,13 +137,18 @@ asthma_cc_pos_list <- lapply(asthma_list[1:2], function(x){
       dplyr::select(term, estimate, conf.low, conf.high) %>% 
       mutate_at(2:4, funs(round(exp(.),3))) %>% 
       cbind(pos, n_events, .) %>% 
-      mutate(ref_period = "Month") %>% 
+      mutate(ref_period = "Month",
+             pos = as.character(pos)) %>% 
       dplyr::select(ref_period, pos:conf.high)
-    
+
     # bind full and month mods together
     estimates <- rbind(estimate_full, estimate_month)
 
+    print(estimates)
 })
+
+# close cores 
+stopCluster(cl)
 
 # bind final list to results csv
 results <- map_dfr(asthma_cc_pos_list, rbind)
@@ -151,10 +156,6 @@ results <- map_dfr(asthma_cc_pos_list, rbind)
 stop <- Sys.time()
 time <- stop - start
 print(time)
-
-
-# close cores 
-stopCluster(cl)
 
 # save results as csv
 save(results, file = "./data/health/asthma_care_results_sensitivity.csv")
