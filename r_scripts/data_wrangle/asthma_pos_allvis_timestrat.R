@@ -64,14 +64,15 @@ asthma_list <- asthma_claims %>%
   split(.$pos_simple) %>% 
   as.list() 
 
-# check asthma list
-head(asthma_list[[1]])
+# check if asthma list and pm values exist
+print(exists('asthma_list'))
+print(exists('pm'))
 
 # set up cores
 cl <- makeCluster(6)
 
 # export new set of objects to global objects to cluster
-clusterExport(cl, c("asthma_list"), 
+clusterExport(cl, c("asthma_list", "pm"), 
               envir = .GlobalEnv)
 
 # load packages on each processor of the node/cluster
