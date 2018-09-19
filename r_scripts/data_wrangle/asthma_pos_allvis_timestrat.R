@@ -64,6 +64,8 @@ asthma_list <- asthma_claims %>%
   split(.$pos_simple) %>% 
   as.list() 
 
+# check asthma list
+head(asthma_list[[1]])
 
 # set up cores
 cl <- makeCluster(6)
@@ -92,7 +94,7 @@ asthma_cc_pos_list <- lapply(asthma_list[1:2], function(x){
       start_date = "2013-05-01", end_date = "2013-09-30", interval = 7) %>% 
       left_join(pm, by = c("date", "ZIP")) %>% 
       filter(!is.na(geo_smk10))
-    
+    # check
     head(fullperiod_df)
     # conditional logistic model
     fullperiod_mod <- clogit(outcome ~ geo_smk10 + wrf_temp + strata(identifier), 
