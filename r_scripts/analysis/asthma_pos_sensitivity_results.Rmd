@@ -1,0 +1,212 @@
+---
+title: "Oregon Sensitivty Analysis"
+author: "Ryan Gan"
+date: "9/19/2018"
+output: html_document
+---
+
+
+```{r setup, include=F}
+library(tidyverse)
+```
+
+## Introduction
+
+This document contains results for sensitivity analyses of the time-stratified case-crossover designs in the Oregon paper.
+
+In the paper, our original method was to identify the first observations/visits for each patient for asthma care utilization. We then created time-stratified case-crossover dataframes for each asthma care utilization outcome, where the referent period was over the entire study period from May 1st to September 30th 2013. This scenario results in an independence of events across subjects.
+
+There was concern on how limiting the analyses to only the first visit within the time period may result in biased estimates. Based on this concern, I have produced some summary statistics of the estimated number of visits/events per patient during the study period as well as two sensitivity analyses: including all events with a referent period over the entire study period, and including all events with a referent period of only the same month as the event. These scenario assumes independence across events and does not really account for multiple events per subject.
+
+
+### Table of number of persons, events, and summary statistics of events.
+
+```{r read_stats, include=F}
+visits <- read_csv('../../data/health/asthma_saba_event_sum_stats.csv')
+```
+
+For some of the more severe outcomes like ED oor ambulance, the numbers between patients and number of events are pretty similar. With inpatient hosptial admissions, I'm worried I might have double counted claims. I tried my best to get to a single claim, but it's possible the same event was billed on multiple days. I think I'd need to account for length of stay to get this to a single event. I am not as worried about this with other places of service since they generally don't require overnight stay.
+
+```{r sumstats_tab, echo = F, message=F}
+knitr::kable(visits, caption = 'Patients and number of events')
+```
+
+## Sensitivity Results
+
+Table of sen
+
+```{r new_results, include = F}
+sen_results <- read_csv('../../data/health/asthma_care_results_sensitivity.csv') %>% 
+  select(-n_events)
+```
+
+### Table of Sensitivity Results 
+
+Table has results for all events per patient (assuming independence between events) with refrent period for the entire wildfire season and just for the month of the event.
+
+```{r results_tab, echo = F}
+knitr::kable(sen_results, caption = 'Sensitivity Results')
+```
+
+### Paper Results
+
+These are the results in the paper where only the first event per subject is included.
+
+```{r old_results, echo = F}
+pos <- unique(sen_results$pos)
+estimate <- c(1.259, 1.089, 1.072, 1.065, 1.050, 1.077, 0.809)
+conf.low <- c(0.752, 1.043, 0.995, 1.029, 1.038, 1.065, 0.552)
+conf.high <- c(2.107, 1.136, 1.154, 1.103, 1.063, 1.088, 1.187)
+
+old_results <- data.frame(pos, estimate, conf.low, conf.high) %>% 
+  mutate(scenario = 'First Event: Wildfire Season')
+
+knitr::kable(old_results, caption = 'Paper Results')
+```
+
+### Plot of Results Side by Side
+
+I'm excluding ambulance again since the monthly referent period is extremely unstable.
+
+```{r append_results, echo=F}
+plot_results <- sen_results %>% 
+  mutate(scenario = paste0('All Events: ', ref_period)) %>% 
+  select(-term, -ref_period) %>% 
+  bind_rows(old_results) %>% 
+  filter(pos != 'Ambulance') %>% 
+  mutate(pos = case_when(pos == 'Emergency Room Hospital' ~ 'Emergency Department', 
+                         pos == 'Pharmacy' ~ 'SABA Fill',
+                         TRUE ~ pos))
+
+ggplot(data=plot_results, aes(x=scenario, y = estimate, color = scenario, group = scenario)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=conf.low, ymax=conf.high), width = 0.2) +
+  geom_hline(yintercept = 1, linetype=2) +
+  facet_wrap(~pos, scales = 'free_y') +
+  ylab(expression(paste("Odds Ratio for 10µg/m"^3, " Increase in PM"[2.5]))) +
+  xlab("Outcome") +
+  # plot theme
+  theme(panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # strip element
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.border = element_rect(fill = NA, color = "black"),
+        # facet text size
+        strip.text = element_text(size = 10),
+        # axis element (tilt)
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.7),
+        #axis.title.x = element_blank(),
+        #axis.ticks.x = element_blank(),
+        axis.title.y = element_text(angle = 90),
+        legend.position = 'bottom')
+```
+
+In regard to the sensitivity of my decision to use the first visit for each patient in the time series to avoid the scenario for accounting for multiple events in the same time period, I would say some results are more robust than others. Particuarly emergency department and urgent care estimates are pretty much the same despite the event case definition and referent period. Some thoughts on this are that these events are not as common compared to the other asthma care measures, and for peeople that may have multiple events, it's not more than 2.
+
+As for SABA fills, office visits, and outpatient hospital visits, I see some difference here between the estimates. I would say it's more likely that some people have multiple events, and thus a greater chance of events occuring on referent dates. I would still say that it's these estimates are some what robust in that at least the odds ratio is in the same direction.
+
+Inpatient hosptial visits changes the most and I think it's because it's possible that new claims for the same outcome may occur on the next day when someone is admitted. I would argue that this is effectively the same event, but it was difficult to split out these events. I would say probably the most 'accurate' is probably the first visit scenario since it does not count the same events twice. This can be fixed, but I will need to go back in to the original data and fully process each claim and event and figure out how to not count events that overlap in date admitted and date dischared.
+
+### Identifying Overlap in Events
+
+```{r asthma_cohort, include=F}
+asthma_cohort <- read_csv("./data/health/2013-oregon_asthma_fireseason_cohort.csv")
+```
+
+Limiting to unique claims and visits first. 
+
+```{r unique_vis}
+# this will get me to unique asthma visits
+unique_vis <- asthma_cohort %>% 
+  # filter by asthma visits and to paid claims to get rid of denied claims
+  # for the same event
+  filter(visit_type != 'dx_asthma_not_primary') %>% 
+  filter(clmstatus == 'P') %>% 
+  group_by(personkey, clmid, line, fromdate) %>% 
+  slice(which.min(line)) %>% 
+  group_by(personkey, clmid, fromdate) %>% 
+  filter(row_number()==1)
+```
+
+For each unique patient and outcome, find the day of first admission and the number of additional events.
+
+```{r}
+first_vis <- unique_vis %>% 
+  arrange(personkey, pos_simple, fromdate) %>% 
+  group_by(personkey, pos_simple) %>% 
+  filter(row_number()==1) %>% 
+  filter(pos_simple %in% c('Ambulance', 'Emergency Room Hospital', 
+                           'Inpatient Hospital', 'Office', 'Outpatient Hospital',
+                           'Pharmacy', 'Urgent Care')) %>% 
+  select(personkey, clmid, fromdate, pos_simple) %>%
+  mutate(first_vis_day = lubridate::wday(fromdate, label = T)) %>% 
+  rename(first_vis_date = fromdate)
+```
+
+Find additional admission dates for each subject and the days they were admitted.
+
+```{r}
+other_vis <- unique_vis %>% 
+  ungroup() %>% 
+  # filter by place of service
+  filter(pos_simple %in% c('Ambulance', 'Emergency Room Hospital', 
+                           'Inpatient Hospital', 'Office', 'Outpatient Hospital',
+                           'Pharmacy', 'Urgent Care')) %>% 
+  # find other visit day
+  mutate(other_vis_day = lubridate::wday(fromdate, label = T)) %>% 
+  select(personkey, pos_simple, other_vis_day) %>% 
+  group_by(personkey, pos_simple, other_vis_day) %>% 
+  summarize(n = n()) %>% 
+  spread(other_vis_day, n)
+```
+
+
+Visit type.
+
+```{r}
+visit_counts <- first_vis %>% 
+  left_join(other_vis, by = c('personkey', 'pos_simple'))
+```
+
+```{r}
+glimpse(first_vis)
+```
+
+```{r}
+check <- unique_vis %>% filter(pos_simple == 'Ambulance' & personkey == '8686197')
+```
+
+
+Check that each claim is only one count.
+
+```{r claim_count, include = F}
+check_count <- unique_vis %>% 
+  group_by(personkey, clmid) %>% 
+  summarize(n = n())
+```
+
+Check person with multiple inpatient asthma hosptializations. I have a feeling that the todate is not distinguishing the same event. They are the same as the fromdate.
+
+```{r}
+check <- filter(unique_vis, personkey == '10243608') %>% 
+  select(personkey, clmid, line, fromdate, todate, paydate, visit_type, pos_simple, metroarea)
+```
+
+Checking inpatient todate.
+
+```{r inpatient_length_count}
+inpat_count <- unique_vis %>% 
+  filter(pos_simple == 'Inpatient Hospital') %>% 
+  mutate(days_stay = todate  - fromdate) %>% 
+  select(personkey, clmid, line, fromdate, todate, paydate, 
+         visit_type, pos_simple, metroarea, days_stay) %>% 
+  group_by(days_stay) %>%
+  summarize(n = n())
+```
+
+```{r}
+ggplot(inpat_count, aes(x=days_stay, y=n)) +
+  geom_point()
+```
+
