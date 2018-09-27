@@ -71,19 +71,21 @@ I'm excluding ambulance again since the monthly referent period is extremely uns
 ```{r append_results, echo=F}
 plot_results <- sen_results %>% 
   mutate(scenario = paste0('All Events: ', ref_period)) %>% 
+  filter(scenario != 'All Events: Month') %>% 
   select(-term, -ref_period) %>% 
   bind_rows(old_results) %>% 
   filter(pos != 'Ambulance') %>% 
   mutate(pos = case_when(pos == 'Emergency Room Hospital' ~ 'Emergency Department', 
                          pos == 'Pharmacy' ~ 'SABA Fill',
-                         TRUE ~ pos))
+                         TRUE ~ pos)) %>% 
+  rename(Scenario = scenario)
 
-ggplot(data=plot_results, aes(x=scenario, y = estimate, color = scenario, group = scenario)) +
+ggplot(data=plot_results, aes(x=Scenario, y = estimate, color = Scenario, group = Scenario)) +
   geom_point() +
   geom_errorbar(aes(ymin=conf.low, ymax=conf.high), width = 0.2) +
   geom_hline(yintercept = 1, linetype=2) +
   facet_wrap(~pos, scales = 'free_y') +
-  ylab(expression(paste("Odds Ratio for 10µg/m"^3, " Increase in PM"[2.5]))) +
+  ylab(expression(paste("Odds Ratio for 10µg/m"^3, " Increase in WFS PM"[2.5]))) +
   xlab("Outcome") +
   # plot theme
   theme(panel.background = element_rect(fill = 'white', colour = 'black'),
@@ -157,8 +159,23 @@ other_vis <- unique_vis %>%
   mutate(other_vis_day = lubridate::wday(fromdate, label = T)) %>% 
   select(personkey, pos_simple, other_vis_day) %>% 
   group_by(personkey, pos_simple, other_vis_day) %>% 
+  summarize(n = n()) #%>% 
+  #spread(other_vis_day, n)
+```
+
+Summary stats per person
+```{r}
+sum_stats <- other_vis %>% 
+  group_by(personkey, pos_simple) %>% 
   summarize(n = n()) %>% 
-  spread(other_vis_day, n)
+  group_by(pos_simple) %>% 
+  summarize(n_person = n(), n_visit = sum(n))
+```
+
+```{r}
+persons <- asthma_cohort %>% 
+  group_by(personkey) %>% 
+  summarize(n = n())
 ```
 
 
