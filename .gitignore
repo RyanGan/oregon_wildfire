@@ -6,6 +6,8 @@
 # ignore
 *.Rproj
 *.html
+*.doc*
+.DS_Store
 
 # ignore the directory where data is kept 
 data/
