@@ -285,11 +285,12 @@ sex_result
 Repeating the same procedure as above, but for each age category.
 
 ```{r age_sameday}
+
 age_results <- asthma_pos_list %>% 
   map_dfr(., function(df){
     service_place <- as.character(df$service_place[1])
     # complete case
-    sex_df <- df %>% filter(!is.na(geo_smk10)) %>% 
+    age_df <- df %>% filter(!is.na(geo_smk10)) %>% 
       # nest strata
       nest(-age_cat) %>% 
       mutate(model = map(data, ~ clogit(outcome ~ geo_smk10 + wrf_temp +
@@ -310,7 +311,8 @@ age_results <- asthma_pos_list %>%
   rename(strata = age_cat) %>% 
   dplyr::select(strata, service_place:conf.high) %>%
    filter(n_events > 30) %>%
-   filter(conf.high < 5)
+   filter(conf.high < 5) %>% 
+  mutate(strata = paste0(strata, ' Yrs'))
 
 # print table
 age_results
@@ -321,7 +323,7 @@ Binding all results together and creating a small-multiples plot.
 ```{r all_results}
 results <- bind_rows(sameday_result, sex_result, age_results) %>% 
   rename(odds_ratio = estimate, lower95 = conf.low, upper95 = conf.high) %>% 
-  mutate(strata = case_when(strata == "Total" ~ "All Strata",
+  mutate(strata = case_when(strata == "Total" ~ "All Subjects",
                             TRUE ~ strata),
          # shorten names of pos
          service_place = case_when(service_place=="Ambulance-Land"~"Ambulance",
@@ -330,8 +332,8 @@ results <- bind_rows(sameday_result, sex_result, age_results) %>%
           TRUE ~ service_place),
          # set order of strata
           strata = factor(strata, 
-            levels = c("All Strata", "Female", "Male", "Age < 15", 
-                       "Age 15-65", "Age > 65"))) %>% 
+            levels = c("All Subjects", "Female", "Male", "Age < 15 Yrs", 
+                       "Age 15-65 Yrs", "Age > 65 Yrs"))) %>% 
     # set order of service place
           # service_place = factor(service_place, 
           #   levels = c("SABA Fill", "Office", "Outpatient Hospital", 
@@ -346,13 +348,16 @@ results <- bind_rows(sameday_result, sex_result, age_results) %>%
 Plotting results.
 
 ```{r plot}
+scaleFUN <- function(x) sprintf("%.2f", x)
+
 plot <- ggplot(results, aes(x = strata, y = odds_ratio)) +
   geom_point(color = "#3c1053") + 
   geom_errorbar(aes(ymin=lower95, ymax=upper95), color = "#3c1053",width = 0.2) +
   geom_hline(yintercept = 1, linetype=2) +
-  facet_wrap(~service_place, scales = "free_y", ncol = 2) +
+  facet_wrap(~service_place, scales = 'free_y', ncol = 2) +
+  scale_y_continuous(label = scaleFUN) + 
   ylab(expression(paste("Odds Ratio for 10µg/m"^3, " Increase in WFS PM"[2.5]))) +
-  xlab("Stratum") +
+  xlab("All Subjects and Specific Subgroups") +
    # plot theme
     theme(panel.background = element_rect(fill = 'white', colour = 'black'),
     panel.grid.major = element_blank(),
@@ -363,7 +368,7 @@ plot <- ggplot(results, aes(x = strata, y = odds_ratio)) +
     # facet text size
     strip.text = element_text(size = 10),
     # axis element (tilt)
-    axis.text.x = element_text(angle = 45, hjust = 0.9, vjust = 0.7),
+    axis.text.x = element_text(angle = 45, hjust = 0.95, vjust = 0.95),
     #axis.title.x = element_blank(),
     #axis.ticks.x = element_blank(),
     axis.title.y = element_text(angle = 90))

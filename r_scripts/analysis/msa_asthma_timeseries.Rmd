@@ -25,7 +25,7 @@ vars_keep <- names(asthma_cc_pos_list[[4]])
 Load SABA DF.
 
 ```{r saba_df}
-saba <- read_csv("./data/health/2013-oregon_casecross_saba.csv") %>% 
+saba <- read_csv("../../data/health/2013-oregon_casecross_saba.csv") %>% 
   rename(identifier = personkey, ZIP = ZIPCODE) %>% 
   mutate(service_place = "SABA Fill",
          dx1 = ndc) %>% 
