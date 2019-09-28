@@ -381,39 +381,6 @@ plot
 #       units="in", width=8, height=6, dpi=300)
 ```
 
-I don't really like this plot because of the wide intervals. I also don't think there is really any evidence of effect modification by strata.
-
-I think I'll just present the all strata estimate.
-
-```{r total_results}
-# filter to total results
-total_results <- results %>% 
-  filter(strata == "All Strata")
-
-# plot total results
-total_plot <- ggplot(total_results, aes(x = service_place, y = odds_ratio, 
-                                        group = service_place)) +
-  geom_point(color = "#7f00ff") + 
-  geom_errorbar(aes(ymin=lower95, ymax=upper95), color = "#7f00ff",width = 0.2) +
-  geom_hline(yintercept = 1, linetype=2) +
-  ylab(expression(paste("Odds Ratio for 10µg/m"^3, " Increase in PM"[2.5]))) +
-  xlab("Place of Service") +
-   # plot theme
-    theme(panel.background = element_rect(fill = 'white', colour = 'black'),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    # axis element (tilt)
-    axis.text.x = element_text(angle = 45, hjust = 0.9, vjust = 0.7),
-    #axis.title.x = element_blank(),
-    #axis.ticks.x = element_blank(),
-    axis.title.y = element_text(angle = 90))
-
-total_plot
-
-#ggsave("./Figs/total_pos_results_plot.tiff", total_plot, 
-#       units="in", width=6, height=4, dpi=300)
-```
-
 I will probably color-code this. Interesting take-away would be that all types of asthma events were associated with a 10 ug/m^3^ increase in PM~2.5~ we are attributed to smoke. The only events not associated would be urgent care and ambulance visits. However, ambulance visits goes in the direction I'd expect if smoke were to be hazardous. Urgent care shows and inverse association, but it's not associated. SABA fill is any SABA fill, while we only take the first visit for each person, over the time period, which may or may not be appropriate. I can't decide.
 
 ## Lagged Associations
@@ -503,21 +470,25 @@ lag_plot
 Limiting to MSA of Medford to see if I see signals with smoke for the specific places of service. I've excluded ambulance and urgent care since their 95% CI CIs were wide, suggesting poor model fits.
 
 ```{r medford}
+names(asthma_pos_list)
+head(asthma_pos_list$`20`$geo_smk_pm)
 # excluding ambulance since it won't run for medford
-medford_result <- asthma_pos_list[c(1,3:5,7)] %>% 
+medford_result <- asthma_pos_list[c(1:5,7)] %>% 
   map_dfr(., function(df){
     service_place <- as.character(df$service_place[1])
     # complete case
     df <- df %>% filter(!is.na(geo_smk10)) %>% 
-      filter(metroarea == "Medford")
+      filter(metroarea == "Medford") %>% 
+      # create binary cutoff of >15
+      mutate(smk15 = ifelse(geo_smk_pm > 15, 1, 0))
     # model
-    mod <- clogit(outcome ~ geo_smk10 + wrf_temp + strata(identifier), 
+    mod <- clogit(outcome ~ smk15 + wrf_temp + strata(identifier), 
                   data = df)
     # n events
     n_events <- mod$nevent
     # odds ratio and 95% CI
     estimates <- broom::tidy(mod) %>% 
-      filter(term == "geo_smk10") %>% 
+      filter(term == "smk15") %>% 
       dplyr::select(term, estimate, conf.low, conf.high) %>% 
       mutate_at(2:4, funs(round(exp(.),3))) %>% 
       cbind(service_place, n_events, .) %>% 
@@ -533,7 +504,8 @@ medford_result <- asthma_pos_list[c(1,3:5,7)] %>%
     # set order of service place
           service_place = factor(service_place, 
             levels = c("SABA Fill", "Office", "Outpatient Hospital", 
-                       "Emergency Room", "Inpatient Hospital")))
+                       "Emergency Room", "Inpatient Hospital", 
+                       "Urgent Care Facility")))
 
 # table
 medford_result
@@ -544,7 +516,7 @@ medford_result
 ```{r other_msa}
 msa <- unique(asthma_pos_list[[1]]$metroarea)
 
-msa_result <- asthma_pos_list[c(1,3:5,7)] %>% 
+msa_result <- asthma_pos_list[c(1:5,7)] %>% 
   map_dfr(., function(df){
 
     service_place <- as.character(df$service_place[1])
@@ -617,10 +589,4 @@ med_plot
 
 For people who reported living in Medford, I see strong, but small relative increases in the likelihood for a SABA fill and an office visits (and probably inpatient hospitalizations as well). When compared to people living in other MSAs during this period, there is a stronger signal for SABA fills and office visits, but the invervals are much wider even though the number of events is much more than Medford. A couple interesting thoughts: Medford was the only MSA really impacted by smoke during this time, where I'd guess that any signal for other MSAs during this time for smoke are likely because our definition of PM~2.5~ due to smoke is pretty crude as it's just the difference of the daily specific ZIP code estimate minus the estimated seasonal background for that ZIP code. Hence, it's probably picking up some elevated PM~2.5~ days.
 
-## Next Steps/Thoughts
 
-- Have Jingyang focus the comparison of monthly rates by MSA to outcomes of SABA monthly fill rate, office visit, and inpatient visit (this might be interesting).
-
-- Is it worth evaluating a cumulative distributed lag effect of a couple days based on Ana Rappold's new study with CVD?
-
-- Should we try a further refinement of classifying smoke exposure, or even not transform PM~2.5~ and really focus on the Medford vs. other MSAs and just make the argument that any elevated PM~2.5~ during this time in Oregon is likely driven by smoke (particularly in Medford)?
